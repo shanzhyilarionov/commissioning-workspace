@@ -1,50 +1,126 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+const pages = [
+  "Dashboard",
+  "Projects",
+  "Equipment",
+  "Checklists",
+  "Issues",
+  "Reports",
+  "Settings",
+] as const;
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+type Page = (typeof pages)[number];
+
+const descriptions: Record<Page, string> = {
+  Dashboard: "Overview of commissioning progress and project status.",
+  Projects: "Create and manage commissioning projects.",
+  Equipment: "Manage equipment, tags, systems, areas, and status.",
+  Checklists: "Complete and review equipment commissioning checklists.",
+  Issues: "Track punch-list items, failures, and resolutions.",
+  Reports: "Review and export commissioning records.",
+  Settings: "Configure application and project preferences.",
+};
+
+const metrics = [
+  { label: "Total Equipment", value: "0" },
+  { label: "Completed", value: "0" },
+  { label: "Open Issues", value: "0" },
+  { label: "Progress", value: "0%" },
+];
+
+function App() {
+  const [activePage, setActivePage] = useState<Page>("Dashboard");
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">CS</div>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+          <div>
+            <h1>Commissioning Studio</h1>
+            <p>Industrial commissioning workspace</p>
+          </div>
+        </div>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+        <nav className="navigation">
+          {pages.map((page) => (
+            <button
+              key={page}
+              type="button"
+              className={activePage === page ? "nav-item active" : "nav-item"}
+              onClick={() => setActivePage(page)}
+            >
+              {page}
+            </button>
+          ))}
+        </nav>
+
+        <footer className="sidebar-footer">
+          <span>Version 0.1.0</span>
+          <span>Local workspace</span>
+        </footer>
+      </aside>
+
+      <main className="main-content">
+        <header className="page-header">
+          <div>
+            <p className="eyebrow">Commissioning Studio</p>
+            <h2>{activePage}</h2>
+            <p>{descriptions[activePage]}</p>
+          </div>
+
+          <div className="project-selector">
+            <span>Current project</span>
+            <strong>No project selected</strong>
+          </div>
+        </header>
+
+        <div className="page-content">
+          {activePage === "Dashboard" ? (
+            <>
+              <section className="metrics-grid">
+                {metrics.map((metric) => (
+                  <article className="metric-card" key={metric.label}>
+                    <span>{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                  </article>
+                ))}
+              </section>
+
+              <section className="content-card">
+                <div className="card-header">
+                  <div>
+                    <h3>Project overview</h3>
+                    <p>No commissioning project has been created.</p>
+                  </div>
+
+                  <button className="primary-button" type="button">
+                    Create project
+                  </button>
+                </div>
+
+                <div className="empty-state">
+                  <div className="empty-icon">+</div>
+                  <h3>Start your first project</h3>
+                  <p>
+                    Create a project before adding areas, equipment, checklists,
+                    test records, and punch-list items.
+                  </p>
+                </div>
+              </section>
+            </>
+          ) : (
+            <section className="content-card placeholder">
+              <h3>{activePage}</h3>
+              <p>This module will be implemented in a later version.</p>
+            </section>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }
 

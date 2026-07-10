@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "commissioning-studio",
+  "productName": "Commissioning Studio",
   "version": "0.1.0",
   "identifier": "com.shanzhy.commissioning-studio",
   "build": {
@@ -12,9 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "commissioning-studio",
-        "width": 800,
-        "height": 600
+        "title": "Commissioning Studio",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true
       }
     ],
     "security": {
