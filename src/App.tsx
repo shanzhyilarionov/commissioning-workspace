@@ -40,7 +40,7 @@ function App() {
           <div className="brand-mark">CS</div>
 
           <div>
-            <h1>Commissioning Studio</h1>
+            <h1>Commissioning Workspace</h1>
             <p>Industrial commissioning workspace</p>
           </div>
         </div>
@@ -67,7 +67,7 @@ function App() {
       <main className="main-content">
         <header className="page-header">
           <div>
-            <p className="eyebrow">Commissioning Studio</p>
+            <p className="eyebrow">Commissioning Workspace</p>
             <h2>{activePage}</h2>
             <p>{descriptions[activePage]}</p>
           </div>
