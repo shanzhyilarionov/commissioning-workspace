@@ -1,4 +1,11 @@
 import { useState } from "react";
+
+import CreateProjectModal from "./components/CreateProjectModal";
+import DashboardPage from "./pages/DashboardPage";
+import ProjectsPage from "./pages/ProjectsPage";
+
+import type { CreateProjectInput, Project } from "./types/project";
+
 import "./App.css";
 
 const pages = [
@@ -23,104 +30,108 @@ const descriptions: Record<Page, string> = {
   Settings: "Configure application and project preferences.",
 };
 
-const metrics = [
-  { label: "Total Equipment", value: "0" },
-  { label: "Completed", value: "0" },
-  { label: "Open Issues", value: "0" },
-  { label: "Progress", value: "0%" },
-];
-
 function App() {
   const [activePage, setActivePage] = useState<Page>("Dashboard");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+
+  const currentProject =
+    projects.find((project) => project.id === currentProjectId) ?? null;
+
+  function handleCreateProject(input: CreateProjectInput) {
+    const timestamp = new Date().toISOString();
+
+    const project: Project = {
+      id: crypto.randomUUID(),
+      name: input.name,
+      client: input.client,
+      location: input.location,
+      description: input.description,
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    setProjects((current) => [project, ...current]);
+    setCurrentProjectId(project.id);
+    setIsCreateProjectOpen(false);
+    setActivePage("Projects");
+  }
+
+  function renderPage() {
+    switch (activePage) {
+      case "Dashboard":
+        return (
+          <DashboardPage
+            currentProject={currentProject}
+            onCreateProject={() => setIsCreateProjectOpen(true)}
+          />
+        );
+
+      case "Projects":
+        return (
+          <ProjectsPage
+            projects={projects}
+            currentProjectId={currentProjectId}
+            onCreateProject={() => setIsCreateProjectOpen(true)}
+            onSelectProject={setCurrentProjectId}
+          />
+        );
+
+      default:
+        return (
+          <section className="content-card placeholder">
+            <h3>{activePage}</h3>
+            <p>This module will be implemented in a later version.</p>
+          </section>
+        );
+    }
+  }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">CS</div>
+    <>
+      <div className="app-shell">
+        <aside className="sidebar">
+          <nav className="navigation">
+            {pages.map((page) => (
+              <button
+                key={page}
+                type="button"
+                className={activePage === page ? "nav-item active" : "nav-item"}
+                onClick={() => setActivePage(page)}
+              >
+                {page}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-          <div>
-            <h1>Commissioning Workspace</h1>
-            <p>Industrial commissioning workspace</p>
-          </div>
-        </div>
+        <main className="main-content">
+          <header className="page-header">
+            <div>
+              <h2>{activePage}</h2>
+              <p>{descriptions[activePage]}</p>
+            </div>
 
-        <nav className="navigation">
-          {pages.map((page) => (
-            <button
-              key={page}
-              type="button"
-              className={activePage === page ? "nav-item active" : "nav-item"}
-              onClick={() => setActivePage(page)}
-            >
-              {page}
-            </button>
-          ))}
-        </nav>
+            <div className="project-selector">
+              <span>Current project</span>
+              <strong>
+                {currentProject?.name ?? "No project selected"}
+              </strong>
+            </div>
+          </header>
 
-        <footer className="sidebar-footer">
-          <span>Version 0.1.0</span>
-          <span>Local workspace</span>
-        </footer>
-      </aside>
+          <div className="page-content">{renderPage()}</div>
+        </main>
+      </div>
 
-      <main className="main-content">
-        <header className="page-header">
-          <div>
-            <p className="eyebrow">Commissioning Workspace</p>
-            <h2>{activePage}</h2>
-            <p>{descriptions[activePage]}</p>
-          </div>
-
-          <div className="project-selector">
-            <span>Current project</span>
-            <strong>No project selected</strong>
-          </div>
-        </header>
-
-        <div className="page-content">
-          {activePage === "Dashboard" ? (
-            <>
-              <section className="metrics-grid">
-                {metrics.map((metric) => (
-                  <article className="metric-card" key={metric.label}>
-                    <span>{metric.label}</span>
-                    <strong>{metric.value}</strong>
-                  </article>
-                ))}
-              </section>
-
-              <section className="content-card">
-                <div className="card-header">
-                  <div>
-                    <h3>Project overview</h3>
-                    <p>No commissioning project has been created.</p>
-                  </div>
-
-                  <button className="primary-button" type="button">
-                    Create project
-                  </button>
-                </div>
-
-                <div className="empty-state">
-                  <div className="empty-icon">+</div>
-                  <h3>Start your first project</h3>
-                  <p>
-                    Create a project before adding areas, equipment, checklists,
-                    test records, and punch-list items.
-                  </p>
-                </div>
-              </section>
-            </>
-          ) : (
-            <section className="content-card placeholder">
-              <h3>{activePage}</h3>
-              <p>This module will be implemented in a later version.</p>
-            </section>
-          )}
-        </div>
-      </main>
-    </div>
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
+        onCreate={handleCreateProject}
+      />
+    </>
   );
 }
 

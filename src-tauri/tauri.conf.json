@@ -24,6 +24,13 @@
       "csp": null
     }
   },
+  "plugins": {
+    "sql": {
+      "preload": [
+        "sqlite:commissioning-workspace.db"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
