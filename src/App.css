@@ -39,6 +39,23 @@ button {
   border-right: 1px solid #2a3743;
 }
 
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  margin-bottom: 28px;
+  padding: 0 10px;
+}
+
+.sidebar-logo img {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  height: auto;
+  object-fit: contain;
+}
+
 .navigation {
   display: flex;
   flex-direction: column;

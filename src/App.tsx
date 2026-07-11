@@ -6,6 +6,8 @@ import ProjectsPage from "./pages/ProjectsPage";
 
 import type { CreateProjectInput, Project } from "./types/project";
 
+import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
+
 import "./App.css";
 
 const pages = [
@@ -93,6 +95,12 @@ function App() {
     <>
       <div className="app-shell">
         <aside className="sidebar">
+          <div className="sidebar-logo">
+            <img
+              src={commissioningWorkspaceLogo}
+              alt="Commissioning Workspace"
+            />
+          </div>
           <nav className="navigation">
             {pages.map((page) => (
               <button
