@@ -70,8 +70,10 @@ function ProjectsPage({
                     <td>{project.client || "—"}</td>
                     <td>{project.location || "—"}</td>
 
-                    <td>
-                      <span className="status-badge">{project.status}</span>
+                    <td className="status-cell">
+                      <span className={`status-badge ${project.status.toLowerCase()}`}>
+                        {project.status}
+                      </span>
                     </td>
 
                     <td>

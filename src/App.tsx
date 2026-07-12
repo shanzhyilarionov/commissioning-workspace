@@ -1,7 +1,8 @@
 import { useState } from "react";
 
 import CreateProjectModal from "./components/CreateProjectModal";
-import DashboardPage from "./pages/DashboardPage";
+
+import ProjectOverviewPage from "./pages/DashboardPage";
 import ProjectsPage from "./pages/ProjectsPage";
 
 import type { CreateProjectInput, Project } from "./types/project";
@@ -10,32 +11,49 @@ import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.pn
 
 import "./App.css";
 
-const pages = [
-  "Dashboard",
-  "Projects",
-  "Equipment",
-  "Checklists",
+const globalPages = ["Home", "Projects"] as const;
+
+const projectPages = [
+  "Overview",
+  "Assets",
+  "Checklists & Tests",
   "Issues",
+  "Documents",
   "Reports",
-  "Settings",
 ] as const;
 
-type Page = (typeof pages)[number];
+const utilityPages = ["Settings"] as const;
+
+type ProjectPage = (typeof projectPages)[number];
+
+type Page =
+  | (typeof globalPages)[number]
+  | ProjectPage
+  | (typeof utilityPages)[number];
 
 const descriptions: Record<Page, string> = {
-  Dashboard: "Overview of commissioning progress and project status.",
-  Projects: "Create and manage commissioning projects.",
-  Equipment: "Manage equipment, tags, systems, areas, and status.",
-  Checklists: "Complete and review equipment commissioning checklists.",
-  Issues: "Track punch-list items, failures, and resolutions.",
-  Reports: "Review and export commissioning records.",
-  Settings: "Configure application and project preferences.",
+  Home: "Overview of your commissioning workspace and recent projects.",
+  Projects: "Create, open, and manage commissioning projects.",
+  Overview: "Review the current project's commissioning progress and status.",
+  Assets: "Manage systems, areas, equipment, tags, and asset status.",
+  "Checklists & Tests":
+    "Create, execute, and review commissioning checklists and tests.",
+  Issues: "Track deficiencies, punch items, failures, and resolutions.",
+  Documents: "Manage drawings, procedures, certificates, and project files.",
+  Reports: "Generate and export commissioning records and summaries.",
+  Settings: "Configure application and workspace preferences.",
 };
 
+function isProjectPage(page: Page): page is ProjectPage {
+  return projectPages.includes(page as ProjectPage);
+}
+
 function App() {
-  const [activePage, setActivePage] = useState<Page>("Dashboard");
+  const [activePage, setActivePage] = useState<Page>("Home");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(
+    null,
+  );
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
 
   const currentProject =
@@ -58,17 +76,49 @@ function App() {
     setProjects((current) => [project, ...current]);
     setCurrentProjectId(project.id);
     setIsCreateProjectOpen(false);
-    setActivePage("Projects");
+    setActivePage("Overview");
+  }
+
+  function handleOpenProject(projectId: string) {
+    setCurrentProjectId(projectId);
+    setActivePage("Overview");
   }
 
   function renderPage() {
     switch (activePage) {
-      case "Dashboard":
+      case "Home":
         return (
-          <DashboardPage
-            currentProject={currentProject}
-            onCreateProject={() => setIsCreateProjectOpen(true)}
-          />
+          <section className="content-card">
+            <div className="card-header">
+              <div>
+                <h3>Workspace</h3>
+                <p>
+                  Open an existing project or create a new commissioning
+                  project.
+                </p>
+              </div>
+
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => setIsCreateProjectOpen(true)}
+              >
+                New project
+              </button>
+            </div>
+
+            <div className="project-summary">
+              <div>
+                <span>Total projects</span>
+                <strong>{projects.length}</strong>
+              </div>
+
+              <div>
+                <span>Current project</span>
+                <strong>{currentProject?.name ?? "None selected"}</strong>
+              </div>
+            </div>
+          </section>
         );
 
       case "Projects":
@@ -77,15 +127,51 @@ function App() {
             projects={projects}
             currentProjectId={currentProjectId}
             onCreateProject={() => setIsCreateProjectOpen(true)}
-            onSelectProject={setCurrentProjectId}
+            onSelectProject={handleOpenProject}
+          />
+        );
+
+      case "Overview":
+        if (!currentProject) {
+          return (
+            <section className="content-card placeholder">
+              <h3>No project selected</h3>
+              <p>
+                Open or create a project before viewing its commissioning
+                overview.
+              </p>
+            </section>
+          );
+        }
+
+        return (
+          <ProjectOverviewPage
+            currentProject={currentProject}
+            onCreateProject={() => setIsCreateProjectOpen(true)}
           />
         );
 
       default:
+        if (isProjectPage(activePage) && !currentProject) {
+          return (
+            <section className="content-card placeholder">
+              <h3>No project selected</h3>
+              <p>
+                Open or create a project before accessing this project module.
+              </p>
+            </section>
+          );
+        }
+
         return (
           <section className="content-card placeholder">
             <h3>{activePage}</h3>
-            <p>This module will be implemented in a later version.</p>
+
+            <p>
+              {isProjectPage(activePage) && currentProject
+                ? `${activePage} for ${currentProject.name} will be implemented in a later version.`
+                : "This module will be implemented in a later version."}
+            </p>
           </section>
         );
     }
@@ -101,18 +187,79 @@ function App() {
               alt="Commissioning Workspace"
             />
           </div>
-          <nav className="navigation">
-            {pages.map((page) => (
-              <button
-                key={page}
-                type="button"
-                className={activePage === page ? "nav-item active" : "nav-item"}
-                onClick={() => setActivePage(page)}
-              >
-                {page}
-              </button>
-            ))}
-          </nav>
+
+          <div className="sidebar-body">
+            <nav className="navigation">
+              {globalPages.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={
+                    activePage === page ? "nav-item active" : "nav-item"
+                  }
+                  onClick={() => setActivePage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+            </nav>
+
+            {currentProject && (
+              <section className="project-navigation-section">
+                <label
+                  className="navigation-label"
+                  htmlFor="current-project"
+                >
+                  Current project
+                </label>
+
+                <select
+                  id="current-project"
+                  className="project-switcher"
+                  value={currentProjectId ?? ""}
+                  onChange={(event) => handleOpenProject(event.target.value)}
+                >
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+
+                <nav className="navigation project-navigation">
+                  {projectPages.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={
+                        activePage === page ? "nav-item active" : "nav-item"
+                      }
+                      onClick={() => setActivePage(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </nav>
+              </section>
+            )}
+
+            <div className="sidebar-spacer" />
+
+            <nav className="navigation utility-navigation">
+              {utilityPages.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={
+                    activePage === page ? "nav-item active" : "nav-item"
+                  }
+                  onClick={() => setActivePage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+            </nav>
+          </div>
         </aside>
 
         <main className="main-content">
@@ -122,12 +269,12 @@ function App() {
               <p>{descriptions[activePage]}</p>
             </div>
 
-            <div className="project-selector">
-              <span>Current project</span>
-              <strong>
-                {currentProject?.name ?? "No project selected"}
-              </strong>
-            </div>
+            {isProjectPage(activePage) && currentProject && (
+              <div className="page-project-context">
+                <span>Project</span>
+                <strong>{currentProject.name}</strong>
+              </div>
+            )}
           </header>
 
           <div className="page-content">{renderPage()}</div>

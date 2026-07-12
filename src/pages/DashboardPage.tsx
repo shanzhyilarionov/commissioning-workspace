@@ -6,7 +6,7 @@ interface DashboardPageProps {
 }
 
 const metrics = [
-  { label: "Total Equipment", value: "0" },
+  { label: "Total Assets", value: "0" },
   { label: "Completed", value: "0" },
   { label: "Open Issues", value: "0" },
   { label: "Progress", value: "0%" },
@@ -44,7 +44,7 @@ function DashboardPage({
             type="button"
             onClick={onCreateProject}
           >
-            Create project
+            New project
           </button>
         </div>
 
@@ -79,8 +79,8 @@ function DashboardPage({
             <h3>Start your first project</h3>
 
             <p>
-              Create a project before adding areas, equipment, checklists, test
-              records, and punch-list items.
+              Create a project before adding areas, systems, assets, checklists,
+              tests, issues, and documents.
             </p>
           </div>
         )}
