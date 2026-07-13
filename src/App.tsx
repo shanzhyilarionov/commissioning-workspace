@@ -1,11 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import CreateProjectModal from "./components/CreateProjectModal";
-
+import EditProjectModal from "./components/EditProjectModal";
+import ProjectStatusActionModal, {
+  type ProjectStatusAction,
+} from "./components/ProjectStatusActionModal";
+import AssetsPage from "./pages/AssetsPage";
 import ProjectOverviewPage from "./pages/DashboardPage";
 import ProjectsPage from "./pages/ProjectsPage";
-
-import type { CreateProjectInput, Project } from "./types/project";
+import {
+  archiveProject,
+  createProject,
+  listProjects,
+  restoreProject,
+  updateProject,
+} from "./repositories/projectRepository";
+import type {
+  CreateProjectInput,
+  Project,
+  UpdateProjectInput,
+} from "./types/project";
 
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 
@@ -31,18 +45,10 @@ type Page =
   | ProjectPage
   | (typeof utilityPages)[number];
 
-const descriptions: Record<Page, string> = {
-  Home: "Overview of your commissioning workspace and recent projects.",
-  Projects: "Create, open, and manage commissioning projects.",
-  Overview: "Review the current project's commissioning progress and status.",
-  Assets: "Manage systems, areas, equipment, tags, and asset status.",
-  "Checklists & Tests":
-    "Create, execute, and review commissioning checklists and tests.",
-  Issues: "Track deficiencies, punch items, failures, and resolutions.",
-  Documents: "Manage drawings, procedures, certificates, and project files.",
-  Reports: "Generate and export commissioning records and summaries.",
-  Settings: "Configure application and workspace preferences.",
-};
+interface PendingProjectStatusAction {
+  project: Project;
+  action: ProjectStatusAction;
+}
 
 function isProjectPage(page: Page): page is ProjectPage {
   return projectPages.includes(page as ProjectPage);
@@ -50,28 +56,86 @@ function isProjectPage(page: Page): page is ProjectPage {
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("Home");
+
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(
-    null,
-  );
-  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+
+  const [currentProjectId, setCurrentProjectId] =
+    useState<string | null>(null);
+
+  const [isCreateProjectOpen, setIsCreateProjectOpen] =
+    useState(false);
+
+  const [editingProject, setEditingProject] =
+    useState<Project | null>(null);
+
+  const [
+    pendingProjectStatusAction,
+    setPendingProjectStatusAction,
+  ] = useState<PendingProjectStatusAction | null>(null);
+
+  const [
+    isChangingProjectStatus,
+    setIsChangingProjectStatus,
+  ] = useState(false);
+
+  const [
+    projectStatusActionError,
+    setProjectStatusActionError,
+  ] = useState<string | null>(null);
+
+  const [isLoadingProjects, setIsLoadingProjects] =
+    useState(true);
+
+  const [projectLoadError, setProjectLoadError] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStoredProjects() {
+      try {
+        const storedProjects = await listProjects();
+
+        if (!cancelled) {
+          setProjects(storedProjects);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setProjectLoadError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load projects.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingProjects(false);
+        }
+      }
+    }
+
+    void loadStoredProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const currentProject =
-    projects.find((project) => project.id === currentProjectId) ?? null;
+    projects.find(
+      (project) => project.id === currentProjectId,
+    ) ?? null;
 
-  function handleCreateProject(input: CreateProjectInput) {
-    const timestamp = new Date().toISOString();
+  const changingProjectStatusId =
+    isChangingProjectStatus &&
+    pendingProjectStatusAction
+      ? pendingProjectStatusAction.project.id
+      : null;
 
-    const project: Project = {
-      id: crypto.randomUUID(),
-      name: input.name,
-      client: input.client,
-      location: input.location,
-      description: input.description,
-      status: "active",
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
+  async function handleCreateProject(
+    input: CreateProjectInput,
+  ): Promise<void> {
+    const project = await createProject(input);
 
     setProjects((current) => [project, ...current]);
     setCurrentProjectId(project.id);
@@ -79,43 +143,166 @@ function App() {
     setActivePage("Overview");
   }
 
+  async function handleUpdateProject(
+    input: UpdateProjectInput,
+  ): Promise<void> {
+    if (!editingProject) {
+      return;
+    }
+
+    const updatedProject = await updateProject(
+      editingProject.id,
+      input,
+    );
+
+    setProjects((current) =>
+      current.map((project) =>
+        project.id === updatedProject.id
+          ? updatedProject
+          : project,
+      ),
+    );
+
+    setEditingProject(null);
+  }
+
   function handleOpenProject(projectId: string) {
     setCurrentProjectId(projectId);
     setActivePage("Overview");
   }
 
+  function handleRequestProjectStatusAction(
+    project: Project,
+    action: ProjectStatusAction,
+  ) {
+    setProjectStatusActionError(null);
+
+    setPendingProjectStatusAction({
+      project,
+      action,
+    });
+  }
+
+  function handleCloseProjectStatusAction() {
+    if (isChangingProjectStatus) {
+      return;
+    }
+
+    setPendingProjectStatusAction(null);
+    setProjectStatusActionError(null);
+  }
+
+  async function handleConfirmProjectStatusAction() {
+    if (!pendingProjectStatusAction) {
+      return;
+    }
+
+    const { project, action } =
+      pendingProjectStatusAction;
+
+    setIsChangingProjectStatus(true);
+    setProjectStatusActionError(null);
+
+    try {
+      const updatedProject =
+        action === "archive"
+          ? await archiveProject(project.id)
+          : await restoreProject(project.id);
+
+      setProjects((current) =>
+        current.map((currentProject) =>
+          currentProject.id === updatedProject.id
+            ? updatedProject
+            : currentProject,
+        ),
+      );
+
+      setPendingProjectStatusAction(null);
+    } catch (error) {
+      setProjectStatusActionError(
+        error instanceof Error
+          ? error.message
+          : action === "archive"
+            ? "Failed to archive the project."
+            : "Failed to restore the project.",
+      );
+    } finally {
+      setIsChangingProjectStatus(false);
+    }
+  }
+
+  function renderNoProjectSelected(message: string) {
+    return (
+      <section className="content-card placeholder">
+        <h3>No project selected</h3>
+        <p>{message}</p>
+      </section>
+    );
+  }
+
   function renderPage() {
+    if (isLoadingProjects) {
+      return (
+        <section className="content-card placeholder">
+          <h3>Loading projects</h3>
+
+          <p>
+            Reading commissioning projects from the local
+            database.
+          </p>
+        </section>
+      );
+    }
+
+    if (projectLoadError) {
+      return (
+        <section className="content-card placeholder">
+          <h3>Unable to load projects</h3>
+          <p>{projectLoadError}</p>
+        </section>
+      );
+    }
+
     switch (activePage) {
       case "Home":
         return (
-          <section className="content-card">
+          <section className="content-card section-card">
             <div className="card-header">
               <div>
                 <h3>Workspace</h3>
+
                 <p>
-                  Open an existing project or create a new commissioning
-                  project.
+                  Open an existing project or create a new
+                  commissioning project.
                 </p>
               </div>
 
               <button
                 className="primary-button"
                 type="button"
-                onClick={() => setIsCreateProjectOpen(true)}
+                onClick={() =>
+                  setIsCreateProjectOpen(true)
+                }
               >
                 New project
               </button>
             </div>
 
-            <div className="project-summary">
-              <div>
-                <span>Total projects</span>
-                <strong>{projects.length}</strong>
-              </div>
+            <div className="section-body">
+              <div className="project-summary">
+                <div>
+                  <span>Total projects</span>
+                  <strong>{projects.length}</strong>
+                </div>
 
-              <div>
-                <span>Current project</span>
-                <strong>{currentProject?.name ?? "None selected"}</strong>
+                <div>
+                  <span>Current project</span>
+
+                  <strong>
+                    {currentProject?.name ??
+                      "None selected"}
+                  </strong>
+                </div>
               </div>
             </div>
           </section>
@@ -126,40 +313,63 @@ function App() {
           <ProjectsPage
             projects={projects}
             currentProjectId={currentProjectId}
-            onCreateProject={() => setIsCreateProjectOpen(true)}
+            changingProjectStatusId={
+              changingProjectStatusId
+            }
+            onCreateProject={() =>
+              setIsCreateProjectOpen(true)
+            }
             onSelectProject={handleOpenProject}
+            onEditProject={setEditingProject}
+            onArchiveProject={(project) =>
+              handleRequestProjectStatusAction(
+                project,
+                "archive",
+              )
+            }
+            onRestoreProject={(project) =>
+              handleRequestProjectStatusAction(
+                project,
+                "restore",
+              )
+            }
           />
         );
 
       case "Overview":
         if (!currentProject) {
-          return (
-            <section className="content-card placeholder">
-              <h3>No project selected</h3>
-              <p>
-                Open or create a project before viewing its commissioning
-                overview.
-              </p>
-            </section>
+          return renderNoProjectSelected(
+            "Open or create a project before viewing its commissioning overview.",
           );
         }
 
         return (
           <ProjectOverviewPage
             currentProject={currentProject}
-            onCreateProject={() => setIsCreateProjectOpen(true)}
+            onCreateProject={() =>
+              setIsCreateProjectOpen(true)
+            }
           />
         );
 
+      case "Assets":
+        if (!currentProject) {
+          return renderNoProjectSelected(
+            "Open or create a project before managing assets.",
+          );
+        }
+
+        return (
+          <AssetsPage currentProject={currentProject} />
+        );
+
       default:
-        if (isProjectPage(activePage) && !currentProject) {
-          return (
-            <section className="content-card placeholder">
-              <h3>No project selected</h3>
-              <p>
-                Open or create a project before accessing this project module.
-              </p>
-            </section>
+        if (
+          isProjectPage(activePage) &&
+          !currentProject
+        ) {
+          return renderNoProjectSelected(
+            "Open or create a project before accessing this project module.",
           );
         }
 
@@ -168,7 +378,8 @@ function App() {
             <h3>{activePage}</h3>
 
             <p>
-              {isProjectPage(activePage) && currentProject
+              {isProjectPage(activePage) &&
+              currentProject
                 ? `${activePage} for ${currentProject.name} will be implemented in a later version.`
                 : "This module will be implemented in a later version."}
             </p>
@@ -195,7 +406,9 @@ function App() {
                   key={page}
                   type="button"
                   className={
-                    activePage === page ? "nav-item active" : "nav-item"
+                    activePage === page
+                      ? "nav-item active"
+                      : "nav-item"
                   }
                   onClick={() => setActivePage(page)}
                 >
@@ -217,10 +430,15 @@ function App() {
                   id="current-project"
                   className="project-switcher"
                   value={currentProjectId ?? ""}
-                  onChange={(event) => handleOpenProject(event.target.value)}
+                  onChange={(event) =>
+                    handleOpenProject(event.target.value)
+                  }
                 >
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
+                    <option
+                      key={project.id}
+                      value={project.id}
+                    >
                       {project.name}
                     </option>
                   ))}
@@ -232,7 +450,9 @@ function App() {
                       key={page}
                       type="button"
                       className={
-                        activePage === page ? "nav-item active" : "nav-item"
+                        activePage === page
+                          ? "nav-item active"
+                          : "nav-item"
                       }
                       onClick={() => setActivePage(page)}
                     >
@@ -251,7 +471,9 @@ function App() {
                   key={page}
                   type="button"
                   className={
-                    activePage === page ? "nav-item active" : "nav-item"
+                    activePage === page
+                      ? "nav-item active"
+                      : "nav-item"
                   }
                   onClick={() => setActivePage(page)}
                 >
@@ -263,28 +485,39 @@ function App() {
         </aside>
 
         <main className="main-content">
-          <header className="page-header">
-            <div>
-              <h2>{activePage}</h2>
-              <p>{descriptions[activePage]}</p>
-            </div>
-
-            {isProjectPage(activePage) && currentProject && (
-              <div className="page-project-context">
-                <span>Project</span>
-                <strong>{currentProject.name}</strong>
-              </div>
-            )}
-          </header>
-
-          <div className="page-content">{renderPage()}</div>
+          <div className="page-content">
+            {renderPage()}
+          </div>
         </main>
       </div>
 
       <CreateProjectModal
         isOpen={isCreateProjectOpen}
-        onClose={() => setIsCreateProjectOpen(false)}
+        onClose={() =>
+          setIsCreateProjectOpen(false)
+        }
         onCreate={handleCreateProject}
+      />
+
+      <EditProjectModal
+        project={editingProject}
+        onClose={() => setEditingProject(null)}
+        onSave={handleUpdateProject}
+      />
+
+      <ProjectStatusActionModal
+        project={
+          pendingProjectStatusAction?.project ?? null
+        }
+        action={
+          pendingProjectStatusAction?.action ?? null
+        }
+        isSubmitting={isChangingProjectStatus}
+        error={projectStatusActionError}
+        onClose={handleCloseProjectStatusAction}
+        onConfirm={() => {
+          void handleConfirmProjectStatusAction();
+        }}
       />
     </>
   );

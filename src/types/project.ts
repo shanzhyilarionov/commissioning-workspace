@@ -17,3 +17,11 @@ export interface CreateProjectInput {
   location: string;
   description: string;
 }
+
+export interface UpdateProjectInput {
+  name: string;
+  client: string;
+  location: string;
+  description: string;
+  status: ProjectStatus;
+}

@@ -1,92 +1,94 @@
 import type { Project } from "../types/project";
 
-interface DashboardPageProps {
-  currentProject: Project | null;
+interface ProjectOverviewPageProps {
+  currentProject: Project;
   onCreateProject: () => void;
 }
 
-const metrics = [
-  { label: "Total Assets", value: "0" },
-  { label: "Completed", value: "0" },
-  { label: "Open Issues", value: "0" },
-  { label: "Progress", value: "0%" },
-];
+function formatProjectStatus(status: Project["status"]) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
-function DashboardPage({
+function ProjectOverviewPage({
   currentProject,
   onCreateProject,
-}: DashboardPageProps) {
+}: ProjectOverviewPageProps) {
   return (
-    <>
-      <section className="metrics-grid">
-        {metrics.map((metric) => (
-          <article className="metric-card" key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-          </article>
-        ))}
-      </section>
+    <section className="content-card section-card">
+      <div className="card-header">
+        <div>
+          <h3>Project overview</h3>
 
-      <section className="content-card">
-        <div className="card-header">
-          <div>
-            <h3>Project overview</h3>
-
-            <p>
-              {currentProject
-                ? `Current project: ${currentProject.name}`
-                : "No commissioning project has been created."}
-            </p>
-          </div>
-
-          <button
-            className="primary-button"
-            type="button"
-            onClick={onCreateProject}
-          >
-            New project
-          </button>
+          <p>
+            Current project: {currentProject.name}
+          </p>
         </div>
 
-        {currentProject ? (
-          <div className="project-summary">
-            <div>
-              <span>Project name</span>
-              <strong>{currentProject.name}</strong>
-            </div>
+        <button
+          className="primary-button"
+          type="button"
+          onClick={onCreateProject}
+        >
+          New project
+        </button>
+      </div>
 
-            <div>
-              <span>Client</span>
-              <strong>{currentProject.client || "Not specified"}</strong>
-            </div>
-
-            <div>
-              <span>Location</span>
-              <strong>{currentProject.location || "Not specified"}</strong>
-            </div>
-
-            <div>
-              <span>Status</span>
-              <strong className="status-badge">
-                {currentProject.status}
-              </strong>
-            </div>
+      <div className="section-body">
+        <div className="project-detail-grid">
+          <div className="project-detail">
+            <span>Project name</span>
+            <strong>{currentProject.name}</strong>
           </div>
-        ) : (
-          <div className="empty-state">
-            <div className="empty-icon">+</div>
 
-            <h3>Start your first project</h3>
-
-            <p>
-              Create a project before adding areas, systems, assets, checklists,
-              tests, issues, and documents.
-            </p>
+          <div className="project-detail">
+            <span>Client</span>
+            <strong>{currentProject.client || "—"}</strong>
           </div>
-        )}
-      </section>
-    </>
+
+          <div className="project-detail">
+            <span>Location</span>
+            <strong>{currentProject.location || "—"}</strong>
+          </div>
+
+          <div className="project-detail">
+            <span>Status</span>
+            <strong
+              className={`status-badge ${currentProject.status}`}
+            >
+              {formatProjectStatus(currentProject.status)}
+            </strong>
+          </div>
+
+          <div className="project-detail">
+            <span>Created</span>
+            <strong>
+              {new Date(currentProject.createdAt).toLocaleDateString(
+                "en-CA",
+              )}
+            </strong>
+          </div>
+
+          <div className="project-detail">
+            <span>Updated</span>
+            <strong>
+              {new Date(currentProject.updatedAt).toLocaleDateString(
+                "en-CA",
+              )}
+            </strong>
+          </div>
+        </div>
+
+        <div className="project-details">
+          <div className="project-detail">
+            <span>Description</span>
+            <strong>
+              {currentProject.description || "No description."}
+            </strong>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
-export default DashboardPage;
+export default ProjectOverviewPage;

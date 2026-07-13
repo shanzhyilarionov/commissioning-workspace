@@ -1,31 +1,58 @@
-import { useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+} from "react";
 
-import type { CreateProjectInput } from "../types/project";
+import type {
+  Project,
+  UpdateProjectInput,
+} from "../types/project";
 
-interface CreateProjectModalProps {
-  isOpen: boolean;
+interface EditProjectModalProps {
+  project: Project | null;
   onClose: () => void;
-  onCreate: (input: CreateProjectInput) => Promise<void>;
+  onSave: (input: UpdateProjectInput) => Promise<void>;
 }
 
-const emptyForm: CreateProjectInput = {
+const emptyForm: UpdateProjectInput = {
   name: "",
   client: "",
   location: "",
   description: "",
+  status: "active",
 };
 
-function CreateProjectModal({
-  isOpen,
+function EditProjectModal({
+  project,
   onClose,
-  onCreate,
-}: CreateProjectModalProps) {
-  const [form, setForm] = useState<CreateProjectInput>(emptyForm);
+  onSave,
+}: EditProjectModalProps) {
+  const [form, setForm] =
+    useState<UpdateProjectInput>(emptyForm);
+
   const [nameError, setNameError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isOpen) {
+  useEffect(() => {
+    if (!project) {
+      return;
+    }
+
+    setForm({
+      name: project.name,
+      client: project.client,
+      location: project.location,
+      description: project.description,
+      status: project.status,
+    });
+
+    setNameError("");
+    setSubmitError("");
+  }, [project]);
+
+  if (!project) {
     return null;
   }
 
@@ -34,13 +61,14 @@ function CreateProjectModal({
       return;
     }
 
-    setForm(emptyForm);
     setNameError("");
     setSubmitError("");
     onClose();
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     const name = form.name.trim();
@@ -54,20 +82,18 @@ function CreateProjectModal({
     setSubmitError("");
 
     try {
-      await onCreate({
+      await onSave({
         name,
         client: form.client.trim(),
         location: form.location.trim(),
         description: form.description.trim(),
+        status: form.status,
       });
-
-      setForm(emptyForm);
-      setNameError("");
     } catch (error) {
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "Failed to create the project.",
+          : "Failed to update the project.",
       );
     } finally {
       setIsSubmitting(false);
@@ -88,16 +114,15 @@ function CreateProjectModal({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="create-project-title"
+        aria-labelledby="edit-project-title"
       >
-
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <h2
-              id="create-project-title"
+              id="edit-project-title"
               className="modal-form-title"
             >
-              Create project
+              Edit project
             </h2>
             <label className="form-field">
               <span>
@@ -124,11 +149,12 @@ function CreateProjectModal({
                     setSubmitError("");
                   }
                 }}
-                placeholder="North Plant Commissioning"
               />
 
               {nameError && (
-                <small className="field-error">{nameError}</small>
+                <small className="field-error">
+                  {nameError}
+                </small>
               )}
             </label>
 
@@ -139,13 +165,16 @@ function CreateProjectModal({
                 type="text"
                 value={form.client}
                 disabled={isSubmitting}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((current) => ({
                     ...current,
                     client: event.target.value,
-                  }))
-                }
-                placeholder="Client or organization"
+                  }));
+
+                  if (submitError) {
+                    setSubmitError("");
+                  }
+                }}
               />
             </label>
 
@@ -156,14 +185,46 @@ function CreateProjectModal({
                 type="text"
                 value={form.location}
                 disabled={isSubmitting}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((current) => ({
                     ...current,
                     location: event.target.value,
-                  }))
-                }
-                placeholder="Edmonton, Alberta"
+                  }));
+
+                  if (submitError) {
+                    setSubmitError("");
+                  }
+                }}
               />
+            </label>
+
+            <label className="form-field">
+              <span>Status</span>
+
+              <select
+                value={form.status}
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  setForm((current) => ({
+                    ...current,
+                    status:
+                      event.target
+                        .value as UpdateProjectInput["status"],
+                  }));
+
+                  if (submitError) {
+                    setSubmitError("");
+                  }
+                }}
+              >
+                <option value="active">Active</option>
+                <option value="completed">
+                  Completed
+                </option>
+                <option value="archived">
+                  Archived
+                </option>
+              </select>
             </label>
 
             <label className="form-field">
@@ -173,13 +234,16 @@ function CreateProjectModal({
                 rows={4}
                 value={form.description}
                 disabled={isSubmitting}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((current) => ({
                     ...current,
                     description: event.target.value,
-                  }))
-                }
-                placeholder="Optional project description"
+                  }));
+
+                  if (submitError) {
+                    setSubmitError("");
+                  }
+                }}
               />
             </label>
 
@@ -205,7 +269,9 @@ function CreateProjectModal({
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating..." : "Create project"}
+              {isSubmitting
+                ? "Saving..."
+                : "Save changes"}
             </button>
           </div>
         </form>
@@ -214,4 +280,4 @@ function CreateProjectModal({
   );
 }
 
-export default CreateProjectModal;
+export default EditProjectModal;
