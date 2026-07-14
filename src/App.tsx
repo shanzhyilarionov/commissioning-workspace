@@ -286,14 +286,6 @@ function App() {
                   commissioning project.
                 </p>
               </div>
-
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => setIsCreateProjectOpen(true)}
-              >
-                New project
-              </button>
             </div>
 
             <div className="section-body">
@@ -344,7 +336,6 @@ function App() {
         return (
           <ProjectOverviewPage
             currentProject={currentProject}
-            onCreateProject={() => setIsCreateProjectOpen(true)}
           />
         );
 

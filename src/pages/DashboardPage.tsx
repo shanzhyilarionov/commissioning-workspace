@@ -2,7 +2,6 @@ import type { Project } from "../types/project";
 
 interface ProjectOverviewPageProps {
   currentProject: Project;
-  onCreateProject: () => void;
 }
 
 function formatProjectStatus(status: Project["status"]) {
@@ -11,7 +10,6 @@ function formatProjectStatus(status: Project["status"]) {
 
 function ProjectOverviewPage({
   currentProject,
-  onCreateProject,
 }: ProjectOverviewPageProps) {
   return (
     <section className="content-card section-card">
@@ -23,14 +21,6 @@ function ProjectOverviewPage({
             Current project: {currentProject.name}
           </p>
         </div>
-
-        <button
-          className="primary-button"
-          type="button"
-          onClick={onCreateProject}
-        >
-          New project
-        </button>
       </div>
 
       <div className="section-body">

@@ -81,6 +81,47 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     useState(false);
   const [assetDeleteError, setAssetDeleteError] =
     useState<string | null>(null);
+  const [openMenuAssetId, setOpenMenuAssetId] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    function handleDocumentMouseDown(event: MouseEvent) {
+      const target = event.target;
+
+      if (
+        target instanceof Element &&
+        !target.closest(".project-action-menu")
+      ) {
+        setOpenMenuAssetId(null);
+      }
+    }
+
+    function handleDocumentKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenMenuAssetId(null);
+      }
+    }
+
+    document.addEventListener(
+      "mousedown",
+      handleDocumentMouseDown,
+    );
+    document.addEventListener(
+      "keydown",
+      handleDocumentKeyDown,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleDocumentMouseDown,
+      );
+      document.removeEventListener(
+        "keydown",
+        handleDocumentKeyDown,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +159,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     setIsAssetModalOpen(false);
     setAssetToDelete(null);
     setAssetDeleteError(null);
+    setOpenMenuAssetId(null);
     void loadAssets();
 
     return () => {
@@ -144,11 +186,13 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
   }, [assets, searchQuery, statusFilter]);
 
   function handleCreateAsset() {
+    setOpenMenuAssetId(null);
     setEditingAsset(null);
     setIsAssetModalOpen(true);
   }
 
   function handleEditAsset(asset: Asset) {
+    setOpenMenuAssetId(null);
     setEditingAsset(asset);
     setIsAssetModalOpen(true);
   }
@@ -191,6 +235,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
   }
 
   function handleRequestDeleteAsset(asset: Asset) {
+    setOpenMenuAssetId(null);
     setAssetDeleteError(null);
     setAssetToDelete(asset);
   }
@@ -269,14 +314,6 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
               {currentProject.name}.
             </p>
           </div>
-
-          <button
-            className="primary-button"
-            type="button"
-            onClick={handleCreateAsset}
-          >
-            New asset
-          </button>
         </div>
 
         <div className="assets-toolbar">
@@ -308,6 +345,14 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             <option value="blocked">Blocked</option>
           </select>
 
+          <button
+            className="primary-button toolbar-primary-button"
+            type="button"
+            onClick={handleCreateAsset}
+          >
+            New asset
+          </button>
+
           <span className="asset-result-count">
             {filteredAssets.length} of {assets.length}
           </span>
@@ -327,12 +372,12 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             <p>Change the search text or status filter.</p>
           </div>
         ) : (
-          <div className="projects-table-wrapper">
+          <div className="projects-table-wrapper assets-table-wrapper">
             <table className="projects-table assets-table">
               <thead>
                 <tr>
                   <th>Tag</th>
-                  <th>Asset</th>
+                  <th>Name</th>
                   <th>System</th>
                   <th>Type</th>
                   <th>Status</th>
@@ -378,15 +423,44 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
                           Edit
                         </button>
 
-                        <button
-                          className="row-action-button danger"
-                          type="button"
-                          onClick={() =>
-                            handleRequestDeleteAsset(asset)
-                          }
-                        >
-                          Delete
-                        </button>
+                        <div className="project-action-menu">
+                          <button
+                            className="more-actions-button"
+                            type="button"
+                            aria-label={`More actions for ${asset.tag}`}
+                            aria-haspopup="menu"
+                            aria-expanded={
+                              openMenuAssetId === asset.id
+                            }
+                            onClick={() =>
+                              setOpenMenuAssetId((current) =>
+                                current === asset.id
+                                  ? null
+                                  : asset.id,
+                              )
+                            }
+                          >
+                            ⋯
+                          </button>
+
+                          {openMenuAssetId === asset.id && (
+                            <div
+                              className="project-action-menu-panel"
+                              role="menu"
+                            >
+                              <button
+                                className="project-menu-item danger"
+                                type="button"
+                                role="menuitem"
+                                onClick={() =>
+                                  handleRequestDeleteAsset(asset)
+                                }
+                              >
+                                Delete asset
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

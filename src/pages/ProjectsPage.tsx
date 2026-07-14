@@ -103,20 +103,8 @@ function ProjectsPage({
     });
   }, [projects, searchQuery, statusFilter]);
 
-  const resultCountText = useMemo(() => {
-    if (statusFilter === "all") {
-      return `${filteredProjects.length} of ${projects.length}`;
-    }
-
-    const projectLabel =
-      filteredProjects.length === 1 ? "project" : "projects";
-
-    return `${filteredProjects.length} ${statusFilter} ${projectLabel}`;
-  }, [
-    filteredProjects.length,
-    projects.length,
-    statusFilter,
-  ]);
+  const resultCountText =
+    `${filteredProjects.length} of ${projects.length}`;
 
   const emptyStateTitle = useMemo(() => {
     if (searchQuery.trim()) {
@@ -150,13 +138,15 @@ function ProjectsPage({
           <p>Create, open, and manage commissioning projects.</p>
         </div>
 
-        <button
-          className="primary-button"
-          type="button"
-          onClick={onCreateProject}
-        >
-          New project
-        </button>
+        {projects.length === 0 && (
+          <button
+            className="primary-button"
+            type="button"
+            onClick={onCreateProject}
+          >
+            New project
+          </button>
+        )}
       </div>
 
       {projects.length > 0 && (
@@ -188,6 +178,14 @@ function ProjectsPage({
             <option value="all">All statuses</option>
           </select>
 
+          <button
+            className="primary-button toolbar-primary-button"
+            type="button"
+            onClick={onCreateProject}
+          >
+            New project
+          </button>
+
           <span className="project-result-count">
             {resultCountText}
           </span>
@@ -213,11 +211,11 @@ function ProjectsPage({
           <p>{emptyStateMessage}</p>
         </div>
       ) : (
-        <div className="projects-table-wrapper">
+        <div className="projects-table-wrapper projects-list-table-wrapper">
           <table className="projects-table">
             <thead>
               <tr>
-                <th>Project name</th>
+                <th>Name</th>
                 <th>Client</th>
                 <th>Location</th>
                 <th className="status-column">Status</th>
@@ -279,18 +277,24 @@ function ProjectsPage({
 
                     <td className="table-action-cell">
                       <div className="project-row-actions">
-                        {!isCurrentProject && (
-                          <button
-                            className="row-action-button"
-                            type="button"
-                            disabled={isChangingStatus}
-                            onClick={() =>
-                              onSelectProject(project.id)
+                        <button
+                          className={
+                            isCurrentProject
+                              ? "row-action-button project-open-placeholder"
+                              : "row-action-button"
+                          }
+                          type="button"
+                          disabled={isChangingStatus || isCurrentProject}
+                          aria-hidden={isCurrentProject}
+                          tabIndex={isCurrentProject ? -1 : 0}
+                          onClick={() => {
+                            if (!isCurrentProject) {
+                              onSelectProject(project.id);
                             }
-                          >
-                            Open
-                          </button>
-                        )}
+                          }}
+                        >
+                          Open
+                        </button>
 
                         <button
                           className="row-action-button"

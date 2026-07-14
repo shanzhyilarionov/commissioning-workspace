@@ -131,11 +131,6 @@ function AssetModal({
     <div
       className="modal-backdrop"
       role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          handleClose();
-        }
-      }}
     >
       <section
         className="modal"
