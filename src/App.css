@@ -1134,6 +1134,41 @@ select {
   .asset-form-row {
     grid-template-columns: 1fr;
   }
+
+  .issues-toolbar {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      max-content;
+  }
+
+  .issues-toolbar .asset-search-input {
+    grid-column: 1 / -1;
+  }
+
+  .issues-toolbar .asset-status-filter {
+    width: 100%;
+    min-width: 0;
+    grid-row: 2;
+  }
+
+  .issues-toolbar .asset-status-filter:nth-of-type(1) {
+    grid-column: 1;
+  }
+
+  .issues-toolbar .asset-status-filter:nth-of-type(2) {
+    grid-column: 2;
+  }
+
+  .issues-toolbar .toolbar-primary-button {
+    grid-column: 3;
+    grid-row: 2;
+    min-width: 120px;
+  }
+
+  .issues-toolbar .asset-result-count {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 760px) {

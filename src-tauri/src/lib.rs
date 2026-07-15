@@ -67,6 +67,66 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "create_issues_table",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS issues (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    asset_id TEXT,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL DEFAULT '',
+                    priority TEXT NOT NULL DEFAULT 'medium'
+                        CHECK (
+                            priority IN (
+                                'low',
+                                'medium',
+                                'high',
+                                'critical'
+                            )
+                        ),
+                    status TEXT NOT NULL DEFAULT 'open'
+                        CHECK (
+                            status IN (
+                                'open',
+                                'in_progress',
+                                'resolved',
+                                'closed'
+                            )
+                        ),
+                    owner TEXT NOT NULL DEFAULT '',
+                    due_date TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE,
+
+                    FOREIGN KEY (asset_id)
+                        REFERENCES assets(id)
+                        ON DELETE SET NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_issues_project_id
+                ON issues(project_id);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_issues_project_status
+                ON issues(project_id, status);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_issues_project_priority
+                ON issues(project_id, priority);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_issues_asset_id
+                ON issues(asset_id);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

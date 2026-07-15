@@ -6,6 +6,7 @@ import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import EditProjectModal from "./components/EditProjectModal";
 import AssetsPage from "./pages/AssetsPage";
 import ProjectOverviewPage from "./pages/DashboardPage";
+import IssuesPage from "./pages/IssuesPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import {
   archiveProject,
@@ -347,6 +348,15 @@ function App() {
         }
 
         return <AssetsPage currentProject={currentProject} />;
+
+      case "Issues":
+        if (!currentProject) {
+          return renderNoProjectSelected(
+            "Open or create a project before managing issues.",
+          );
+        }
+
+        return <IssuesPage currentProject={currentProject} />;
 
       default:
         if (isProjectPage(activePage) && !currentProject) {

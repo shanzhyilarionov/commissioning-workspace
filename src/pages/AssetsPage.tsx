@@ -473,7 +473,6 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
 
       <AssetModal
         isOpen={isAssetModalOpen}
-        projectName={currentProject.name}
         asset={editingAsset}
         onClose={handleCloseAssetModal}
         onSave={handleSaveAsset}

@@ -12,7 +12,6 @@ import type {
 
 interface AssetModalProps {
   isOpen: boolean;
-  projectName: string;
   asset: Asset | null;
   onClose: () => void;
   onSave: (input: AssetInput) => Promise<void>;
@@ -29,7 +28,6 @@ const emptyForm: AssetInput = {
 
 function AssetModal({
   isOpen,
-  projectName,
   asset,
   onClose,
   onSave,
