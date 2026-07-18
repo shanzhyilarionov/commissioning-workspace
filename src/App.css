@@ -1,32 +1,61 @@
 :root {
   --sidebar-width: 230px;
+  --workspace-top-spacing: 30px;
+  --workspace-side-spacing: 30px;
+  --sidebar-top-spacing: 45px;
   --section-spacing: 20px;
-
   --gold: #d9a441;
   --gold-hover: #c89537;
   --focus-ring: 0 0 0 3px rgb(217 164 65 / 14%);
-
   --black: #000000;
   --white: #ffffff;
-
   --page-background: #eeeeee;
   --card-background: #ffffff;
   --secondary-background: #f7f7f7;
-
   --text-primary: #1c1c1c;
   --text-secondary: #737373;
   --text-muted: #777777;
-
   --border: #d4d4d4;
   --border-light: #e5e5e5;
-
   --status-positive: #2f8f4e;
   --status-info: #356c9a;
   --status-warning: #a66f12;
   --status-negative: #c44747;
   --status-blocked: #a64040;
   --status-neutral: #6f6f6f;
+  --table-cell-padding-y: 10px;
+  --table-cell-padding-x: 12px;
+  --table-scrollbar-size: 8px;
+  --table-scrollbar-track: #f2f3f4;
+  --table-scrollbar-thumb: #b8bcc0;
+  --table-scrollbar-thumb-hover: #9fa4a8;
 
+  --projects-table-min-width: 760px;
+  --projects-name-width: 37%;
+  --projects-client-width: 24%;
+  --projects-location-width: 23%;
+  --projects-status-width: 100px;
+  --projects-updated-width: 104px;
+  --projects-actions-width: 164px;
+
+  --assets-table-min-width: 820px;
+  --assets-tag-width: 11%;
+  --assets-name-width: 19%;
+  --assets-system-width: 19%;
+  --assets-type-width: 23%;
+  --assets-status-width: 108px;
+  --assets-updated-width: 104px;
+  --assets-actions-width: 116px;
+
+  --issues-table-min-width: 920px;
+  --issues-title-width: 27%;
+  --issues-asset-width: 20%;
+  --issues-priority-width: 88px;
+  --issues-status-width: 108px;
+  --issues-owner-width: 15%;
+  --issues-due-width: 104px;
+  --issues-updated-width: 104px;
+  --issues-actions-width: 116px;
   font-family:
     Inter,
     -apple-system,
@@ -49,9 +78,10 @@ html,
 body,
 #root {
   width: 100%;
+  height: 100%;
   min-width: 0;
-  min-height: 100vh;
   margin: 0;
+  overflow: hidden;
 }
 
 button,
@@ -62,23 +92,25 @@ select {
 }
 
 .app-shell {
+  position: relative;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   background: var(--page-background);
 }
 
 .sidebar {
-  position: sticky;
-  top: 0;
+  position: relative;
   display: flex;
   width: var(--sidebar-width);
   height: 100vh;
+  min-height: 0;
   flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 26px 12px 22px;
+  overflow: hidden;
+  padding: var(--sidebar-top-spacing) 12px 22px;
   color: var(--white);
   background: var(--black);
   border-right: 1px solid #242424;
@@ -223,7 +255,13 @@ select {
 }
 
 .main-content {
+  width: 100%;
+  height: 100vh;
   min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 .page-header {
@@ -283,7 +321,11 @@ select {
 }
 
 .page-content {
-  padding: 22px 30px 30px;
+  box-sizing: border-box;
+  padding:
+    var(--workspace-top-spacing)
+    var(--workspace-side-spacing)
+    30px;
 }
 
 .metrics-grid {
@@ -744,21 +786,14 @@ select {
   padding-top: calc(var(--section-spacing) / 2);
 }
 
-.projects-table {
-  width: 100%;
-  min-width: 1000px;
-  border-collapse: collapse;
-}
-
-.assets-table {
-  min-width: 1120px;
-}
-
 .projects-table th,
 .projects-table td {
-  padding: 11px 15px;
+  padding: var(--table-cell-padding-y) var(--table-cell-padding-x);
   text-align: left;
   vertical-align: middle;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
   border-bottom: 1px solid var(--border-light);
 }
 
@@ -810,11 +845,14 @@ select {
 .table-action-cell {
   position: relative;
   overflow: visible;
+  padding-right: var(--table-cell-padding-x);
+  padding-left: var(--table-cell-padding-x);
   text-align: right !important;
 }
 
 .project-row-actions {
   display: flex;
+  width: 100%;
   align-items: center;
   justify-content: flex-end;
   gap: 7px;
@@ -847,8 +885,7 @@ select {
   box-shadow: var(--focus-ring);
 }
 
-.project-updated-cell,
-.projects-table th:nth-child(5) {
+.project-updated-cell {
   white-space: nowrap;
 }
 
@@ -944,8 +981,7 @@ select {
   border-bottom: 1px solid var(--border-light);
 }
 
-.projects-table tbody tr:nth-last-child(-n + 2)
-  .project-action-menu-panel {
+.projects-table tbody tr:nth-last-child(-n + 2) .project-action-menu-panel {
   top: auto;
   bottom: calc(100% + 6px);
 }
@@ -1005,22 +1041,8 @@ select {
 
 .asset-tag {
   color: #2f3336;
-  font-family:
-    "SFMono-Regular",
-    Consolas,
-    "Liberation Mono",
-    monospace;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
-}
-
-.assets-table th,
-.assets-table td {
-  white-space: nowrap;
-}
-
-.assets-table td:nth-child(2),
-.assets-table td:nth-child(3) {
-  white-space: normal;
 }
 
 .primary-button:disabled,
@@ -1035,18 +1057,6 @@ select {
   opacity: 0.6;
 }
 
-:root {
-  --workspace-top-spacing: 30px;
-  --workspace-side-spacing: 30px;
-  --sidebar-top-spacing: 45px;
-}
-
-.app-shell {
-  position: relative;
-  height: 100vh;
-  min-height: 100vh;
-}
-
 .window-drag-region {
   position: fixed;
   z-index: 10000;
@@ -1058,18 +1068,6 @@ select {
   pointer-events: auto;
   user-select: none;
   -webkit-user-select: none;
-}
-
-.sidebar {
-  padding-top: var(--sidebar-top-spacing);
-}
-
-.page-content {
-  box-sizing: border-box;
-  padding-top: var(--workspace-top-spacing);
-  padding-right: var(--workspace-side-spacing);
-  padding-bottom: 30px;
-  padding-left: var(--workspace-side-spacing);
 }
 
 .page-content > .content-card {
@@ -1136,10 +1134,7 @@ select {
   }
 
   .issues-toolbar {
-    grid-template-columns:
-      minmax(0, 1fr)
-      minmax(0, 1fr)
-      max-content;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
   }
 
   .issues-toolbar .asset-search-input {
@@ -1195,12 +1190,8 @@ select {
 }
 
 .projects-card,
-.assets-card {
-  min-width: 0;
-}
-
-.projects-card,
-.assets-card {
+.assets-card,
+.issues-card {
   min-width: 0;
 }
 
@@ -1214,138 +1205,279 @@ select {
   -webkit-overflow-scrolling: touch;
   border-radius: 0 0 8px 8px;
   scrollbar-width: thin;
-  scrollbar-color: #b8bcc0 #f2f3f4;
+  scrollbar-color: var(--table-scrollbar-thumb) var(--table-scrollbar-track);
 }
 
 .projects-table {
   width: 100%;
-  min-width: 720px;
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: collapse;
 }
 
+.projects-table:not(.assets-table):not(.issues-table) {
+  min-width: var(--projects-table-min-width);
+}
+
 .assets-table {
-  min-width: 700px;
+  min-width: var(--assets-table-min-width);
 }
 
-.projects-table th,
-.projects-table td {
-  box-sizing: border-box;
-  padding: 10px 12px;
+.projects-table.issues-table {
+  min-width: var(--issues-table-min-width);
+  table-layout: auto;
+}
+
+.projects-table:not(.assets-table):not(.issues-table) tr > :nth-child(1) {
+  width: var(--projects-name-width);
+  max-width: none;
   white-space: normal;
-  overflow-wrap: break-word;
-  word-break: normal;
 }
 
-.projects-table tbody tr:last-child td {
-  padding-bottom: 7px;
+.projects-table:not(.assets-table):not(.issues-table) tr > :nth-child(2) {
+  width: var(--projects-client-width);
+  max-width: none;
+  white-space: normal;
 }
 
-.projects-table:not(.assets-table) tr > :nth-child(1) {
-  width: 22%;
+.projects-table:not(.assets-table):not(.issues-table) tr > :nth-child(3) {
+  width: var(--projects-location-width);
+  max-width: none;
+  white-space: normal;
 }
 
-.projects-table:not(.assets-table) tr > :nth-child(2) {
-  width: 16%;
+.projects-table:not(.assets-table):not(.issues-table) tr > :nth-child(4) {
+  width: var(--projects-status-width);
+  min-width: var(--projects-status-width);
+  max-width: var(--projects-status-width);
+  white-space: nowrap;
 }
 
-.projects-table:not(.assets-table) tr > :nth-child(3) {
-  width: 15%;
+.projects-table:not(.assets-table):not(.issues-table) tr > :nth-child(5) {
+  width: var(--projects-updated-width);
+  min-width: var(--projects-updated-width);
+  max-width: var(--projects-updated-width);
+  white-space: nowrap;
 }
 
-.projects-table:not(.assets-table) tr > :nth-child(4) {
-  width: 11%;
+.projects-table:not(.assets-table):not(.issues-table) tr > :last-child {
+  width: var(--projects-actions-width);
+  min-width: var(--projects-actions-width);
+  max-width: var(--projects-actions-width);
+  white-space: nowrap;
 }
 
-.projects-table:not(.assets-table) tr > :nth-child(5) {
-  width: 13%;
-}
-
-.projects-table:not(.assets-table) tr > :nth-child(6) {
-  width: 23%;
-}
-
-/* Assets column proportions */
 .assets-table tr > :nth-child(1) {
-  width: 8%;
+  width: var(--assets-tag-width);
+  max-width: none;
+  white-space: nowrap;
 }
 
 .assets-table tr > :nth-child(2) {
-  width: 18%;
+  width: var(--assets-name-width);
+  max-width: none;
+  white-space: normal;
 }
 
 .assets-table tr > :nth-child(3) {
-  width: 17%;
+  width: var(--assets-system-width);
+  max-width: none;
+  white-space: normal;
 }
 
 .assets-table tr > :nth-child(4) {
-  width: 16%;
+  width: var(--assets-type-width);
+  max-width: none;
+  white-space: normal;
 }
 
 .assets-table tr > :nth-child(5) {
-  width: 12%;
+  width: var(--assets-status-width);
+  min-width: var(--assets-status-width);
+  max-width: var(--assets-status-width);
+  white-space: nowrap;
 }
 
 .assets-table tr > :nth-child(6) {
-  width: 13%;
+  width: var(--assets-updated-width);
+  min-width: var(--assets-updated-width);
+  max-width: var(--assets-updated-width);
+  white-space: nowrap;
 }
 
-.assets-table tr > :nth-child(7) {
-  width: 16%;
+.assets-table tr > :last-child {
+  width: var(--assets-actions-width);
+  min-width: var(--assets-actions-width);
+  max-width: var(--assets-actions-width);
+  white-space: nowrap;
 }
 
-.project-updated-cell,
-.projects-table:not(.assets-table) thead th:nth-child(5),
-.assets-table thead th:nth-child(6),
-.table-action-cell {
+.issue-priority-column-width {
+  width: var(--issues-priority-width);
+}
+
+.issue-status-column-width {
+  width: var(--issues-status-width);
+}
+
+.table-date-column-width {
+  width: var(--issues-updated-width);
+}
+
+.compact-actions-column-width {
+  width: var(--issues-actions-width);
+}
+
+.issues-table th,
+.issues-table td {
+  vertical-align: middle;
+}
+
+.issues-table tr > :nth-child(1) {
+  width: var(--issues-title-width);
+  max-width: none;
+  white-space: normal;
+}
+
+.issues-table tr > :nth-child(2) {
+  width: var(--issues-asset-width);
+  max-width: none;
+  white-space: normal;
+}
+
+.issues-table tr > :nth-child(3) {
+  width: var(--issues-priority-width);
+  min-width: var(--issues-priority-width);
+  max-width: var(--issues-priority-width);
+  white-space: nowrap;
+}
+
+.issues-table tr > :nth-child(4) {
+  width: var(--issues-status-width);
+  min-width: var(--issues-status-width);
+  max-width: var(--issues-status-width);
+  white-space: nowrap;
+}
+
+.issues-table tr > :nth-child(5) {
+  width: var(--issues-owner-width);
+  max-width: none;
+  white-space: normal;
+}
+
+.issues-table tr > :nth-child(6) {
+  width: var(--issues-due-width);
+  min-width: var(--issues-due-width);
+  max-width: var(--issues-due-width);
+  white-space: nowrap;
+}
+
+.issues-table tr > :nth-child(7) {
+  width: var(--issues-updated-width);
+  min-width: var(--issues-updated-width);
+  max-width: var(--issues-updated-width);
+  white-space: nowrap;
+}
+
+.issues-table tr > :nth-child(8) {
+  width: var(--issues-actions-width);
+  min-width: var(--issues-actions-width);
+  max-width: var(--issues-actions-width);
   white-space: nowrap;
 }
 
 .projects-table-wrapper::-webkit-scrollbar {
-  height: 8px;
+  height: var(--table-scrollbar-size);
 }
 
 .projects-table-wrapper::-webkit-scrollbar-track {
-  background: #f2f3f4;
+  background: var(--table-scrollbar-track);
 }
 
 .projects-table-wrapper::-webkit-scrollbar-thumb {
-  background: #b8bcc0;
-  border: 2px solid #f2f3f4;
+  background: var(--table-scrollbar-thumb);
+  border: 2px solid var(--table-scrollbar-track);
   border-radius: 999px;
 }
 
 .projects-table-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #9fa4a8;
+  background: var(--table-scrollbar-thumb-hover);
 }
 
-.assets-table tbody tr:last-child
-  .project-action-menu-panel {
+.assets-table tbody tr:last-child .project-action-menu-panel {
   top: auto;
   bottom: calc(100% + 6px);
-}
-
-.projects-table:not(.assets-table) tr > :last-child {
-  width: 164px !important;
-  min-width: 164px;
-  max-width: 164px;
-  padding-right: 8px;
-  padding-left: 8px;
-}
-
-.assets-table tr > :last-child {
-  width: 116px !important;
-  min-width: 116px;
-  max-width: 116px;
-  padding-right: 8px;
-  padding-left: 8px;
-}
-
-.project-row-actions {
-  justify-content: flex-start;
 }
 
 .project-open-placeholder {
   visibility: hidden;
   pointer-events: none;
+}
+
+.assets-table-wrapper,
+.issues-table-wrapper {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+.assets-table-wrapper.is-scrollable,
+.issues-table-wrapper.is-scrollable {
+  overflow-x: scroll;
+}
+
+.issue-title-cell,
+.issue-asset-cell,
+.issue-owner-cell {
+  min-width: 0;
+  max-width: none;
+}
+
+.issue-title-text {
+  display: block;
+  max-width: none;
+  overflow: visible;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #2f3336;
+  white-space: normal;
+  text-overflow: clip;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.issue-asset-cell,
+.issue-owner-cell {
+  line-height: 1.45;
+}
+
+.issue-priority-critical {
+  color: var(--status-negative);
+}
+
+.issue-priority-high {
+  color: var(--status-warning);
+}
+
+.issue-priority-medium {
+  color: var(--status-info);
+}
+
+.issue-priority-low {
+  color: var(--status-neutral);
+}
+
+.issues-table .status-badge.open {
+  color: var(--status-negative);
+}
+
+.issues-table .status-badge.in_progress {
+  color: var(--status-warning);
+}
+
+.issues-table .status-badge.resolved {
+  color: var(--status-positive);
+}
+
+.issues-table .status-badge.closed {
+  color: var(--status-neutral);
 }

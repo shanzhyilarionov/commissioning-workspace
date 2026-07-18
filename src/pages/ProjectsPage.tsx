@@ -212,7 +212,16 @@ function ProjectsPage({
         </div>
       ) : (
         <div className="projects-table-wrapper projects-list-table-wrapper">
-          <table className="projects-table">
+          <table className="projects-table projects-list-table">
+            <colgroup>
+              <col />
+              <col />
+              <col />
+              <col className="project-status-column-width" />
+              <col className="table-date-column-width" />
+              <col className="project-actions-column-width" />
+            </colgroup>
+
             <thead>
               <tr>
                 <th>Name</th>

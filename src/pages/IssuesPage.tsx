@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import IssueModal from "../components/IssueModal";
@@ -42,13 +38,10 @@ function formatIssueStatus(status: IssueStatus) {
   switch (status) {
     case "open":
       return "Open";
-
     case "in_progress":
       return "In progress";
-
     case "resolved":
       return "Resolved";
-
     case "closed":
       return "Closed";
   }
@@ -58,13 +51,10 @@ function formatIssuePriority(priority: IssuePriority) {
   switch (priority) {
     case "low":
       return "Low";
-
     case "medium":
       return "Medium";
-
     case "high":
       return "High";
-
     case "critical":
       return "Critical";
   }
@@ -75,71 +65,45 @@ function formatDueDate(dueDate: string | null) {
     return "—";
   }
 
-  return new Date(
-    `${dueDate}T00:00:00`,
-  ).toLocaleDateString("en-CA");
+  return new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-CA");
 }
 
 function sortIssues(issues: Issue[]) {
   return [...issues].sort((first, second) => {
     const priorityComparison =
-      priorityOrder[first.priority] -
-      priorityOrder[second.priority];
+      priorityOrder[first.priority] - priorityOrder[second.priority];
 
     if (priorityComparison !== 0) {
       return priorityComparison;
     }
 
     return (
-      new Date(second.updatedAt).getTime() -
-      new Date(first.updatedAt).getTime()
+      new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime()
     );
   });
 }
 
-function IssuesPage({
-  currentProject,
-}: IssuesPageProps) {
+function IssuesPage({ currentProject }: IssuesPageProps) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] =
-    useState<string | null>(null);
-
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [statusFilter, setStatusFilter] =
-    useState<IssueStatusFilter>("all");
-
+  const [statusFilter, setStatusFilter] = useState<IssueStatusFilter>("all");
   const [priorityFilter, setPriorityFilter] =
     useState<IssuePriorityFilter>("all");
-
-  const [isIssueModalOpen, setIsIssueModalOpen] =
-    useState(false);
-
-  const [editingIssue, setEditingIssue] =
-    useState<Issue | null>(null);
-
-  const [issueToDelete, setIssueToDelete] =
-    useState<Issue | null>(null);
-
-  const [isDeletingIssue, setIsDeletingIssue] =
-    useState(false);
-
-  const [issueDeleteError, setIssueDeleteError] =
-    useState<string | null>(null);
-
-  const [openMenuIssueId, setOpenMenuIssueId] =
-    useState<string | null>(null);
-
-  const [
-    changingIssueStatusId,
-    setChangingIssueStatusId,
-  ] = useState<string | null>(null);
-
-  const [issueActionError, setIssueActionError] =
-    useState<string | null>(null);
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
+  const [issueToDelete, setIssueToDelete] = useState<Issue | null>(null);
+  const [isDeletingIssue, setIsDeletingIssue] = useState(false);
+  const [issueDeleteError, setIssueDeleteError] = useState<string | null>(null);
+  const [openMenuIssueId, setOpenMenuIssueId] = useState<string | null>(null);
+  const [changingIssueStatusId, setChangingIssueStatusId] = useState<
+    string | null
+  >(null);
+  const [issueActionError, setIssueActionError] = useState<string | null>(null);
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [isTableScrollable, setIsTableScrollable] = useState(false);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -159,26 +123,12 @@ function IssuesPage({
       }
     }
 
-    document.addEventListener(
-      "mousedown",
-      handleDocumentMouseDown,
-    );
-
-    document.addEventListener(
-      "keydown",
-      handleDocumentKeyDown,
-    );
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleDocumentMouseDown,
-      );
-
-      document.removeEventListener(
-        "keydown",
-        handleDocumentKeyDown,
-      );
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
     };
   }, []);
 
@@ -190,11 +140,10 @@ function IssuesPage({
       setLoadError(null);
 
       try {
-        const [storedIssues, storedAssets] =
-          await Promise.all([
-            listIssuesByProject(currentProject.id),
-            listAssetsByProject(currentProject.id),
-          ]);
+        const [storedIssues, storedAssets] = await Promise.all([
+          listIssuesByProject(currentProject.id),
+          listAssetsByProject(currentProject.id),
+        ]);
 
         if (!cancelled) {
           setIssues(sortIssues(storedIssues));
@@ -203,9 +152,7 @@ function IssuesPage({
       } catch (error) {
         if (!cancelled) {
           setLoadError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load issues.",
+            error instanceof Error ? error.message : "Failed to load issues.",
           );
         }
       } finally {
@@ -233,49 +180,67 @@ function IssuesPage({
     };
   }, [currentProject.id]);
 
+  useEffect(() => {
+    const initialWrapper = tableWrapperRef.current;
+
+    if (!initialWrapper) {
+      setIsTableScrollable(false);
+      return;
+    }
+
+    const updateScrollableState = () => {
+      const currentWrapper = tableWrapperRef.current;
+
+      if (!currentWrapper) {
+        setIsTableScrollable(false);
+        return;
+      }
+
+      setIsTableScrollable(
+        currentWrapper.scrollWidth > currentWrapper.clientWidth + 1,
+      );
+    };
+
+    updateScrollableState();
+
+    const resizeObserver = new ResizeObserver(updateScrollableState);
+    resizeObserver.observe(initialWrapper);
+
+    const table = initialWrapper.querySelector("table");
+
+    if (table) {
+      resizeObserver.observe(table);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [issues.length, priorityFilter, searchQuery, statusFilter]);
+
   const filteredIssues = useMemo(() => {
-    const normalizedQuery =
-      searchQuery.trim().toLowerCase();
+    const normalizedQuery = searchQuery.trim().toLowerCase();
 
     return issues.filter((issue) => {
       const matchesStatus =
-        statusFilter === "all" ||
-        issue.status === statusFilter;
-
+        statusFilter === "all" || issue.status === statusFilter;
       const matchesPriority =
-        priorityFilter === "all" ||
-        issue.priority === priorityFilter;
-
+        priorityFilter === "all" || issue.priority === priorityFilter;
+      const searchableText = [
+        issue.title,
+        issue.description,
+        issue.owner,
+        issue.assetTag ?? "",
+        issue.assetName ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
       const matchesSearch =
         normalizedQuery.length === 0 ||
-        issue.title
-          .toLowerCase()
-          .includes(normalizedQuery) ||
-        issue.description
-          .toLowerCase()
-          .includes(normalizedQuery) ||
-        issue.owner
-          .toLowerCase()
-          .includes(normalizedQuery) ||
-        issue.assetTag
-          ?.toLowerCase()
-          .includes(normalizedQuery) === true ||
-        issue.assetName
-          ?.toLowerCase()
-          .includes(normalizedQuery) === true;
+        searchableText.includes(normalizedQuery);
 
-      return (
-        matchesStatus &&
-        matchesPriority &&
-        matchesSearch
-      );
+      return matchesStatus && matchesPriority && matchesSearch;
     });
-  }, [
-    issues,
-    searchQuery,
-    statusFilter,
-    priorityFilter,
-  ]);
+  }, [issues, priorityFilter, searchQuery, statusFilter]);
 
   function handleCreateIssue() {
     setOpenMenuIssueId(null);
@@ -296,41 +261,27 @@ function IssuesPage({
     setEditingIssue(null);
   }
 
-  async function handleSaveIssue(
-    input: IssueInput,
-  ): Promise<void> {
+  async function handleSaveIssue(input: IssueInput): Promise<void> {
     if (editingIssue) {
-      const updatedIssue = await updateIssue(
-        editingIssue.id,
-        input,
-      );
+      const updatedIssue = await updateIssue(editingIssue.id, input);
 
       setIssues((current) =>
         sortIssues(
           current.map((issue) =>
-            issue.id === updatedIssue.id
-              ? updatedIssue
-              : issue,
+            issue.id === updatedIssue.id ? updatedIssue : issue,
           ),
         ),
       );
     } else {
-      const createdIssue = await createIssue(
-        currentProject.id,
-        input,
-      );
+      const createdIssue = await createIssue(currentProject.id, input);
 
-      setIssues((current) =>
-        sortIssues([...current, createdIssue]),
-      );
+      setIssues((current) => sortIssues([...current, createdIssue]));
     }
 
     handleCloseIssueModal();
   }
 
-  async function handleToggleIssueResolved(
-    issue: Issue,
-  ) {
+  async function handleToggleIssueResolved(issue: Issue) {
     if (changingIssueStatusId !== null) {
       return;
     }
@@ -341,17 +292,14 @@ function IssuesPage({
 
     try {
       const updatedIssue =
-        issue.status === "resolved" ||
-        issue.status === "closed"
+        issue.status === "resolved" || issue.status === "closed"
           ? await reopenIssue(issue.id)
           : await resolveIssue(issue.id);
 
       setIssues((current) =>
         sortIssues(
           current.map((currentIssue) =>
-            currentIssue.id === updatedIssue.id
-              ? updatedIssue
-              : currentIssue,
+            currentIssue.id === updatedIssue.id ? updatedIssue : currentIssue,
           ),
         ),
       );
@@ -395,22 +343,13 @@ function IssuesPage({
       await deleteIssue(issue.id);
 
       setIssues((current) =>
-        current.filter(
-          (currentIssue) =>
-            currentIssue.id !== issue.id,
-        ),
+        current.filter((currentIssue) => currentIssue.id !== issue.id),
       );
-
-      setEditingIssue((current) =>
-        current?.id === issue.id ? null : current,
-      );
-
+      setEditingIssue((current) => (current?.id === issue.id ? null : current));
       setIssueToDelete(null);
     } catch (error) {
       setIssueDeleteError(
-        error instanceof Error
-          ? error.message
-          : "Failed to delete the issue.",
+        error instanceof Error ? error.message : "Failed to delete the issue.",
       );
     } finally {
       setIsDeletingIssue(false);
@@ -421,11 +360,7 @@ function IssuesPage({
     return (
       <section className="content-card placeholder">
         <h3>Loading issues</h3>
-
-        <p>
-          Reading commissioning issues for{" "}
-          {currentProject.name}.
-        </p>
+        <p>Reading commissioning issues for {currentProject.name}.</p>
       </section>
     );
   }
@@ -441,14 +376,13 @@ function IssuesPage({
 
   return (
     <>
-      <section className="content-card section-card assets-card">
+      <section className="content-card section-card assets-card issues-card">
         <div className="projects-header">
           <div>
             <h3>Issues</h3>
-
             <p>
-              Track commissioning deficiencies and
-              outstanding work for {currentProject.name}.
+              Track commissioning deficiencies and outstanding work for{" "}
+              {currentProject.name}.
             </p>
           </div>
         </div>
@@ -460,9 +394,7 @@ function IssuesPage({
             value={searchQuery}
             placeholder="Search title, asset, or owner"
             aria-label="Search issues"
-            onChange={(event) =>
-              setSearchQuery(event.target.value)
-            }
+            onChange={(event) => setSearchQuery(event.target.value)}
           />
 
           <select
@@ -470,20 +402,13 @@ function IssuesPage({
             value={statusFilter}
             aria-label="Filter issues by status"
             onChange={(event) =>
-              setStatusFilter(
-                event.target
-                  .value as IssueStatusFilter,
-              )
+              setStatusFilter(event.target.value as IssueStatusFilter)
             }
           >
             <option value="all">All statuses</option>
             <option value="open">Open</option>
-            <option value="in_progress">
-              In progress
-            </option>
-            <option value="resolved">
-              Resolved
-            </option>
+            <option value="in_progress">In progress</option>
+            <option value="resolved">Resolved</option>
             <option value="closed">Closed</option>
           </select>
 
@@ -492,16 +417,11 @@ function IssuesPage({
             value={priorityFilter}
             aria-label="Filter issues by priority"
             onChange={(event) =>
-              setPriorityFilter(
-                event.target
-                  .value as IssuePriorityFilter,
-              )
+              setPriorityFilter(event.target.value as IssuePriorityFilter)
             }
           >
             <option value="all">All priorities</option>
-            <option value="critical">
-              Critical
-            </option>
+            <option value="critical">Critical</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
@@ -521,10 +441,7 @@ function IssuesPage({
         </div>
 
         {issueActionError && (
-          <p
-            className="form-submit-error"
-            role="alert"
-          >
+          <p className="form-submit-error" role="alert">
             {issueActionError}
           </p>
         )}
@@ -532,26 +449,33 @@ function IssuesPage({
         {issues.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">+</div>
-
             <h3>No issues yet</h3>
-
-            <p>
-              Add the first commissioning issue for this
-              project.
-            </p>
+            <p>Add the first commissioning issue for this project.</p>
           </div>
         ) : filteredIssues.length === 0 ? (
           <div className="empty-state compact">
             <h3>No matching issues</h3>
-
-            <p>
-              Change the search text, status, or priority
-              filter.
-            </p>
+            <p>Change the search text, status, or priority filter.</p>
           </div>
         ) : (
-          <div className="projects-table-wrapper assets-table-wrapper">
-            <table className="projects-table assets-table">
+          <div
+            ref={tableWrapperRef}
+            className={`projects-table-wrapper issues-table-wrapper${
+              isTableScrollable ? " is-scrollable" : ""
+            }`}
+          >
+            <table className="projects-table issues-table">
+              <colgroup>
+                <col />
+                <col />
+                <col className="issue-priority-column-width" />
+                <col className="issue-status-column-width" />
+                <col />
+                <col className="table-date-column-width" />
+                <col className="table-date-column-width" />
+                <col className="compact-actions-column-width" />
+              </colgroup>
+
               <thead>
                 <tr>
                   <th>Title</th>
@@ -568,66 +492,54 @@ function IssuesPage({
               <tbody>
                 {filteredIssues.map((issue) => {
                   const isClosed =
-                    issue.status === "resolved" ||
-                    issue.status === "closed";
-
-                  const isChangingStatus =
-                    changingIssueStatusId === issue.id;
+                    issue.status === "resolved" || issue.status === "closed";
+                  const isChangingStatus = changingIssueStatusId === issue.id;
 
                   return (
                     <tr key={issue.id}>
-                      <td>
-                        <strong className="asset-tag">
+                      <td className="issue-title-cell" title={issue.title}>
+                        <strong className="issue-title-text">
                           {issue.title}
                         </strong>
                       </td>
 
-                      <td>
+                      <td className="issue-asset-cell">
                         {issue.assetTag ? (
                           <>
-                            <strong>
+                            <strong className="asset-tag">
                               {issue.assetTag}
                             </strong>
-
-                            {issue.assetName
-                              ? ` — ${issue.assetName}`
-                              : ""}
+                            {issue.assetName ? ` — ${issue.assetName}` : ""}
                           </>
                         ) : (
                           "—"
                         )}
                       </td>
 
-                      <td>
+                      <td className="issue-priority-cell">
                         <span
                           className={`status-badge issue-priority-${issue.priority}`}
                         >
-                          {formatIssuePriority(
-                            issue.priority,
-                          )}
+                          {formatIssuePriority(issue.priority)}
                         </span>
                       </td>
 
-                      <td className="status-cell">
-                        <span
-                          className={`status-badge ${issue.status}`}
-                        >
-                          {formatIssueStatus(
-                            issue.status,
-                          )}
+                      <td className="status-cell issue-status-cell">
+                        <span className={`status-badge ${issue.status}`}>
+                          {formatIssueStatus(issue.status)}
                         </span>
                       </td>
 
-                      <td>{issue.owner || "—"}</td>
+                      <td className="issue-owner-cell" title={issue.owner}>
+                        {issue.owner || "—"}
+                      </td>
 
-                      <td>
+                      <td className="issue-date-cell">
                         {formatDueDate(issue.dueDate)}
                       </td>
 
-                      <td className="project-updated-cell">
-                        {new Date(
-                          issue.updatedAt,
-                        ).toLocaleDateString("en-CA")}
+                      <td className="project-updated-cell issue-date-cell">
+                        {new Date(issue.updatedAt).toLocaleDateString("en-CA")}
                       </td>
 
                       <td className="table-action-cell">
@@ -635,9 +547,7 @@ function IssuesPage({
                           <button
                             className="row-action-button"
                             type="button"
-                            onClick={() =>
-                              handleEditIssue(issue)
-                            }
+                            onClick={() => handleEditIssue(issue)}
                           >
                             Edit
                           </button>
@@ -648,24 +558,17 @@ function IssuesPage({
                               type="button"
                               aria-label={`More actions for ${issue.title}`}
                               aria-haspopup="menu"
-                              aria-expanded={
-                                openMenuIssueId ===
-                                issue.id
-                              }
+                              aria-expanded={openMenuIssueId === issue.id}
                               onClick={() =>
-                                setOpenMenuIssueId(
-                                  (current) =>
-                                    current === issue.id
-                                      ? null
-                                      : issue.id,
+                                setOpenMenuIssueId((current) =>
+                                  current === issue.id ? null : issue.id,
                                 )
                               }
                             >
                               ⋯
                             </button>
 
-                            {openMenuIssueId ===
-                              issue.id && (
+                            {openMenuIssueId === issue.id && (
                               <div
                                 className="project-action-menu-panel"
                                 role="menu"
@@ -674,13 +577,9 @@ function IssuesPage({
                                   className="project-menu-item"
                                   type="button"
                                   role="menuitem"
-                                  disabled={
-                                    isChangingStatus
-                                  }
+                                  disabled={isChangingStatus}
                                   onClick={() => {
-                                    void handleToggleIssueResolved(
-                                      issue,
-                                    );
+                                    void handleToggleIssueResolved(issue);
                                   }}
                                 >
                                   {isChangingStatus
@@ -695,9 +594,7 @@ function IssuesPage({
                                   type="button"
                                   role="menuitem"
                                   onClick={() =>
-                                    handleRequestDeleteIssue(
-                                      issue,
-                                    )
+                                    handleRequestDeleteIssue(issue)
                                   }
                                 >
                                   Delete issue
@@ -730,9 +627,8 @@ function IssuesPage({
         message={
           issueToDelete ? (
             <>
-              Delete issue{" "}
-              <strong>{issueToDelete.title}</strong>?
-              This action cannot be undone.
+              Delete issue <strong>{issueToDelete.title}</strong>? This action
+              cannot be undone.
             </>
           ) : null
         }

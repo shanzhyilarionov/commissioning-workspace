@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import AssetModal from "../components/AssetModal";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
@@ -12,11 +8,7 @@ import {
   listAssetsByProject,
   updateAsset,
 } from "../repositories/assetRepository";
-import type {
-  Asset,
-  AssetInput,
-  AssetStatus,
-} from "../types/asset";
+import type { Asset, AssetInput, AssetStatus } from "../types/asset";
 import type { Project } from "../types/project";
 
 interface AssetsPageProps {
@@ -43,46 +35,37 @@ function sortAssets(assets: Asset[]) {
     const systemComparison = first.systemName.localeCompare(
       second.systemName,
       undefined,
-      {
-        sensitivity: "base",
-      },
+      { sensitivity: "base" },
     );
 
     if (systemComparison !== 0) {
       return systemComparison;
     }
 
-    return first.tag.localeCompare(
-      second.tag,
-      undefined,
-      {
-        sensitivity: "base",
-        numeric: true,
-      },
-    );
+    return first.tag.localeCompare(second.tag, undefined, {
+      sensitivity: "base",
+      numeric: true,
+    });
   });
 }
 
 function AssetsPage({ currentProject }: AssetsPageProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] =
-    useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<AssetStatusFilter>("all");
-  const [isAssetModalOpen, setIsAssetModalOpen] =
-    useState(false);
-  const [editingAsset, setEditingAsset] =
-    useState<Asset | null>(null);
-  const [assetToDelete, setAssetToDelete] =
-    useState<Asset | null>(null);
-  const [isDeletingAsset, setIsDeletingAsset] =
-    useState(false);
+  const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const [isDeletingAsset, setIsDeletingAsset] = useState(false);
   const [assetDeleteError, setAssetDeleteError] =
     useState<string | null>(null);
   const [openMenuAssetId, setOpenMenuAssetId] =
     useState<string | null>(null);
+  const [isTableScrollable, setIsTableScrollable] = useState(false);
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -102,24 +85,12 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
       }
     }
 
-    document.addEventListener(
-      "mousedown",
-      handleDocumentMouseDown,
-    );
-    document.addEventListener(
-      "keydown",
-      handleDocumentKeyDown,
-    );
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleDocumentMouseDown,
-      );
-      document.removeEventListener(
-        "keydown",
-        handleDocumentKeyDown,
-      );
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
     };
   }, []);
 
@@ -131,12 +102,10 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
       setLoadError(null);
 
       try {
-        const storedAssets = await listAssetsByProject(
-          currentProject.id,
-        );
+        const storedAssets = await listAssetsByProject(currentProject.id);
 
         if (!cancelled) {
-          setAssets(storedAssets);
+          setAssets(sortAssets(storedAssets));
         }
       } catch (error) {
         if (!cancelled) {
@@ -172,18 +141,55 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
 
     return assets.filter((asset) => {
       const matchesStatus =
-        statusFilter === "all" ||
-        asset.status === statusFilter;
-      const matchesSearch =
-        normalizedQuery.length === 0 ||
-        asset.tag.toLowerCase().includes(normalizedQuery) ||
-        asset.name.toLowerCase().includes(normalizedQuery) ||
-        asset.systemName.toLowerCase().includes(normalizedQuery) ||
-        asset.assetType.toLowerCase().includes(normalizedQuery);
+        statusFilter === "all" || asset.status === statusFilter;
+      const searchableText = [
+        asset.tag,
+        asset.name,
+        asset.systemName,
+        asset.assetType,
+      ]
+        .join(" ")
+        .toLowerCase();
 
-      return matchesStatus && matchesSearch;
+      return (
+        matchesStatus &&
+        (normalizedQuery.length === 0 ||
+          searchableText.includes(normalizedQuery))
+      );
     });
   }, [assets, searchQuery, statusFilter]);
+
+  useEffect(() => {
+    const wrapper = tableWrapperRef.current;
+
+    if (!(wrapper instanceof HTMLDivElement)) {
+      setIsTableScrollable(false);
+      return;
+    }
+
+    const activeWrapper: HTMLDivElement = wrapper;
+
+    function updateScrollableState() {
+      setIsTableScrollable(
+        activeWrapper.scrollWidth > activeWrapper.clientWidth + 1,
+      );
+    }
+
+    updateScrollableState();
+
+    const resizeObserver = new ResizeObserver(updateScrollableState);
+    resizeObserver.observe(activeWrapper);
+
+    const table = activeWrapper.querySelector("table");
+
+    if (table) {
+      resizeObserver.observe(table);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [isLoading, filteredAssets.length]);
 
   function handleCreateAsset() {
     setOpenMenuAssetId(null);
@@ -202,33 +208,20 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     setEditingAsset(null);
   }
 
-  async function handleSaveAsset(
-    input: AssetInput,
-  ): Promise<void> {
+  async function handleSaveAsset(input: AssetInput): Promise<void> {
     if (editingAsset) {
-      const updatedAsset = await updateAsset(
-        editingAsset.id,
-        input,
-      );
+      const updatedAsset = await updateAsset(editingAsset.id, input);
 
       setAssets((current) =>
         sortAssets(
           current.map((asset) =>
-            asset.id === updatedAsset.id
-              ? updatedAsset
-              : asset,
+            asset.id === updatedAsset.id ? updatedAsset : asset,
           ),
         ),
       );
     } else {
-      const createdAsset = await createAsset(
-        currentProject.id,
-        input,
-      );
-
-      setAssets((current) =>
-        sortAssets([...current, createdAsset]),
-      );
+      const createdAsset = await createAsset(currentProject.id, input);
+      setAssets((current) => sortAssets([...current, createdAsset]));
     }
 
     handleCloseAssetModal();
@@ -261,13 +254,9 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
 
     try {
       await deleteAsset(asset.id);
-
       setAssets((current) =>
-        current.filter(
-          (currentAsset) => currentAsset.id !== asset.id,
-        ),
+        current.filter((currentAsset) => currentAsset.id !== asset.id),
       );
-
       setEditingAsset((current) =>
         current?.id === asset.id ? null : current,
       );
@@ -287,9 +276,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     return (
       <section className="content-card placeholder">
         <h3>Loading assets</h3>
-        <p>
-          Reading equipment records for {currentProject.name}.
-        </p>
+        <p>Reading equipment records for {currentProject.name}.</p>
       </section>
     );
   }
@@ -323,9 +310,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             value={searchQuery}
             placeholder="Search tag, name, system, or type"
             aria-label="Search assets"
-            onChange={(event) =>
-              setSearchQuery(event.target.value)
-            }
+            onChange={(event) => setSearchQuery(event.target.value)}
           />
 
           <select
@@ -333,9 +318,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             value={statusFilter}
             aria-label="Filter assets by status"
             onChange={(event) =>
-              setStatusFilter(
-                event.target.value as AssetStatusFilter,
-              )
+              setStatusFilter(event.target.value as AssetStatusFilter)
             }
           >
             <option value="all">All statuses</option>
@@ -362,9 +345,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
           <div className="empty-state">
             <div className="empty-icon">+</div>
             <h3>No assets yet</h3>
-            <p>
-              Add the first equipment record for this project.
-            </p>
+            <p>Add the first equipment record for this project.</p>
           </div>
         ) : filteredAssets.length === 0 ? (
           <div className="empty-state compact">
@@ -372,7 +353,12 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             <p>Change the search text or status filter.</p>
           </div>
         ) : (
-          <div className="projects-table-wrapper assets-table-wrapper">
+          <div
+            ref={tableWrapperRef}
+            className={`projects-table-wrapper assets-table-wrapper${
+              isTableScrollable ? " is-scrollable" : ""
+            }`}
+          >
             <table className="projects-table assets-table">
               <thead>
                 <tr>
@@ -390,29 +376,19 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
                 {filteredAssets.map((asset) => (
                   <tr key={asset.id}>
                     <td>
-                      <strong className="asset-tag">
-                        {asset.tag}
-                      </strong>
+                      <strong className="asset-tag">{asset.tag}</strong>
                     </td>
-
                     <td>{asset.name}</td>
                     <td>{asset.systemName || "—"}</td>
                     <td>{asset.assetType || "—"}</td>
-
                     <td className="status-cell">
-                      <span
-                        className={`status-badge ${asset.status}`}
-                      >
+                      <span className={`status-badge ${asset.status}`}>
                         {formatAssetStatus(asset.status)}
                       </span>
                     </td>
-
                     <td className="project-updated-cell">
-                      {new Date(
-                        asset.updatedAt,
-                      ).toLocaleDateString("en-CA")}
+                      {new Date(asset.updatedAt).toLocaleDateString("en-CA")}
                     </td>
-
                     <td className="table-action-cell">
                       <div className="project-row-actions">
                         <button
@@ -429,14 +405,10 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
                             type="button"
                             aria-label={`More actions for ${asset.tag}`}
                             aria-haspopup="menu"
-                            aria-expanded={
-                              openMenuAssetId === asset.id
-                            }
+                            aria-expanded={openMenuAssetId === asset.id}
                             onClick={() =>
                               setOpenMenuAssetId((current) =>
-                                current === asset.id
-                                  ? null
-                                  : asset.id,
+                                current === asset.id ? null : asset.id,
                               )
                             }
                           >
@@ -485,10 +457,8 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
           assetToDelete ? (
             <>
               Delete asset <strong>{assetToDelete.tag}</strong>
-              {assetToDelete.name
-                ? ` — ${assetToDelete.name}`
-                : ""}
-              ? This action cannot be undone.
+              {assetToDelete.name ? ` — ${assetToDelete.name}` : ""}? This
+              action cannot be undone.
             </>
           ) : null
         }
