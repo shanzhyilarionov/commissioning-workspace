@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import FixedHeaderTable from "../components/FixedHeaderTable";
 
 import type {
   Project,
@@ -211,183 +212,186 @@ function ProjectsPage({
           <p>{emptyStateMessage}</p>
         </div>
       ) : (
-        <div className="projects-table-wrapper projects-list-table-wrapper">
-          <table className="projects-table projects-list-table">
+        <FixedHeaderTable
+          className="projects-table projects-list-table"
+          wrapperClassName="projects-list-table-wrapper"
+          ariaLabel="Projects"
+          colGroup={
             <colgroup>
-              <col />
-              <col />
-              <col />
-              <col className="project-status-column-width" />
-              <col className="table-date-column-width" />
-              <col className="project-actions-column-width" />
-            </colgroup>
-
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Client</th>
-                <th>Location</th>
-                <th className="status-column">Status</th>
-                <th>Updated</th>
-                <th aria-label="Project actions" />
-              </tr>
-            </thead>
-
-            <tbody>
+                          <col />
+                          <col />
+                          <col />
+                          <col className="project-status-column-width" />
+                          <col className="table-date-column-width" />
+                          <col className="project-actions-column-width" />
+                        </colgroup>
+          }
+          header={
+            <tr>
+                            <th>Name</th>
+                            <th>Client</th>
+                            <th>Location</th>
+                            <th className="status-column">Status</th>
+                            <th>Updated</th>
+                            <th aria-label="Project actions" />
+                          </tr>
+          }
+          body={
+            <>
               {filteredProjects.map((project) => {
-                const isCurrentProject =
-                  project.id === currentProjectId;
+                              const isCurrentProject =
+                                project.id === currentProjectId;
 
-                const isChangingStatus =
-                  project.id === changingProjectStatusId;
+                              const isChangingStatus =
+                                project.id === changingProjectStatusId;
 
-                const isMenuOpen =
-                  project.id === openMenuProjectId;
+                              const isMenuOpen =
+                                project.id === openMenuProjectId;
 
-                const isArchived =
-                  project.status === "archived";
+                              const isArchived =
+                                project.status === "archived";
 
-                return (
-                  <tr
-                    key={project.id}
-                    className={
-                      isCurrentProject
-                        ? "current-project-row"
-                        : undefined
-                    }
-                  >
-                    <td>
-                      <strong>{project.name}</strong>
-
-                      {isCurrentProject && (
-                        <span className="current-label">
-                          Current
-                        </span>
-                      )}
-                    </td>
-
-                    <td>{project.client || "—"}</td>
-
-                    <td>{project.location || "—"}</td>
-
-                    <td className="status-cell">
-                      <span
-                        className={`status-badge ${project.status}`}
-                      >
-                        {formatProjectStatus(project.status)}
-                      </span>
-                    </td>
-
-                    <td className="project-updated-cell">
-                      {new Date(
-                        project.updatedAt,
-                      ).toLocaleDateString("en-CA")}
-                    </td>
-
-                    <td className="table-action-cell">
-                      <div className="project-row-actions">
-                        <button
-                          className={
-                            isCurrentProject
-                              ? "row-action-button project-open-placeholder"
-                              : "row-action-button"
-                          }
-                          type="button"
-                          disabled={isChangingStatus || isCurrentProject}
-                          aria-hidden={isCurrentProject}
-                          tabIndex={isCurrentProject ? -1 : 0}
-                          onClick={() => {
-                            if (!isCurrentProject) {
-                              onSelectProject(project.id);
-                            }
-                          }}
-                        >
-                          Open
-                        </button>
-
-                        <button
-                          className="row-action-button"
-                          type="button"
-                          disabled={isChangingStatus}
-                          onClick={() =>
-                            onEditProject(project)
-                          }
-                        >
-                          Edit
-                        </button>
-
-                        <div className="project-action-menu">
-                          <button
-                            className="more-actions-button"
-                            type="button"
-                            aria-label={`More actions for ${project.name}`}
-                            aria-haspopup="menu"
-                            aria-expanded={isMenuOpen}
-                            disabled={isChangingStatus}
-                            onClick={() =>
-                              setOpenMenuProjectId(
-                                isMenuOpen
-                                  ? null
-                                  : project.id,
-                              )
-                            }
-                          >
-                            ⋯
-                          </button>
-
-                          {isMenuOpen && (
-                            <div
-                              className="project-action-menu-panel"
-                              role="menu"
-                            >
-                              {isArchived ? (
-                                <button
-                                  className="project-menu-item"
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setOpenMenuProjectId(null);
-                                    onRestoreProject(project);
-                                  }}
+                              return (
+                                <tr
+                                  key={project.id}
+                                  className={
+                                    isCurrentProject
+                                      ? "current-project-row"
+                                      : undefined
+                                  }
                                 >
-                                  Restore project
-                                </button>
-                              ) : (
-                                <button
-                                  className="project-menu-item"
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setOpenMenuProjectId(null);
-                                    onArchiveProject(project);
-                                  }}
-                                >
-                                  Archive project
-                                </button>
-                              )}
+                                  <td>
+                                    <strong>{project.name}</strong>
 
-                              <button
-                                className="project-menu-item danger"
-                                type="button"
-                                role="menuitem"
-                                onClick={() => {
-                                  setOpenMenuProjectId(null);
-                                  onDeleteProject(project);
-                                }}
-                              >
-                                Delete project
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                                    {isCurrentProject && (
+                                      <span className="current-label">
+                                        Current
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  <td>{project.client || "—"}</td>
+
+                                  <td>{project.location || "—"}</td>
+
+                                  <td className="status-cell">
+                                    <span
+                                      className={`status-badge ${project.status}`}
+                                    >
+                                      {formatProjectStatus(project.status)}
+                                    </span>
+                                  </td>
+
+                                  <td className="project-updated-cell">
+                                    {new Date(
+                                      project.updatedAt,
+                                    ).toLocaleDateString("en-CA")}
+                                  </td>
+
+                                  <td className="table-action-cell">
+                                    <div className="project-row-actions">
+                                      <button
+                                        className={
+                                          isCurrentProject
+                                            ? "row-action-button project-open-placeholder"
+                                            : "row-action-button"
+                                        }
+                                        type="button"
+                                        disabled={isChangingStatus || isCurrentProject}
+                                        aria-hidden={isCurrentProject}
+                                        tabIndex={isCurrentProject ? -1 : 0}
+                                        onClick={() => {
+                                          if (!isCurrentProject) {
+                                            onSelectProject(project.id);
+                                          }
+                                        }}
+                                      >
+                                        Open
+                                      </button>
+
+                                      <button
+                                        className="row-action-button"
+                                        type="button"
+                                        disabled={isChangingStatus}
+                                        onClick={() =>
+                                          onEditProject(project)
+                                        }
+                                      >
+                                        Edit
+                                      </button>
+
+                                      <div className="project-action-menu">
+                                        <button
+                                          className="more-actions-button"
+                                          type="button"
+                                          aria-label={`More actions for ${project.name}`}
+                                          aria-haspopup="menu"
+                                          aria-expanded={isMenuOpen}
+                                          disabled={isChangingStatus}
+                                          onClick={() =>
+                                            setOpenMenuProjectId(
+                                              isMenuOpen
+                                                ? null
+                                                : project.id,
+                                            )
+                                          }
+                                        >
+                                          ⋯
+                                        </button>
+
+                                        {isMenuOpen && (
+                                          <div
+                                            className="project-action-menu-panel"
+                                            role="menu"
+                                          >
+                                            {isArchived ? (
+                                              <button
+                                                className="project-menu-item"
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => {
+                                                  setOpenMenuProjectId(null);
+                                                  onRestoreProject(project);
+                                                }}
+                                              >
+                                                Restore project
+                                              </button>
+                                            ) : (
+                                              <button
+                                                className="project-menu-item"
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => {
+                                                  setOpenMenuProjectId(null);
+                                                  onArchiveProject(project);
+                                                }}
+                                              >
+                                                Archive project
+                                              </button>
+                                            )}
+
+                                            <button
+                                              className="project-menu-item danger"
+                                              type="button"
+                                              role="menuitem"
+                                              onClick={() => {
+                                                setOpenMenuProjectId(null);
+                                                onDeleteProject(project);
+                                              }}
+                                            >
+                                              Delete project
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+            </>
+          }
+        />
       )}
     </section>
   );

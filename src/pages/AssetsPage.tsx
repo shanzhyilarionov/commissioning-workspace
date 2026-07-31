@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import AssetModal from "../components/AssetModal";
+import FixedHeaderTable from "../components/FixedHeaderTable";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import {
   createAsset,
@@ -64,8 +65,6 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     useState<string | null>(null);
   const [openMenuAssetId, setOpenMenuAssetId] =
     useState<string | null>(null);
-  const [isTableScrollable, setIsTableScrollable] = useState(false);
-  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -159,39 +158,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     });
   }, [assets, searchQuery, statusFilter]);
 
-  useEffect(() => {
-    const wrapper = tableWrapperRef.current;
-
-    if (!(wrapper instanceof HTMLDivElement)) {
-      setIsTableScrollable(false);
-      return;
-    }
-
-    const activeWrapper: HTMLDivElement = wrapper;
-
-    function updateScrollableState() {
-      setIsTableScrollable(
-        activeWrapper.scrollWidth > activeWrapper.clientWidth + 1,
-      );
-    }
-
-    updateScrollableState();
-
-    const resizeObserver = new ResizeObserver(updateScrollableState);
-    resizeObserver.observe(activeWrapper);
-
-    const table = activeWrapper.querySelector("table");
-
-    if (table) {
-      resizeObserver.observe(table);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [isLoading, filteredAssets.length]);
-
-  function handleCreateAsset() {
+    function handleCreateAsset() {
     setOpenMenuAssetId(null);
     setEditingAsset(null);
     setIsAssetModalOpen(true);
@@ -353,93 +320,90 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             <p>Change the search text or status filter.</p>
           </div>
         ) : (
-          <div
-            ref={tableWrapperRef}
-            className={`projects-table-wrapper assets-table-wrapper${
-              isTableScrollable ? " is-scrollable" : ""
-            }`}
-          >
-            <table className="projects-table assets-table">
-              <thead>
-                <tr>
-                  <th>Tag</th>
-                  <th>Name</th>
-                  <th>System</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Updated</th>
-                  <th aria-label="Asset actions" />
-                </tr>
-              </thead>
-
-              <tbody>
+          <FixedHeaderTable
+            className="projects-table assets-table"
+            wrapperClassName="assets-table-wrapper"
+            ariaLabel="Assets"
+            header={
+              <tr>
+                                <th>Tag</th>
+                                <th>Name</th>
+                                <th>System</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Updated</th>
+                                <th aria-label="Asset actions" />
+                              </tr>
+            }
+            body={
+              <>
                 {filteredAssets.map((asset) => (
-                  <tr key={asset.id}>
-                    <td>
-                      <strong className="asset-tag">{asset.tag}</strong>
-                    </td>
-                    <td>{asset.name}</td>
-                    <td>{asset.systemName || "—"}</td>
-                    <td>{asset.assetType || "—"}</td>
-                    <td className="status-cell">
-                      <span className={`status-badge ${asset.status}`}>
-                        {formatAssetStatus(asset.status)}
-                      </span>
-                    </td>
-                    <td className="project-updated-cell">
-                      {new Date(asset.updatedAt).toLocaleDateString("en-CA")}
-                    </td>
-                    <td className="table-action-cell">
-                      <div className="project-row-actions">
-                        <button
-                          className="row-action-button"
-                          type="button"
-                          onClick={() => handleEditAsset(asset)}
-                        >
-                          Edit
-                        </button>
+                                  <tr key={asset.id}>
+                                    <td>
+                                      <strong className="asset-tag">{asset.tag}</strong>
+                                    </td>
+                                    <td>{asset.name}</td>
+                                    <td>{asset.systemName || "—"}</td>
+                                    <td>{asset.assetType || "—"}</td>
+                                    <td className="status-cell">
+                                      <span className={`status-badge ${asset.status}`}>
+                                        {formatAssetStatus(asset.status)}
+                                      </span>
+                                    </td>
+                                    <td className="project-updated-cell">
+                                      {new Date(asset.updatedAt).toLocaleDateString("en-CA")}
+                                    </td>
+                                    <td className="table-action-cell">
+                                      <div className="project-row-actions">
+                                        <button
+                                          className="row-action-button"
+                                          type="button"
+                                          onClick={() => handleEditAsset(asset)}
+                                        >
+                                          Edit
+                                        </button>
 
-                        <div className="project-action-menu">
-                          <button
-                            className="more-actions-button"
-                            type="button"
-                            aria-label={`More actions for ${asset.tag}`}
-                            aria-haspopup="menu"
-                            aria-expanded={openMenuAssetId === asset.id}
-                            onClick={() =>
-                              setOpenMenuAssetId((current) =>
-                                current === asset.id ? null : asset.id,
-                              )
-                            }
-                          >
-                            ⋯
-                          </button>
+                                        <div className="project-action-menu">
+                                          <button
+                                            className="more-actions-button"
+                                            type="button"
+                                            aria-label={`More actions for ${asset.tag}`}
+                                            aria-haspopup="menu"
+                                            aria-expanded={openMenuAssetId === asset.id}
+                                            onClick={() =>
+                                              setOpenMenuAssetId((current) =>
+                                                current === asset.id ? null : asset.id,
+                                              )
+                                            }
+                                          >
+                                            ⋯
+                                          </button>
 
-                          {openMenuAssetId === asset.id && (
-                            <div
-                              className="project-action-menu-panel"
-                              role="menu"
-                            >
-                              <button
-                                className="project-menu-item danger"
-                                type="button"
-                                role="menuitem"
-                                onClick={() =>
-                                  handleRequestDeleteAsset(asset)
-                                }
-                              >
-                                Delete asset
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                                          {openMenuAssetId === asset.id && (
+                                            <div
+                                              className="project-action-menu-panel"
+                                              role="menu"
+                                            >
+                                              <button
+                                                className="project-menu-item danger"
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() =>
+                                                  handleRequestDeleteAsset(asset)
+                                                }
+                                              >
+                                                Delete asset
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+              </>
+            }
+          />
         )}
       </section>
 

@@ -5,6 +5,7 @@ import CreateProjectModal from "./components/CreateProjectModal";
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import EditProjectModal from "./components/EditProjectModal";
 import AssetsPage from "./pages/AssetsPage";
+import ChecklistsTestsPage from "./pages/ChecklistsTestsPage";
 import ProjectOverviewPage from "./pages/DashboardPage";
 import IssuesPage from "./pages/IssuesPage";
 import ProjectsPage from "./pages/ProjectsPage";
@@ -348,6 +349,21 @@ function App() {
         }
 
         return <AssetsPage currentProject={currentProject} />;
+
+      case "Checklists & Tests":
+        if (!currentProject) {
+          return renderNoProjectSelected(
+            "Open or create a project before managing checklists and tests.",
+          );
+        }
+
+        return (
+          <ChecklistsTestsPage
+            currentProject={currentProject}
+          />
+        );
+
+case "Issues":
 
       case "Issues":
         if (!currentProject) {

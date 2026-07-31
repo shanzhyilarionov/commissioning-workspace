@@ -127,6 +127,81 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "create_test_records_tables",
+            sql: r#"
+            CREATE TABLE IF NOT EXISTS test_records (
+                id TEXT PRIMARY KEY NOT NULL,
+                project_id TEXT NOT NULL,
+                asset_id TEXT,
+                title TEXT NOT NULL,
+                record_type TEXT NOT NULL DEFAULT 'checklist'
+                    CHECK (
+                        record_type IN (
+                            'checklist',
+                            'functional_test'
+                        )
+                    ),
+                description TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+
+                FOREIGN KEY (project_id)
+                    REFERENCES projects(id)
+                    ON DELETE CASCADE,
+
+                FOREIGN KEY (asset_id)
+                    REFERENCES assets(id)
+                    ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS test_items (
+                id TEXT PRIMARY KEY NOT NULL,
+                test_record_id TEXT NOT NULL,
+                description TEXT NOT NULL,
+                acceptance_criteria TEXT NOT NULL DEFAULT '',
+                result TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (
+                        result IN (
+                            'pending',
+                            'pass',
+                            'fail',
+                            'not_applicable'
+                        )
+                    ),
+                notes TEXT NOT NULL DEFAULT '',
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+
+                FOREIGN KEY (test_record_id)
+                    REFERENCES test_records(id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS
+                idx_test_records_project_id
+            ON test_records(project_id);
+
+            CREATE INDEX IF NOT EXISTS
+                idx_test_records_project_type
+            ON test_records(project_id, record_type);
+
+            CREATE INDEX IF NOT EXISTS
+                idx_test_records_asset_id
+            ON test_records(asset_id);
+
+            CREATE INDEX IF NOT EXISTS
+                idx_test_items_test_record_id
+            ON test_items(test_record_id);
+
+            CREATE INDEX IF NOT EXISTS
+                idx_test_items_record_sort_order
+            ON test_items(test_record_id, sort_order);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

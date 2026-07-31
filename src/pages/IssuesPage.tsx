@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import FixedHeaderTable from "../components/FixedHeaderTable";
 import IssueModal from "../components/IssueModal";
 import { listAssetsByProject } from "../repositories/assetRepository";
 import {
@@ -102,8 +103,6 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
     string | null
   >(null);
   const [issueActionError, setIssueActionError] = useState<string | null>(null);
-  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
-  const [isTableScrollable, setIsTableScrollable] = useState(false);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -180,44 +179,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
     };
   }, [currentProject.id]);
 
-  useEffect(() => {
-    const initialWrapper = tableWrapperRef.current;
-
-    if (!initialWrapper) {
-      setIsTableScrollable(false);
-      return;
-    }
-
-    const updateScrollableState = () => {
-      const currentWrapper = tableWrapperRef.current;
-
-      if (!currentWrapper) {
-        setIsTableScrollable(false);
-        return;
-      }
-
-      setIsTableScrollable(
-        currentWrapper.scrollWidth > currentWrapper.clientWidth + 1,
-      );
-    };
-
-    updateScrollableState();
-
-    const resizeObserver = new ResizeObserver(updateScrollableState);
-    resizeObserver.observe(initialWrapper);
-
-    const table = initialWrapper.querySelector("table");
-
-    if (table) {
-      resizeObserver.observe(table);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [issues.length, priorityFilter, searchQuery, statusFilter]);
-
-  const filteredIssues = useMemo(() => {
+    const filteredIssues = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     return issues.filter((issue) => {
@@ -458,158 +420,156 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
             <p>Change the search text, status, or priority filter.</p>
           </div>
         ) : (
-          <div
-            ref={tableWrapperRef}
-            className={`projects-table-wrapper issues-table-wrapper${
-              isTableScrollable ? " is-scrollable" : ""
-            }`}
-          >
-            <table className="projects-table issues-table">
+          <FixedHeaderTable
+            className="projects-table issues-table"
+            wrapperClassName="issues-table-wrapper"
+            ariaLabel="Issues"
+            colGroup={
               <colgroup>
-                <col />
-                <col />
-                <col className="issue-priority-column-width" />
-                <col className="issue-status-column-width" />
-                <col />
-                <col className="table-date-column-width" />
-                <col className="table-date-column-width" />
-                <col className="compact-actions-column-width" />
-              </colgroup>
-
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Asset</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Owner</th>
-                  <th>Due</th>
-                  <th>Updated</th>
-                  <th aria-label="Issue actions" />
-                </tr>
-              </thead>
-
-              <tbody>
+                              <col />
+                              <col />
+                              <col className="issue-priority-column-width" />
+                              <col className="issue-status-column-width" />
+                              <col />
+                              <col className="table-date-column-width" />
+                              <col className="table-date-column-width" />
+                              <col className="compact-actions-column-width" />
+                            </colgroup>
+            }
+            header={
+              <tr>
+                                <th>Title</th>
+                                <th>Asset</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Owner</th>
+                                <th>Due</th>
+                                <th>Updated</th>
+                                <th aria-label="Issue actions" />
+                              </tr>
+            }
+            body={
+              <>
                 {filteredIssues.map((issue) => {
-                  const isClosed =
-                    issue.status === "resolved" || issue.status === "closed";
-                  const isChangingStatus = changingIssueStatusId === issue.id;
+                                  const isClosed =
+                                    issue.status === "resolved" || issue.status === "closed";
+                                  const isChangingStatus = changingIssueStatusId === issue.id;
 
-                  return (
-                    <tr key={issue.id}>
-                      <td className="issue-title-cell" title={issue.title}>
-                        <strong className="issue-title-text">
-                          {issue.title}
-                        </strong>
-                      </td>
+                                  return (
+                                    <tr key={issue.id}>
+                                      <td className="issue-title-cell" title={issue.title}>
+                                        <strong className="issue-title-text">
+                                          {issue.title}
+                                        </strong>
+                                      </td>
 
-                      <td className="issue-asset-cell">
-                        {issue.assetTag ? (
-                          <>
-                            <strong className="asset-tag">
-                              {issue.assetTag}
-                            </strong>
-                            {issue.assetName ? ` — ${issue.assetName}` : ""}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
+                                      <td className="issue-asset-cell">
+                                        {issue.assetTag ? (
+                                          <>
+                                            <strong className="asset-tag">
+                                              {issue.assetTag}
+                                            </strong>
+                                            {issue.assetName ? ` — ${issue.assetName}` : ""}
+                                          </>
+                                        ) : (
+                                          "—"
+                                        )}
+                                      </td>
 
-                      <td className="issue-priority-cell">
-                        <span
-                          className={`status-badge issue-priority-${issue.priority}`}
-                        >
-                          {formatIssuePriority(issue.priority)}
-                        </span>
-                      </td>
+                                      <td className="issue-priority-cell">
+                                        <span
+                                          className={`status-badge issue-priority-${issue.priority}`}
+                                        >
+                                          {formatIssuePriority(issue.priority)}
+                                        </span>
+                                      </td>
 
-                      <td className="status-cell issue-status-cell">
-                        <span className={`status-badge ${issue.status}`}>
-                          {formatIssueStatus(issue.status)}
-                        </span>
-                      </td>
+                                      <td className="status-cell issue-status-cell">
+                                        <span className={`status-badge ${issue.status}`}>
+                                          {formatIssueStatus(issue.status)}
+                                        </span>
+                                      </td>
 
-                      <td className="issue-owner-cell" title={issue.owner}>
-                        {issue.owner || "—"}
-                      </td>
+                                      <td className="issue-owner-cell" title={issue.owner}>
+                                        {issue.owner || "—"}
+                                      </td>
 
-                      <td className="issue-date-cell">
-                        {formatDueDate(issue.dueDate)}
-                      </td>
+                                      <td className="issue-date-cell">
+                                        {formatDueDate(issue.dueDate)}
+                                      </td>
 
-                      <td className="project-updated-cell issue-date-cell">
-                        {new Date(issue.updatedAt).toLocaleDateString("en-CA")}
-                      </td>
+                                      <td className="project-updated-cell issue-date-cell">
+                                        {new Date(issue.updatedAt).toLocaleDateString("en-CA")}
+                                      </td>
 
-                      <td className="table-action-cell">
-                        <div className="project-row-actions">
-                          <button
-                            className="row-action-button"
-                            type="button"
-                            onClick={() => handleEditIssue(issue)}
-                          >
-                            Edit
-                          </button>
+                                      <td className="table-action-cell">
+                                        <div className="project-row-actions">
+                                          <button
+                                            className="row-action-button"
+                                            type="button"
+                                            onClick={() => handleEditIssue(issue)}
+                                          >
+                                            Edit
+                                          </button>
 
-                          <div className="project-action-menu">
-                            <button
-                              className="more-actions-button"
-                              type="button"
-                              aria-label={`More actions for ${issue.title}`}
-                              aria-haspopup="menu"
-                              aria-expanded={openMenuIssueId === issue.id}
-                              onClick={() =>
-                                setOpenMenuIssueId((current) =>
-                                  current === issue.id ? null : issue.id,
-                                )
-                              }
-                            >
-                              ⋯
-                            </button>
+                                          <div className="project-action-menu">
+                                            <button
+                                              className="more-actions-button"
+                                              type="button"
+                                              aria-label={`More actions for ${issue.title}`}
+                                              aria-haspopup="menu"
+                                              aria-expanded={openMenuIssueId === issue.id}
+                                              onClick={() =>
+                                                setOpenMenuIssueId((current) =>
+                                                  current === issue.id ? null : issue.id,
+                                                )
+                                              }
+                                            >
+                                              ⋯
+                                            </button>
 
-                            {openMenuIssueId === issue.id && (
-                              <div
-                                className="project-action-menu-panel"
-                                role="menu"
-                              >
-                                <button
-                                  className="project-menu-item"
-                                  type="button"
-                                  role="menuitem"
-                                  disabled={isChangingStatus}
-                                  onClick={() => {
-                                    void handleToggleIssueResolved(issue);
-                                  }}
-                                >
-                                  {isChangingStatus
-                                    ? "Updating..."
-                                    : isClosed
-                                      ? "Reopen issue"
-                                      : "Mark resolved"}
-                                </button>
+                                            {openMenuIssueId === issue.id && (
+                                              <div
+                                                className="project-action-menu-panel"
+                                                role="menu"
+                                              >
+                                                <button
+                                                  className="project-menu-item"
+                                                  type="button"
+                                                  role="menuitem"
+                                                  disabled={isChangingStatus}
+                                                  onClick={() => {
+                                                    void handleToggleIssueResolved(issue);
+                                                  }}
+                                                >
+                                                  {isChangingStatus
+                                                    ? "Updating..."
+                                                    : isClosed
+                                                      ? "Reopen issue"
+                                                      : "Mark resolved"}
+                                                </button>
 
-                                <button
-                                  className="project-menu-item danger"
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() =>
-                                    handleRequestDeleteIssue(issue)
-                                  }
-                                >
-                                  Delete issue
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                                                <button
+                                                  className="project-menu-item danger"
+                                                  type="button"
+                                                  role="menuitem"
+                                                  onClick={() =>
+                                                    handleRequestDeleteIssue(issue)
+                                                  }
+                                                >
+                                                  Delete issue
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+              </>
+            }
+          />
         )}
       </section>
 
