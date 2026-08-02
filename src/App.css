@@ -45,6 +45,7 @@
   --fixed-result-content-width: 52px;
   --fixed-two-actions-content-width: 95px;
   --fixed-three-actions-content-width: 150px;
+  --test-items-actions-content-width: 196px;
 
   --projects-name-min-content-width: 150px;
   --projects-client-min-content-width: 100px;
@@ -69,7 +70,7 @@
   --test-items-item-min-content-width: 170px;
   --test-items-criteria-min-content-width: 190px;
   --test-items-notes-min-content-width: 150px;
-  --test-items-table-min-width: 745px;
+  --test-items-table-min-width: 846px;
   --test-item-number-width: 20px;
   --test-item-number-gap: 10px;
 
@@ -1528,7 +1529,7 @@ body:has(.modal-backdrop) .window-drag-region {
   --table-min-width: var(--test-items-table-min-width);
   --table-fixed-padding-x: clamp(
     var(--table-fixed-padding-x-min),
-    calc(25cqw - 182.25px),
+    calc(20cqw - 154.2px),
     var(--table-fixed-padding-x-max)
   );
   --table-grid-columns:
@@ -1562,7 +1563,7 @@ body:has(.modal-backdrop) .window-drag-region {
       1fr
     )
     calc(
-      var(--fixed-two-actions-content-width) +
+      var(--test-items-actions-content-width) +
       var(--table-fixed-padding-x) +
       var(--table-fixed-padding-x)
     );
@@ -1586,9 +1587,12 @@ body:has(.modal-backdrop) .window-drag-region {
 .projects-list-table tr > :last-child,
 .assets-table tr > :last-child,
 .issues-table tr > :last-child,
-.checklists-tests-table tr > :last-child,
-.test-record-items-table tr > :last-child {
+.checklists-tests-table tr > :last-child {
   justify-content: center;
+}
+
+.test-record-items-table tr > :last-child {
+  justify-content: flex-end;
 }
 
 .assets-table tr > :nth-child(1) {
@@ -1822,9 +1826,23 @@ body:has(.modal-backdrop) .window-drag-region {
   overflow-wrap: anywhere;
 }
 
+.test-record-items-table .table-action-cell {
+  padding-inline: var(--table-fixed-padding-x);
+}
+
+.test-record-items-table .project-row-actions {
+  justify-content: flex-end;
+  gap: var(--table-action-gap);
+}
+
+.test-item-issue-action {
+  min-width: 82px;
+}
+
+
 .test-item-description {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--test-item-number-gap);
 }
 

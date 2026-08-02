@@ -1,4 +1,5 @@
 import { getDatabase } from "../services/database";
+import type { IssueStatus } from "../types/issue";
 import type {
   TestItem,
   TestItemInput,
@@ -33,6 +34,8 @@ interface TestItemRow {
   result: TestItemResult;
   notes: string;
   sort_order: number;
+  linked_issue_id: string | null;
+  linked_issue_status: IssueStatus | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,7 +49,10 @@ function calculateTestRecordStatus(
     return "blocked";
   }
 
-  if (totalItemCount === 0 || completedItemCount === 0) {
+  if (
+    totalItemCount === 0 ||
+    completedItemCount === 0
+  ) {
     return "not_started";
   }
 
@@ -57,10 +63,18 @@ function calculateTestRecordStatus(
   return "completed";
 }
 
-function mapTestRecordRow(row: TestRecordRow): TestRecord {
-  const totalItemCount = Number(row.total_item_count);
-  const completedItemCount = Number(row.completed_item_count);
-  const failedItemCount = Number(row.failed_item_count);
+function mapTestRecordRow(
+  row: TestRecordRow,
+): TestRecord {
+  const totalItemCount = Number(
+    row.total_item_count,
+  );
+  const completedItemCount = Number(
+    row.completed_item_count,
+  );
+  const failedItemCount = Number(
+    row.failed_item_count,
+  );
 
   return {
     id: row.id,
@@ -84,26 +98,37 @@ function mapTestRecordRow(row: TestRecordRow): TestRecord {
   };
 }
 
-function mapTestItemRow(row: TestItemRow): TestItem {
+function mapTestItemRow(
+  row: TestItemRow,
+): TestItem {
   return {
     id: row.id,
     testRecordId: row.test_record_id,
     description: row.description,
-    acceptanceCriteria: row.acceptance_criteria,
+    acceptanceCriteria:
+      row.acceptance_criteria,
     result: row.result,
     notes: row.notes,
     sortOrder: Number(row.sort_order),
+    linkedIssueId: row.linked_issue_id,
+    linkedIssueStatus:
+      row.linked_issue_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-function normalizeSortOrder(sortOrder: number): number {
+function normalizeSortOrder(
+  sortOrder: number,
+): number {
   if (!Number.isFinite(sortOrder)) {
     return 0;
   }
 
-  return Math.max(0, Math.trunc(sortOrder));
+  return Math.max(
+    0,
+    Math.trunc(sortOrder),
+  );
 }
 
 async function assertAssetBelongsToProject(
@@ -115,8 +140,9 @@ async function assertAssetBelongsToProject(
   }
 
   const database = await getDatabase();
-
-  const rows = await database.select<{ id: string }[]>(
+  const rows = await database.select<
+    { id: string }[]
+  >(
     `
       SELECT id
       FROM assets
@@ -134,9 +160,12 @@ async function assertAssetBelongsToProject(
   }
 }
 
-async function touchTestRecord(testRecordId: string): Promise<void> {
+async function touchTestRecord(
+  testRecordId: string,
+): Promise<void> {
   const database = await getDatabase();
-  const updatedAt = new Date().toISOString();
+  const updatedAt =
+    new Date().toISOString();
 
   await database.execute(
     `
@@ -152,8 +181,9 @@ export async function getTestRecordById(
   testRecordId: string,
 ): Promise<TestRecord> {
   const database = await getDatabase();
-
-  const rows = await database.select<TestRecordRow[]>(
+  const rows = await database.select<
+    TestRecordRow[]
+  >(
     `
       SELECT
         test_records.id,
@@ -167,25 +197,29 @@ export async function getTestRecordById(
         (
           SELECT COUNT(*)
           FROM test_items
-          WHERE test_items.test_record_id = test_records.id
+          WHERE test_items.test_record_id =
+            test_records.id
         ) AS total_item_count,
         (
           SELECT COUNT(*)
           FROM test_items
-          WHERE test_items.test_record_id = test_records.id
+          WHERE test_items.test_record_id =
+            test_records.id
             AND test_items.result <> 'pending'
         ) AS completed_item_count,
         (
           SELECT COUNT(*)
           FROM test_items
-          WHERE test_items.test_record_id = test_records.id
+          WHERE test_items.test_record_id =
+            test_records.id
             AND test_items.result = 'fail'
         ) AS failed_item_count,
         test_records.created_at,
         test_records.updated_at
       FROM test_records
       LEFT JOIN assets
-        ON assets.id = test_records.asset_id
+        ON assets.id =
+          test_records.asset_id
       WHERE test_records.id = $1
       LIMIT 1
     `,
@@ -195,31 +229,44 @@ export async function getTestRecordById(
   const row = rows[0];
 
   if (!row) {
-    throw new Error("Checklist or test record not found.");
+    throw new Error(
+      "Checklist or test record not found.",
+    );
   }
 
   return mapTestRecordRow(row);
 }
 
-async function getTestItemById(
+export async function getTestItemById(
   testItemId: string,
 ): Promise<TestItem> {
   const database = await getDatabase();
-
-  const rows = await database.select<TestItemRow[]>(
+  const rows = await database.select<
+    TestItemRow[]
+  >(
     `
       SELECT
-        id,
-        test_record_id,
-        description,
-        acceptance_criteria,
-        result,
-        notes,
-        sort_order,
-        created_at,
-        updated_at
+        test_items.id,
+        test_items.test_record_id,
+        test_items.description,
+        test_items.acceptance_criteria,
+        test_items.result,
+        test_items.notes,
+        test_items.sort_order,
+        issue_test_item_links.issue_id
+          AS linked_issue_id,
+        issues.status
+          AS linked_issue_status,
+        test_items.created_at,
+        test_items.updated_at
       FROM test_items
-      WHERE id = $1
+      LEFT JOIN issue_test_item_links
+        ON issue_test_item_links.test_item_id =
+          test_items.id
+      LEFT JOIN issues
+        ON issues.id =
+          issue_test_item_links.issue_id
+      WHERE test_items.id = $1
       LIMIT 1
     `,
     [testItemId],
@@ -228,7 +275,9 @@ async function getTestItemById(
   const row = rows[0];
 
   if (!row) {
-    throw new Error("Test item not found.");
+    throw new Error(
+      "Test item not found.",
+    );
   }
 
   return mapTestItemRow(row);
@@ -238,8 +287,9 @@ export async function listTestRecordsByProject(
   projectId: string,
 ): Promise<TestRecord[]> {
   const database = await getDatabase();
-
-  const rows = await database.select<TestRecordRow[]>(
+  const rows = await database.select<
+    TestRecordRow[]
+  >(
     `
       SELECT
         test_records.id,
@@ -253,27 +303,32 @@ export async function listTestRecordsByProject(
         (
           SELECT COUNT(*)
           FROM test_items
-          WHERE test_items.test_record_id = test_records.id
+          WHERE test_items.test_record_id =
+            test_records.id
         ) AS total_item_count,
         (
           SELECT COUNT(*)
           FROM test_items
-          WHERE test_items.test_record_id = test_records.id
+          WHERE test_items.test_record_id =
+            test_records.id
             AND test_items.result <> 'pending'
         ) AS completed_item_count,
         (
           SELECT COUNT(*)
           FROM test_items
-          WHERE test_items.test_record_id = test_records.id
+          WHERE test_items.test_record_id =
+            test_records.id
             AND test_items.result = 'fail'
         ) AS failed_item_count,
         test_records.created_at,
         test_records.updated_at
       FROM test_records
       LEFT JOIN assets
-        ON assets.id = test_records.asset_id
+        ON assets.id =
+          test_records.asset_id
       WHERE test_records.project_id = $1
-      ORDER BY test_records.updated_at DESC
+      ORDER BY
+        test_records.updated_at DESC
     `,
     [projectId],
   );
@@ -288,14 +343,21 @@ export async function createTestRecord(
   const title = input.title.trim();
 
   if (!title) {
-    throw new Error("Checklist or test title is required.");
+    throw new Error(
+      "Checklist or test title is required.",
+    );
   }
 
-  await assertAssetBelongsToProject(projectId, input.assetId);
+  await assertAssetBelongsToProject(
+    projectId,
+    input.assetId,
+  );
 
   const database = await getDatabase();
-  const testRecordId = crypto.randomUUID();
-  const timestamp = new Date().toISOString();
+  const testRecordId =
+    crypto.randomUUID();
+  const timestamp =
+    new Date().toISOString();
 
   await database.execute(
     `
@@ -332,7 +394,9 @@ export async function createTestRecord(
     ],
   );
 
-  return getTestRecordById(testRecordId);
+  return getTestRecordById(
+    testRecordId,
+  );
 }
 
 export async function updateTestRecord(
@@ -340,12 +404,15 @@ export async function updateTestRecord(
   input: TestRecordInput,
 ): Promise<TestRecord> {
   const existingTestRecord =
-    await getTestRecordById(testRecordId);
-
+    await getTestRecordById(
+      testRecordId,
+    );
   const title = input.title.trim();
 
   if (!title) {
-    throw new Error("Checklist or test title is required.");
+    throw new Error(
+      "Checklist or test title is required.",
+    );
   }
 
   await assertAssetBelongsToProject(
@@ -354,7 +421,8 @@ export async function updateTestRecord(
   );
 
   const database = await getDatabase();
-  const updatedAt = new Date().toISOString();
+  const updatedAt =
+    new Date().toISOString();
 
   await database.execute(
     `
@@ -377,13 +445,17 @@ export async function updateTestRecord(
     ],
   );
 
-  return getTestRecordById(testRecordId);
+  return getTestRecordById(
+    testRecordId,
+  );
 }
 
 export async function deleteTestRecord(
   testRecordId: string,
 ): Promise<void> {
-  await getTestRecordById(testRecordId);
+  await getTestRecordById(
+    testRecordId,
+  );
 
   const database = await getDatabase();
 
@@ -399,27 +471,40 @@ export async function deleteTestRecord(
 export async function listTestItems(
   testRecordId: string,
 ): Promise<TestItem[]> {
-  await getTestRecordById(testRecordId);
+  await getTestRecordById(
+    testRecordId,
+  );
 
   const database = await getDatabase();
-
-  const rows = await database.select<TestItemRow[]>(
+  const rows = await database.select<
+    TestItemRow[]
+  >(
     `
       SELECT
-        id,
-        test_record_id,
-        description,
-        acceptance_criteria,
-        result,
-        notes,
-        sort_order,
-        created_at,
-        updated_at
+        test_items.id,
+        test_items.test_record_id,
+        test_items.description,
+        test_items.acceptance_criteria,
+        test_items.result,
+        test_items.notes,
+        test_items.sort_order,
+        issue_test_item_links.issue_id
+          AS linked_issue_id,
+        issues.status
+          AS linked_issue_status,
+        test_items.created_at,
+        test_items.updated_at
       FROM test_items
-      WHERE test_record_id = $1
+      LEFT JOIN issue_test_item_links
+        ON issue_test_item_links.test_item_id =
+          test_items.id
+      LEFT JOIN issues
+        ON issues.id =
+          issue_test_item_links.issue_id
+      WHERE test_items.test_record_id = $1
       ORDER BY
-        sort_order ASC,
-        created_at ASC
+        test_items.sort_order ASC,
+        test_items.created_at ASC
     `,
     [testRecordId],
   );
@@ -431,17 +516,24 @@ export async function createTestItem(
   testRecordId: string,
   input: TestItemInput,
 ): Promise<TestItem> {
-  await getTestRecordById(testRecordId);
+  await getTestRecordById(
+    testRecordId,
+  );
 
-  const description = input.description.trim();
+  const description =
+    input.description.trim();
 
   if (!description) {
-    throw new Error("Test item description is required.");
+    throw new Error(
+      "Test item description is required.",
+    );
   }
 
   const database = await getDatabase();
-  const testItemId = crypto.randomUUID();
-  const timestamp = new Date().toISOString();
+  const testItemId =
+    crypto.randomUUID();
+  const timestamp =
+    new Date().toISOString();
 
   await database.execute(
     `
@@ -475,30 +567,43 @@ export async function createTestItem(
       input.acceptanceCriteria.trim(),
       input.result,
       input.notes.trim(),
-      normalizeSortOrder(input.sortOrder),
+      normalizeSortOrder(
+        input.sortOrder,
+      ),
       timestamp,
       timestamp,
     ],
   );
 
-  await touchTestRecord(testRecordId);
+  await touchTestRecord(
+    testRecordId,
+  );
 
-  return getTestItemById(testItemId);
+  return getTestItemById(
+    testItemId,
+  );
 }
 
 export async function updateTestItem(
   testItemId: string,
   input: TestItemInput,
 ): Promise<TestItem> {
-  const existingTestItem = await getTestItemById(testItemId);
-  const description = input.description.trim();
+  const existingTestItem =
+    await getTestItemById(
+      testItemId,
+    );
+  const description =
+    input.description.trim();
 
   if (!description) {
-    throw new Error("Test item description is required.");
+    throw new Error(
+      "Test item description is required.",
+    );
   }
 
   const database = await getDatabase();
-  const updatedAt = new Date().toISOString();
+  const updatedAt =
+    new Date().toISOString();
 
   await database.execute(
     `
@@ -517,21 +622,30 @@ export async function updateTestItem(
       input.acceptanceCriteria.trim(),
       input.result,
       input.notes.trim(),
-      normalizeSortOrder(input.sortOrder),
+      normalizeSortOrder(
+        input.sortOrder,
+      ),
       updatedAt,
       testItemId,
     ],
   );
 
-  await touchTestRecord(existingTestItem.testRecordId);
+  await touchTestRecord(
+    existingTestItem.testRecordId,
+  );
 
-  return getTestItemById(testItemId);
+  return getTestItemById(
+    testItemId,
+  );
 }
 
 export async function deleteTestItem(
   testItemId: string,
 ): Promise<void> {
-  const existingTestItem = await getTestItemById(testItemId);
+  const existingTestItem =
+    await getTestItemById(
+      testItemId,
+    );
   const database = await getDatabase();
 
   await database.execute(
@@ -542,5 +656,7 @@ export async function deleteTestItem(
     [testItemId],
   );
 
-  await touchTestRecord(existingTestItem.testRecordId);
+  await touchTestRecord(
+    existingTestItem.testRecordId,
+  );
 }

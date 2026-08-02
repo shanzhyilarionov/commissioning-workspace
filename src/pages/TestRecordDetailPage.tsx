@@ -3,10 +3,10 @@ import {
   useMemo,
   useState,
 } from "react";
-
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import TestItemModal from "../components/TestItemModal";
+import { createIssueFromFailedTestItem } from "../repositories/commissioningWorkflowRepository";
 import {
   createTestItem,
   deleteTestItem,
@@ -14,6 +14,7 @@ import {
   listTestItems,
   updateTestItem,
 } from "../repositories/testRecordRepository";
+import type { IssueStatus } from "../types/issue";
 import type {
   TestItem,
   TestItemInput,
@@ -41,7 +42,6 @@ function formatRecordType(
   switch (recordType) {
     case "checklist":
       return "Checklist";
-
     case "functional_test":
       return "Functional test";
   }
@@ -53,13 +53,10 @@ function formatRecordStatus(
   switch (status) {
     case "not_started":
       return "Not started";
-
     case "in_progress":
       return "In progress";
-
     case "completed":
       return "Completed";
-
     case "blocked":
       return "Blocked";
   }
@@ -71,15 +68,27 @@ function formatItemResult(
   switch (result) {
     case "pending":
       return "Pending";
-
     case "pass":
       return "Pass";
-
     case "fail":
       return "Fail";
-
     case "not_applicable":
       return "N/A";
+  }
+}
+
+function formatIssueStatus(
+  status: IssueStatus,
+): string {
+  switch (status) {
+    case "open":
+      return "Open";
+    case "in_progress":
+      return "In progress";
+    case "resolved":
+      return "Resolved";
+    case "closed":
+      return "Closed";
   }
 }
 
@@ -121,21 +130,16 @@ function TestRecordDetailPage({
   ] = useState<TestRecord>(
     testRecord,
   );
-
   const [testItems, setTestItems] =
     useState<TestItem[]>([]);
-
   const [isLoading, setIsLoading] =
     useState(true);
-
   const [loadError, setLoadError] =
     useState<string | null>(null);
-
   const [
     searchQuery,
     setSearchQuery,
   ] = useState("");
-
   const [
     resultFilter,
     setResultFilter,
@@ -143,73 +147,75 @@ function TestRecordDetailPage({
     useState<TestItemResultFilter>(
       "all",
     );
-
   const [
     isTestItemModalOpen,
     setIsTestItemModalOpen,
   ] = useState(false);
-
   const [
     editingTestItem,
     setEditingTestItem,
   ] =
     useState<TestItem | null>(null);
-
   const [
     testItemToDelete,
     setTestItemToDelete,
   ] =
     useState<TestItem | null>(null);
-
   const [
     isDeletingTestItem,
     setIsDeletingTestItem,
   ] = useState(false);
-
   const [
     testItemDeleteError,
     setTestItemDeleteError,
   ] = useState<string | null>(
     null,
   );
-
   const [
     openMenuTestItemId,
     setOpenMenuTestItemId,
   ] = useState<string | null>(
     null,
   );
-
+  const [
+    creatingIssueTestItemId,
+    setCreatingIssueTestItemId,
+  ] = useState<string | null>(
+    null,
+  );
+  const [
+    issueCreationError,
+    setIssueCreationError,
+  ] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     const initialTestRecord =
       testRecord;
-
     const testRecordId =
       initialTestRecord.id;
-
     let cancelled = false;
 
     async function loadRecordDetails() {
       setIsLoading(true);
       setLoadError(null);
-
       setCurrentRecord(
         initialTestRecord,
       );
-
       setTestItems([]);
       setSearchQuery("");
       setResultFilter("all");
-
       setEditingTestItem(null);
       setIsTestItemModalOpen(false);
-
       setTestItemToDelete(null);
       setTestItemDeleteError(null);
       setIsDeletingTestItem(false);
-
       setOpenMenuTestItemId(null);
+      setCreatingIssueTestItemId(
+        null,
+      );
+      setIssueCreationError(null);
 
       try {
         const [
@@ -231,13 +237,11 @@ function TestRecordDetailPage({
         setCurrentRecord(
           storedRecord,
         );
-
         setTestItems(
           sortTestItems(
             storedTestItems,
           ),
         );
-
         onRecordUpdated(
           storedRecord,
         );
@@ -292,14 +296,14 @@ function TestRecordDetailPage({
         setOpenMenuTestItemId(
           null,
         );
-
         return;
       }
 
       if (
         isTestItemModalOpen ||
         testItemToDelete ||
-        isDeletingTestItem
+        isDeletingTestItem ||
+        creatingIssueTestItemId
       ) {
         return;
       }
@@ -311,7 +315,6 @@ function TestRecordDetailPage({
       "mousedown",
       handleDocumentMouseDown,
     );
-
     document.addEventListener(
       "keydown",
       handleDocumentKeyDown,
@@ -322,13 +325,13 @@ function TestRecordDetailPage({
         "mousedown",
         handleDocumentMouseDown,
       );
-
       document.removeEventListener(
         "keydown",
         handleDocumentKeyDown,
       );
     };
   }, [
+    creatingIssueTestItemId,
     isDeletingTestItem,
     isTestItemModalOpen,
     onBack,
@@ -349,7 +352,6 @@ function TestRecordDetailPage({
             resultFilter === "all" ||
             testItem.result ===
               resultFilter;
-
           const searchableText = [
             testItem.description,
             testItem.acceptanceCriteria,
@@ -357,10 +359,14 @@ function TestRecordDetailPage({
             formatItemResult(
               testItem.result,
             ),
+            testItem.linkedIssueStatus
+              ? formatIssueStatus(
+                  testItem.linkedIssueStatus,
+                )
+              : "",
           ]
             .join(" ")
             .toLowerCase();
-
           const matchesSearch =
             normalizedQuery.length ===
               0 ||
@@ -380,7 +386,7 @@ function TestRecordDetailPage({
       testItems,
     ]);
 
-    const nextSortOrder =
+  const nextSortOrder =
     useMemo(() => {
       if (testItems.length === 0) {
         return 0;
@@ -398,6 +404,7 @@ function TestRecordDetailPage({
 
   function handleAddTestItem() {
     setOpenMenuTestItemId(null);
+    setIssueCreationError(null);
     setEditingTestItem(null);
     setIsTestItemModalOpen(true);
   }
@@ -406,6 +413,7 @@ function TestRecordDetailPage({
     testItem: TestItem,
   ) {
     setOpenMenuTestItemId(null);
+    setIssueCreationError(null);
     setEditingTestItem(testItem);
     setIsTestItemModalOpen(true);
   }
@@ -415,63 +423,100 @@ function TestRecordDetailPage({
     setEditingTestItem(null);
   }
 
-  async function handleSaveTestItem(
-    input: TestItemInput,
-  ): Promise<void> {
-    let savedTestItem: TestItem;
-
-    if (editingTestItem) {
-      savedTestItem =
-        await updateTestItem(
-          editingTestItem.id,
-          input,
-        );
-
-      setTestItems((current) =>
-        sortTestItems(
-          current.map((testItem) =>
-            testItem.id ===
-            savedTestItem.id
-              ? savedTestItem
-              : testItem,
-          ),
-        ),
-      );
-    } else {
-      savedTestItem =
-        await createTestItem(
-          currentRecord.id,
-          input,
-        );
-
-      setTestItems((current) =>
-        sortTestItems([
-          ...current,
-          savedTestItem,
-        ]),
-      );
-    }
-
-    const refreshedRecord =
-      await getTestRecordById(
+  async function refreshRecordAndItems() {
+    const [
+      refreshedRecord,
+      refreshedItems,
+    ] = await Promise.all([
+      getTestRecordById(
         currentRecord.id,
-      );
+      ),
+      listTestItems(
+        currentRecord.id,
+      ),
+    ]);
 
     setCurrentRecord(
       refreshedRecord,
     );
-
+    setTestItems(
+      sortTestItems(
+        refreshedItems,
+      ),
+    );
     onRecordUpdated(
       refreshedRecord,
     );
+  }
 
+  async function handleSaveTestItem(
+    input: TestItemInput,
+  ): Promise<void> {
+    if (editingTestItem) {
+      await updateTestItem(
+        editingTestItem.id,
+        input,
+      );
+    } else {
+      await createTestItem(
+        currentRecord.id,
+        input,
+      );
+    }
+
+    await refreshRecordAndItems();
     handleCloseTestItemModal();
+  }
+
+  async function handleCreateIssue(
+    testItem: TestItem,
+  ) {
+    if (
+      creatingIssueTestItemId !==
+      null
+    ) {
+      return;
+    }
+
+    setOpenMenuTestItemId(null);
+    setIssueCreationError(null);
+    setCreatingIssueTestItemId(
+      testItem.id,
+    );
+
+    try {
+      await createIssueFromFailedTestItem(
+        testItem.id,
+      );
+
+      const refreshedItems =
+        await listTestItems(
+          currentRecord.id,
+        );
+
+      setTestItems(
+        sortTestItems(
+          refreshedItems,
+        ),
+      );
+    } catch (error) {
+      setIssueCreationError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create an issue from this test item.",
+      );
+    } finally {
+      setCreatingIssueTestItemId(
+        null,
+      );
+    }
   }
 
   function handleRequestDeleteTestItem(
     testItem: TestItem,
   ) {
     setOpenMenuTestItemId(null);
+    setIssueCreationError(null);
     setTestItemDeleteError(null);
     setTestItemToDelete(testItem);
   }
@@ -500,28 +545,7 @@ function TestRecordDetailPage({
       await deleteTestItem(
         deletingTestItem.id,
       );
-
-      setTestItems((current) =>
-        current.filter(
-          (testItem) =>
-            testItem.id !==
-            deletingTestItem.id,
-        ),
-      );
-
-      const refreshedRecord =
-        await getTestRecordById(
-          currentRecord.id,
-        );
-
-      setCurrentRecord(
-        refreshedRecord,
-      );
-
-      onRecordUpdated(
-        refreshedRecord,
-      );
-
+      await refreshRecordAndItems();
       setTestItemToDelete(null);
     } catch (error) {
       setTestItemDeleteError(
@@ -547,7 +571,6 @@ function TestRecordDetailPage({
               <span aria-hidden="true">
                 ←
               </span>
-
               Back to Checklists &amp; Tests
             </button>
 
@@ -559,9 +582,7 @@ function TestRecordDetailPage({
               {formatRecordType(
                 currentRecord.recordType,
               )}
-
               {" · "}
-
               {currentRecord.assetTag ? (
                 <>
                   <strong>
@@ -569,7 +590,6 @@ function TestRecordDetailPage({
                       currentRecord.assetTag
                     }
                   </strong>
-
                   {currentRecord.assetName
                     ? ` — ${currentRecord.assetName}`
                     : ""}
@@ -591,7 +611,6 @@ function TestRecordDetailPage({
           <div className="test-record-page-summary">
             <div className="test-record-page-summary-item">
               <span>Progress</span>
-
               <strong>
                 {
                   currentRecord.completedItemCount
@@ -605,7 +624,6 @@ function TestRecordDetailPage({
 
             <div className="test-record-page-summary-item">
               <span>Failed</span>
-
               <strong>
                 {
                   currentRecord.failedItemCount
@@ -615,7 +633,6 @@ function TestRecordDetailPage({
 
             <div className="test-record-page-summary-item">
               <span>Status</span>
-
               <strong
                 className={`test-record-status-text ${currentRecord.status}`}
               >
@@ -632,7 +649,7 @@ function TestRecordDetailPage({
             className="asset-search-input"
             type="search"
             value={searchQuery}
-            placeholder="Search item, criteria, or notes"
+            placeholder="Search item, criteria, notes, or issue status"
             aria-label="Search checklist items"
             onChange={(event) =>
               setSearchQuery(
@@ -655,19 +672,15 @@ function TestRecordDetailPage({
             <option value="all">
               All results
             </option>
-
             <option value="pending">
               Pending
             </option>
-
             <option value="pass">
               Pass
             </option>
-
             <option value="fail">
               Fail
             </option>
-
             <option value="not_applicable">
               N/A
             </option>
@@ -690,10 +703,18 @@ function TestRecordDetailPage({
           </span>
         </div>
 
+        {issueCreationError && (
+          <p
+            className="projects-action-error"
+            role="alert"
+          >
+            {issueCreationError}
+          </p>
+        )}
+
         {isLoading ? (
           <div className="empty-state test-record-detail-state">
             <h3>Loading items</h3>
-
             <p>
               Reading checklist and
               test items.
@@ -704,13 +725,11 @@ function TestRecordDetailPage({
             <h3>
               Unable to load items
             </h3>
-
             <p>{loadError}</p>
           </div>
         ) : testItems.length === 0 ? (
           <div className="empty-state test-record-detail-state">
             <h3>No items yet</h3>
-
             <p>
               Add an inspection or test
               item from the toolbar above.
@@ -722,7 +741,6 @@ function TestRecordDetailPage({
             <h3>
               No matching items
             </h3>
-
             <p>
               Change the search text or
               result filter.
@@ -735,132 +753,168 @@ function TestRecordDetailPage({
             ariaLabel="Checklist and test items"
             header={
               <tr>
-                                <th>Item</th>
-
-                                <th>
-                                  Acceptance criteria
-                                </th>
-
-                                <th>Result</th>
-
-                                <th>Notes</th>
-
-                                <th aria-label="Item actions" />
-                              </tr>
+                <th>Item</th>
+                <th>
+                  Acceptance criteria
+                </th>
+                <th>Result</th>
+                <th>Notes</th>
+                <th aria-label="Item actions" />
+              </tr>
             }
             body={
               <>
                 {filteredTestItems.map(
-                                  (testItem) => {
-                                    const itemNumber =
-                                      testItems.findIndex(
-                                        (current) =>
-                                          current.id ===
-                                          testItem.id,
-                                      ) + 1;
+                  (testItem) => {
+                    const itemNumber =
+                      testItems.findIndex(
+                        (current) =>
+                          current.id ===
+                          testItem.id,
+                      ) + 1;
+                    const isCreatingIssue =
+                      creatingIssueTestItemId ===
+                      testItem.id;
 
-                                    return (
-                                      <tr key={testItem.id}>
-                                        <td>
-                                          <div className="test-item-description">
-                                            <span className="test-item-number">
-                                              {
-                                                itemNumber
-                                              }
-                                            </span>
+                    return (
+                      <tr key={testItem.id}>
+                        <td>
+                          <div className="test-item-description">
+                            <span className="test-item-number">
+                              {itemNumber}
+                            </span>
+                            <strong>
+                              {
+                                testItem.description
+                              }
+                            </strong>
+                          </div>
+                        </td>
 
-                                            <strong>
-                                              {
-                                                testItem.description
-                                              }
-                                            </strong>
-                                          </div>
-                                        </td>
+                        <td>
+                          {testItem.acceptanceCriteria ||
+                            "—"}
+                        </td>
 
-                                        <td>
-                                          {testItem.acceptanceCriteria ||
-                                            "—"}
-                                        </td>
+                        <td>
+                          <span
+                            className={`test-item-result ${testItem.result}`}
+                          >
+                            {formatItemResult(
+                              testItem.result,
+                            )}
+                          </span>
+                        </td>
 
-                                        <td>
-                                          <span
-                                            className={`test-item-result ${testItem.result}`}
-                                          >
-                                            {formatItemResult(
-                                              testItem.result,
-                                            )}
-                                          </span>
-                                        </td>
+                        <td>
+                          {testItem.notes ||
+                            "—"}
+                        </td>
 
-                                        <td>
-                                          {testItem.notes ||
-                                            "—"}
-                                        </td>
+                        <td className="table-action-cell">
+                          <div className="project-row-actions">
+                            {testItem.linkedIssueStatus ? (
+                              <button
+                                className="row-action-button test-item-issue-action"
+                                type="button"
+                                disabled
+                                title={`Linked issue status: ${formatIssueStatus(
+                                  testItem.linkedIssueStatus,
+                                )}`}
+                              >
+                                Issue linked
+                              </button>
+                            ) : testItem.result ===
+                              "fail" ? (
+                              <button
+                                className="row-action-button test-item-issue-action"
+                                type="button"
+                                disabled={
+                                  creatingIssueTestItemId !==
+                                  null
+                                }
+                                onClick={() => {
+                                  void handleCreateIssue(
+                                    testItem,
+                                  );
+                                }}
+                              >
+                                {isCreatingIssue
+                                  ? "Creating..."
+                                  : "Create issue"}
+                              </button>
+                            ) : null}
 
-                                        <td className="table-action-cell">
-                                          <div className="project-row-actions">
-                                            <button
-                                              className="row-action-button"
-                                              type="button"
-                                              onClick={() =>
-                                                handleEditTestItem(
-                                                  testItem,
-                                                )
-                                              }
-                                            >
-                                              Edit
-                                            </button>
+                            <button
+                              className="row-action-button"
+                              type="button"
+                              disabled={
+                                creatingIssueTestItemId !==
+                                null
+                              }
+                              onClick={() =>
+                                handleEditTestItem(
+                                  testItem,
+                                )
+                              }
+                            >
+                              Edit
+                            </button>
 
-                                            <div className="project-action-menu">
-                                              <button
-                                                className="more-actions-button"
-                                                type="button"
-                                                aria-label={`More actions for ${testItem.description}`}
-                                                aria-haspopup="menu"
-                                                aria-expanded={
-                                                  openMenuTestItemId ===
-                                                  testItem.id
-                                                }
-                                                onClick={() =>
-                                                  setOpenMenuTestItemId(
-                                                    (current) =>
-                                                      current ===
-                                                      testItem.id
-                                                        ? null
-                                                        : testItem.id,
-                                                  )
-                                                }
-                                              >
-                                                ⋯
-                                              </button>
+                            <div className="project-action-menu">
+                              <button
+                                className="more-actions-button"
+                                type="button"
+                                disabled={
+                                  creatingIssueTestItemId !==
+                                  null
+                                }
+                                aria-label={`More actions for ${testItem.description}`}
+                                aria-haspopup="menu"
+                                aria-expanded={
+                                  openMenuTestItemId ===
+                                  testItem.id
+                                }
+                                onClick={() =>
+                                  setOpenMenuTestItemId(
+                                    (current) =>
+                                      current ===
+                                      testItem.id
+                                        ? null
+                                        : testItem.id,
+                                  )
+                                }
+                              >
+                                ⋯
+                              </button>
 
-                                              {openMenuTestItemId ===
-                                                testItem.id && (
-                                                <div
-                                                  className="project-action-menu-panel"
-                                                  role="menu"
-                                                >
-                                                  <button
-                                                    className="project-menu-item danger"
-                                                    type="button"
-                                                    role="menuitem"
-                                                    onClick={() =>
-                                                      handleRequestDeleteTestItem(
-                                                        testItem,
-                                                      )
-                                                    }
-                                                  >
-                                                    Delete item
-                                                  </button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  },
-                                )}
+                              {openMenuTestItemId ===
+                                testItem.id && (
+                                <div
+                                  className="project-action-menu-panel"
+                                  role="menu"
+                                >
+                                  <button
+                                    className="project-menu-item danger"
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() =>
+                                      handleRequestDeleteTestItem(
+                                        testItem,
+                                      )
+                                    }
+                                  >
+                                    Delete item
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  },
+                )}
               </>
             }
           />
@@ -900,7 +954,8 @@ function TestRecordDetailPage({
                 }
               </strong>
               ? This action cannot be
-              undone.
+              undone. A linked Issue will
+              remain in the Issues page.
             </>
           ) : null
         }

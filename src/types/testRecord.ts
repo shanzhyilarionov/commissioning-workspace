@@ -1,3 +1,5 @@
+import type { IssueStatus } from "./issue";
+
 export type TestRecordType =
   | "checklist"
   | "functional_test";
@@ -46,6 +48,8 @@ export interface TestItem {
   result: TestItemResult;
   notes: string;
   sortOrder: number;
+  linkedIssueId: string | null;
+  linkedIssueStatus: IssueStatus | null;
   createdAt: string;
   updatedAt: string;
 }
