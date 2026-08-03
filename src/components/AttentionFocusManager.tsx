@@ -1,0 +1,228 @@
+import { useEffect } from "react";
+import type { ProjectAttentionItem } from "../types/projectOverview";
+
+export type AttentionDestinationPage =
+  | "Assets"
+  | "Checklists & Tests"
+  | "Issues";
+
+export interface AttentionNavigationRequest {
+  requestId: number;
+  page: AttentionDestinationPage;
+  item: ProjectAttentionItem;
+}
+
+interface AttentionFocusManagerProps {
+  activePage: string;
+  target: AttentionNavigationRequest | null;
+  onComplete: (requestId: number) => void;
+}
+
+function normalizeText(value: string): string {
+  return value
+    .replace(/[—–]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function getReactKey(element: Element): string | null {
+  const propertyName = Object.getOwnPropertyNames(element).find(
+    (key) =>
+      key.startsWith("__reactFiber$") ||
+      key.startsWith("__reactInternalInstance$"),
+  );
+
+  if (!propertyName) {
+    return null;
+  }
+
+  let fiber = (element as unknown as Record<string, unknown>)[
+    propertyName
+  ] as
+    | {
+        key?: string | number | null;
+        return?: unknown;
+      }
+    | undefined;
+
+  for (let depth = 0; fiber && depth < 8; depth += 1) {
+    if (fiber.key !== null && fiber.key !== undefined) {
+      return String(fiber.key);
+    }
+
+    fiber = fiber.return as typeof fiber;
+  }
+
+  return null;
+}
+
+function findRow(
+  selector: string,
+  id: string,
+  fallbackText: string,
+): HTMLTableRowElement | null {
+  const rows = Array.from(
+    document.querySelectorAll<HTMLTableRowElement>(selector),
+  );
+
+  const exactRow = rows.find((row) => getReactKey(row) === id);
+
+  if (exactRow) {
+    return exactRow;
+  }
+
+  const normalizedFallback = normalizeText(fallbackText);
+
+  if (!normalizedFallback) {
+    return null;
+  }
+
+  return (
+    rows.find((row) =>
+      normalizeText(row.textContent ?? "").includes(
+        normalizedFallback,
+      ),
+    ) ?? null
+  );
+}
+
+function AttentionFocusManager({
+  activePage,
+  target,
+  onComplete,
+}: AttentionFocusManagerProps) {
+  useEffect(() => {
+    if (!target || activePage !== target.page) {
+      return;
+    }
+
+    const request = target;
+    let completed = false;
+    let openedParentRecord = false;
+    let animationTimer: number | null = null;
+
+    function finish(row: HTMLTableRowElement) {
+      if (completed) {
+        return;
+      }
+
+      completed = true;
+      row.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+
+      row.classList.remove("attention-focus-flash");
+      void row.offsetWidth;
+      row.classList.add("attention-focus-flash");
+
+      animationTimer = window.setTimeout(() => {
+        row.classList.remove("attention-focus-flash");
+        onComplete(request.requestId);
+      }, 1500);
+    }
+
+    function tryFocusTarget() {
+      if (completed) {
+        return;
+      }
+
+      switch (request.item.type) {
+        case "blocked_asset": {
+          const row = findRow(
+            ".assets-table tbody tr",
+            request.item.id,
+            request.item.matchText,
+          );
+
+          if (row) {
+            finish(row);
+          }
+          return;
+        }
+
+        case "critical_issue":
+        case "overdue_issue": {
+          const row = findRow(
+            ".issues-table tbody tr",
+            request.item.id,
+            request.item.matchText,
+          );
+
+          if (row) {
+            finish(row);
+          }
+          return;
+        }
+
+        case "failed_test_item": {
+          const itemRow = findRow(
+            ".test-record-items-table tbody tr",
+            request.item.id,
+            request.item.matchText,
+          );
+
+          if (itemRow) {
+            finish(itemRow);
+            return;
+          }
+
+          if (openedParentRecord || !request.item.parentId) {
+            return;
+          }
+
+          const recordRow = findRow(
+            ".checklists-tests-table tbody tr",
+            request.item.parentId,
+            request.item.parentTitle ?? request.item.detail,
+          );
+
+          const openButton = recordRow?.querySelector<HTMLButtonElement>(
+            ".test-record-title-button",
+          );
+
+          if (openButton) {
+            openedParentRecord = true;
+            openButton.click();
+          }
+          return;
+        }
+      }
+    }
+
+    const root =
+      document.querySelector<HTMLElement>(".page-content") ??
+      document.body;
+    const observer = new MutationObserver(tryFocusTarget);
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+    });
+
+    const retryTimer = window.setInterval(tryFocusTarget, 100);
+    const expiryTimer = window.setTimeout(() => {
+      if (!completed) {
+        onComplete(request.requestId);
+      }
+    }, 12000);
+
+    tryFocusTarget();
+
+    return () => {
+      observer.disconnect();
+      window.clearInterval(retryTimer);
+      window.clearTimeout(expiryTimer);
+
+      if (animationTimer !== null) {
+        window.clearTimeout(animationTimer);
+      }
+    };
+  }, [activePage, onComplete, target]);
+
+  return null;
+}
+
+export default AttentionFocusManager;

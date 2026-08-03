@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-
+import AttentionFocusManager, {
+  type AttentionDestinationPage,
+  type AttentionNavigationRequest,
+} from "./components/AttentionFocusManager";
 import CreateProjectModal from "./components/CreateProjectModal";
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import EditProjectModal from "./components/EditProjectModal";
@@ -22,6 +25,7 @@ import type {
   Project,
   UpdateProjectInput,
 } from "./types/project";
+import type { ProjectAttentionItem } from "./types/projectOverview";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 import "./App.css";
 
@@ -70,6 +74,9 @@ function App() {
     useState(true);
   const [projectLoadError, setProjectLoadError] =
     useState<string | null>(null);
+  const [attentionNavigation, setAttentionNavigation] =
+    useState<AttentionNavigationRequest | null>(null);
+  const attentionRequestSequence = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +115,38 @@ function App() {
       (project) => project.id === currentProjectId,
     ) ?? null;
 
+  function handleNavigation(page: Page) {
+    setAttentionNavigation(null);
+    setActivePage(page);
+  }
+
+  function handleOverviewNavigation(
+    page: AttentionDestinationPage,
+    item?: ProjectAttentionItem,
+  ) {
+    if (item) {
+      attentionRequestSequence.current += 1;
+      setAttentionNavigation({
+        requestId: attentionRequestSequence.current,
+        page,
+        item,
+      });
+    } else {
+      setAttentionNavigation(null);
+    }
+
+    setActivePage(page);
+  }
+
+  const handleAttentionFocusComplete = useCallback(
+    (requestId: number) => {
+      setAttentionNavigation((current) =>
+        current?.requestId === requestId ? null : current,
+      );
+    },
+    [],
+  );
+
   async function handleCreateProject(
     input: CreateProjectInput,
   ): Promise<void> {
@@ -116,6 +155,7 @@ function App() {
     setProjects((current) => [project, ...current]);
     setCurrentProjectId(project.id);
     setIsCreateProjectOpen(false);
+    setAttentionNavigation(null);
     setActivePage("Overview");
   }
 
@@ -142,6 +182,7 @@ function App() {
   }
 
   function handleOpenProject(projectId: string) {
+    setAttentionNavigation(null);
     setCurrentProjectId(projectId);
     setActivePage("Overview");
   }
@@ -222,6 +263,7 @@ function App() {
 
       if (currentProjectId === project.id) {
         setCurrentProjectId(null);
+        setAttentionNavigation(null);
         setActivePage("Projects");
       }
 
@@ -252,6 +294,7 @@ function App() {
     if (event.button !== 0) {
       return;
     }
+
     void getCurrentWindow().startDragging();
   }
 
@@ -289,14 +332,12 @@ function App() {
                 </p>
               </div>
             </div>
-
             <div className="section-body">
               <div className="project-summary">
                 <div>
                   <span>Total projects</span>
                   <strong>{projects.length}</strong>
                 </div>
-
                 <div>
                   <span>Current project</span>
                   <strong>
@@ -338,6 +379,8 @@ function App() {
         return (
           <ProjectOverviewPage
             currentProject={currentProject}
+            onNavigate={handleOverviewNavigation}
+            onEditProject={() => setEditingProject(currentProject)}
           />
         );
 
@@ -362,8 +405,6 @@ function App() {
             currentProject={currentProject}
           />
         );
-
-case "Issues":
 
       case "Issues":
         if (!currentProject) {
@@ -410,7 +451,6 @@ case "Issues":
               alt="Commissioning Workspace"
             />
           </div>
-
           <div className="sidebar-body">
             <nav className="navigation">
               {globalPages.map((page) => (
@@ -422,7 +462,7 @@ case "Issues":
                       ? "nav-item active"
                       : "nav-item"
                   }
-                  onClick={() => setActivePage(page)}
+                  onClick={() => handleNavigation(page)}
                 >
                   {page}
                 </button>
@@ -437,12 +477,11 @@ case "Issues":
                 >
                   Current project
                 </label>
-
                 <select
                   id="current-project"
                   className="project-switcher"
                   value={currentProjectId ?? ""}
-                  onChange={(event) =>
+                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
                     handleOpenProject(event.target.value)
                   }
                 >
@@ -452,7 +491,6 @@ case "Issues":
                     </option>
                   ))}
                 </select>
-
                 <nav className="navigation project-navigation">
                   {projectPages.map((page) => (
                     <button
@@ -463,7 +501,7 @@ case "Issues":
                           ? "nav-item active"
                           : "nav-item"
                       }
-                      onClick={() => setActivePage(page)}
+                      onClick={() => handleNavigation(page)}
                     >
                       {page}
                     </button>
@@ -484,7 +522,7 @@ case "Issues":
                       ? "nav-item active"
                       : "nav-item"
                   }
-                  onClick={() => setActivePage(page)}
+                  onClick={() => handleNavigation(page)}
                 >
                   {page}
                 </button>
@@ -495,6 +533,11 @@ case "Issues":
 
         <main className="main-content">
           <div className="page-content">{renderPage()}</div>
+          <AttentionFocusManager
+            activePage={activePage}
+            target={attentionNavigation}
+            onComplete={handleAttentionFocusComplete}
+          />
         </main>
       </div>
 
