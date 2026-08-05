@@ -1,8 +1,29 @@
+use std::path::Path;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn save_report_pdf(path: String, bytes: Vec<u8>) -> Result<(), String> {
+    let output_path = Path::new(&path);
+    let is_pdf = output_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("pdf"));
+
+    if !is_pdf {
+        return Err("The report file must use the .pdf extension.".to_string());
+    }
+
+    if !bytes.starts_with(b"%PDF") {
+        return Err("The generated report is not a valid PDF document.".to_string());
+    }
+
+    std::fs::write(output_path, bytes)
+        .map_err(|error| format!("Failed to save the PDF report: {error}"))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -250,6 +271,7 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
@@ -259,7 +281,7 @@ pub fn run() {
                 )
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, save_report_pdf])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

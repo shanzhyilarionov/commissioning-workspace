@@ -47,30 +47,30 @@
   --fixed-three-actions-content-width: 150px;
   --test-items-actions-content-width: 196px;
 
-  --projects-name-min-content-width: 150px;
-  --projects-client-min-content-width: 100px;
-  --projects-location-min-content-width: 100px;
-  --projects-table-min-width: 746px;
+  --projects-name-min-content-width: 110px;
+  --projects-client-min-content-width: 72px;
+  --projects-location-min-content-width: 72px;
+  --projects-table-min-width: 650px;
 
-  --assets-tag-min-content-width: 80px;
-  --assets-name-min-content-width: 110px;
-  --assets-system-min-content-width: 110px;
-  --assets-type-min-content-width: 120px;
-  --assets-table-min-width: 785px;
+  --assets-tag-min-content-width: 68px;
+  --assets-name-min-content-width: 90px;
+  --assets-system-min-content-width: 90px;
+  --assets-type-min-content-width: 96px;
+  --assets-table-min-width: 709px;
 
-  --issues-title-min-content-width: 150px;
-  --issues-asset-min-content-width: 125px;
-  --issues-owner-min-content-width: 110px;
-  --issues-table-min-width: 874px;
+  --issues-title-min-content-width: 110px;
+  --issues-asset-min-content-width: 90px;
+  --issues-owner-min-content-width: 80px;
+  --issues-table-min-width: 769px;
 
-  --test-records-title-min-content-width: 150px;
-  --test-records-asset-min-content-width: 140px;
-  --test-records-table-min-width: 781px;
+  --test-records-title-min-content-width: 110px;
+  --test-records-asset-min-content-width: 100px;
+  --test-records-table-min-width: 701px;
 
-  --test-items-item-min-content-width: 170px;
-  --test-items-criteria-min-content-width: 190px;
-  --test-items-notes-min-content-width: 150px;
-  --test-items-table-min-width: 846px;
+  --test-items-item-min-content-width: 120px;
+  --test-items-criteria-min-content-width: 130px;
+  --test-items-notes-min-content-width: 90px;
+  --test-items-table-min-width: 676px;
   --test-item-number-width: 20px;
   --test-item-number-gap: 10px;
 
@@ -1248,37 +1248,38 @@ body:has(.modal-backdrop) .window-drag-region {
 }
 
 .fixed-header-table {
-  container-type: inline-size;
+  --table-fixed-padding-x: var(--table-fixed-padding-x-max);
+
   display: flex;
+  min-width: 0;
+  min-height: 0;
   flex: 1;
   flex-direction: column;
   overflow: hidden;
 }
 
-.fixed-header-table-header {
-  min-width: 0;
-  flex: 0 0 auto;
-  overflow: hidden;
-  background: var(--secondary-background);
-  border-bottom: 1px solid var(--border-light);
-}
-
 .fixed-header-table-body {
+  position: relative;
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: hidden;
   overscroll-behavior: contain;
+  scrollbar-gutter: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-gutter: stable;
+}
+
+.fixed-header-table-body.has-vertical-overflow {
+  overflow-y: scroll;
 }
 
 .fixed-header-table-table {
   display: block;
-  width: max(100%, var(--table-min-width));
+  width: 100%;
   min-width: var(--table-min-width);
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .fixed-header-table-table colgroup {
@@ -1291,6 +1292,13 @@ body:has(.modal-backdrop) .window-drag-region {
   width: 100%;
 }
 
+.fixed-header-table-table thead {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  background: var(--secondary-background);
+}
+
 .fixed-header-table-table tr {
   display: grid;
   width: 100%;
@@ -1298,8 +1306,8 @@ body:has(.modal-backdrop) .window-drag-region {
   grid-template-columns: var(--table-grid-columns);
 }
 
-.fixed-header-table-header .projects-table th {
-  border-bottom: 0;
+.fixed-header-table-table thead th {
+  border-bottom: 1px solid var(--border-light);
 }
 
 .fixed-header-table-body .projects-table tbody tr:last-child td {
@@ -1308,11 +1316,8 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .projects-list-table {
   --table-min-width: var(--projects-table-min-width);
-  --table-fixed-padding-x: clamp(
-    var(--table-fixed-padding-x-min),
-    calc(16.6667cqw - 120.33px),
-    var(--table-fixed-padding-x-max)
-  );
+  --table-min-width-value: 650;
+  --table-fixed-side-count: 6;
   --table-grid-columns:
     minmax(
       calc(
@@ -1357,11 +1362,8 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .assets-table {
   --table-min-width: var(--assets-table-min-width);
-  --table-fixed-padding-x: clamp(
-    var(--table-fixed-padding-x-min),
-    calc(16.6667cqw - 126.83px),
-    var(--table-fixed-padding-x-max)
-  );
+  --table-min-width-value: 709;
+  --table-fixed-side-count: 6;
   --table-grid-columns:
     minmax(
       calc(
@@ -1414,11 +1416,8 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .issues-table:not(.checklists-tests-table):not(.test-record-items-table) {
   --table-min-width: var(--issues-table-min-width);
-  --table-fixed-padding-x: clamp(
-    var(--table-fixed-padding-x-min),
-    calc(10cqw - 83.4px),
-    var(--table-fixed-padding-x-max)
-  );
+  --table-min-width-value: 769;
+  --table-fixed-side-count: 10;
   --table-grid-columns:
     minmax(
       calc(
@@ -1473,11 +1472,8 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .checklists-tests-table {
   --table-min-width: var(--test-records-table-min-width);
-  --table-fixed-padding-x: clamp(
-    var(--table-fixed-padding-x-min),
-    calc(10cqw - 74.1px),
-    var(--table-fixed-padding-x-max)
-  );
+  --table-min-width-value: 701;
+  --table-fixed-side-count: 10;
   --table-grid-columns:
     minmax(
       calc(
@@ -1524,11 +1520,8 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .test-record-items-table {
   --table-min-width: var(--test-items-table-min-width);
-  --table-fixed-padding-x: clamp(
-    var(--table-fixed-padding-x-min),
-    calc(20cqw - 154.2px),
-    var(--table-fixed-padding-x-max)
-  );
+  --table-min-width-value: 676;
+  --table-fixed-side-count: 4;
   --table-grid-columns:
     minmax(
       calc(
@@ -2036,6 +2029,9 @@ body:has(.modal-backdrop) .window-drag-region {
 .overview-page-header {
   flex: 0 0 auto;
   align-items: center;
+  padding-right: calc(
+    var(--section-spacing) + var(--table-scrollbar-size)
+  );
 }
 
 .overview-scroll-container {
@@ -2561,14 +2557,6 @@ body:has(.modal-backdrop) .window-drag-region {
   }
 }
 
-.issues-table:not(.checklists-tests-table):not(.test-record-items-table) {
-  --table-min-width: var(--issues-table-min-width);
-  --table-fixed-padding-x: clamp(
-    var(--table-fixed-padding-x-min),
-    calc(10cqw - 83.4px),
-    var(--table-fixed-padding-x-max)
-  );
-}
 
 .test-record-detail-page .test-record-items-toolbar {
   border-bottom: 0;

@@ -12,6 +12,7 @@ import ChecklistsTestsPage from "./pages/ChecklistsTestsPage";
 import ProjectOverviewPage from "./pages/DashboardPage";
 import IssuesPage from "./pages/IssuesPage";
 import ProjectsPage from "./pages/ProjectsPage";
+import ReportsPage from "./pages/ReportsPage";
 import {
   archiveProject,
   createProject,
@@ -414,6 +415,15 @@ function App() {
         }
 
         return <IssuesPage currentProject={currentProject} />;
+
+      case "Reports":
+        if (!currentProject) {
+          return renderNoProjectSelected(
+            "Open or create a project before generating reports.",
+          );
+        }
+
+        return <ReportsPage currentProject={currentProject} />;
 
       default:
         if (isProjectPage(activePage) && !currentProject) {
