@@ -29,6 +29,12 @@ export interface TestRecord {
   completedItemCount: number;
   failedItemCount: number;
   totalItemCount: number;
+  executedBy: string;
+  witnessedBy: string;
+  executionDate: string | null;
+  signedOffBy: string;
+  signedOffAt: string | null;
+  completionNotes: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,6 +44,14 @@ export interface TestRecordInput {
   title: string;
   recordType: TestRecordType;
   description: string;
+}
+
+export interface TestRecordCompletionInput {
+  executedBy: string;
+  witnessedBy: string;
+  executionDate: string;
+  signedOffBy: string;
+  completionNotes: string;
 }
 
 export interface TestItem {

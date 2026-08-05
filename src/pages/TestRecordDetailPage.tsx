@@ -3,15 +3,19 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import TestItemModal from "../components/TestItemModal";
+import TestRecordCompletionModal from "../components/TestRecordCompletionModal";
 import { createIssueFromFailedTestItem } from "../repositories/commissioningWorkflowRepository";
 import {
+  completeTestRecord,
   createTestItem,
   deleteTestItem,
   getTestRecordById,
   listTestItems,
+  reopenTestRecord,
   updateTestItem,
 } from "../repositories/testRecordRepository";
 import type { IssueStatus } from "../types/issue";
@@ -20,6 +24,7 @@ import type {
   TestItemInput,
   TestItemResult,
   TestRecord,
+  TestRecordCompletionInput,
   TestRecordStatus,
   TestRecordType,
 } from "../types/testRecord";
@@ -92,31 +97,49 @@ function formatIssueStatus(
   }
 }
 
+function formatExecutionDate(
+  value: string | null,
+): string {
+  if (!value) {
+    return "—";
+  }
+
+  const parsedDate = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return parsedDate.toLocaleDateString();
+}
+
+function formatDateTime(
+  value: string | null,
+): string {
+  if (!value) {
+    return "—";
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return parsedDate.toLocaleString();
+}
+
 function sortTestItems(
   items: TestItem[],
 ): TestItem[] {
-  return [...items].sort(
-    (first, second) => {
-      if (
-        first.sortOrder !==
-        second.sortOrder
-      ) {
-        return (
-          first.sortOrder -
-          second.sortOrder
-        );
-      }
+  return [...items].sort((first, second) => {
+    if (first.sortOrder !== second.sortOrder) {
+      return first.sortOrder - second.sortOrder;
+    }
 
-      return (
-        new Date(
-          first.createdAt,
-        ).getTime() -
-        new Date(
-          second.createdAt,
-        ).getTime()
-      );
-    },
-  );
+    return (
+      new Date(first.createdAt).getTime() -
+      new Date(second.createdAt).getTime()
+    );
+  });
 }
 
 function TestRecordDetailPage({
@@ -124,85 +147,52 @@ function TestRecordDetailPage({
   onBack,
   onRecordUpdated,
 }: TestRecordDetailPageProps) {
-  const [
-    currentRecord,
-    setCurrentRecord,
-  ] = useState<TestRecord>(
-    testRecord,
-  );
+  const [currentRecord, setCurrentRecord] =
+    useState<TestRecord>(testRecord);
   const [testItems, setTestItems] =
     useState<TestItem[]>([]);
   const [isLoading, setIsLoading] =
     useState(true);
   const [loadError, setLoadError] =
     useState<string | null>(null);
-  const [
-    searchQuery,
-    setSearchQuery,
-  ] = useState("");
-  const [
-    resultFilter,
-    setResultFilter,
-  ] =
-    useState<TestItemResultFilter>(
-      "all",
-    );
-  const [
-    isTestItemModalOpen,
-    setIsTestItemModalOpen,
-  ] = useState(false);
-  const [
-    editingTestItem,
-    setEditingTestItem,
-  ] =
+  const [searchQuery, setSearchQuery] =
+    useState("");
+  const [resultFilter, setResultFilter] =
+    useState<TestItemResultFilter>("all");
+  const [isTestItemModalOpen, setIsTestItemModalOpen] =
+    useState(false);
+  const [editingTestItem, setEditingTestItem] =
     useState<TestItem | null>(null);
-  const [
-    testItemToDelete,
-    setTestItemToDelete,
-  ] =
+  const [testItemToDelete, setTestItemToDelete] =
     useState<TestItem | null>(null);
-  const [
-    isDeletingTestItem,
-    setIsDeletingTestItem,
-  ] = useState(false);
-  const [
-    testItemDeleteError,
-    setTestItemDeleteError,
-  ] = useState<string | null>(
-    null,
-  );
-  const [
-    openMenuTestItemId,
-    setOpenMenuTestItemId,
-  ] = useState<string | null>(
-    null,
-  );
-  const [
-    creatingIssueTestItemId,
-    setCreatingIssueTestItemId,
-  ] = useState<string | null>(
-    null,
-  );
-  const [
-    issueCreationError,
-    setIssueCreationError,
-  ] = useState<string | null>(
-    null,
-  );
+  const [isDeletingTestItem, setIsDeletingTestItem] =
+    useState(false);
+  const [testItemDeleteError, setTestItemDeleteError] =
+    useState<string | null>(null);
+  const [openMenuTestItemId, setOpenMenuTestItemId] =
+    useState<string | null>(null);
+  const [creatingIssueTestItemId, setCreatingIssueTestItemId] =
+    useState<string | null>(null);
+  const [issueCreationError, setIssueCreationError] =
+    useState<string | null>(null);
+  const [isCompletionModalOpen, setIsCompletionModalOpen] =
+    useState(false);
+  const [isReopening, setIsReopening] =
+    useState(false);
+  const [completionActionError, setCompletionActionError] =
+    useState<string | null>(null);
+
+  const isSignedOff = currentRecord.signedOffAt !== null;
 
   useEffect(() => {
-    const initialTestRecord =
-      testRecord;
-    const testRecordId =
-      initialTestRecord.id;
+    const initialRecord = testRecord;
+    const testRecordId = initialRecord.id;
     let cancelled = false;
 
     async function loadRecordDetails() {
       setIsLoading(true);
       setLoadError(null);
-      setCurrentRecord(
-        initialTestRecord,
-      );
+      setCurrentRecord(initialRecord);
       setTestItems([]);
       setSearchQuery("");
       setResultFilter("all");
@@ -212,39 +202,26 @@ function TestRecordDetailPage({
       setTestItemDeleteError(null);
       setIsDeletingTestItem(false);
       setOpenMenuTestItemId(null);
-      setCreatingIssueTestItemId(
-        null,
-      );
+      setCreatingIssueTestItemId(null);
       setIssueCreationError(null);
+      setIsCompletionModalOpen(false);
+      setIsReopening(false);
+      setCompletionActionError(null);
 
       try {
-        const [
-          storedRecord,
-          storedTestItems,
-        ] = await Promise.all([
-          getTestRecordById(
-            testRecordId,
-          ),
-          listTestItems(
-            testRecordId,
-          ),
-        ]);
+        const [storedRecord, storedItems] =
+          await Promise.all([
+            getTestRecordById(testRecordId),
+            listTestItems(testRecordId),
+          ]);
 
         if (cancelled) {
           return;
         }
 
-        setCurrentRecord(
-          storedRecord,
-        );
-        setTestItems(
-          sortTestItems(
-            storedTestItems,
-          ),
-        );
-        onRecordUpdated(
-          storedRecord,
-        );
+        setCurrentRecord(storedRecord);
+        setTestItems(sortTestItems(storedItems));
+        onRecordUpdated(storedRecord);
       } catch (error) {
         if (!cancelled) {
           setLoadError(
@@ -275,13 +252,9 @@ function TestRecordDetailPage({
 
       if (
         target instanceof Element &&
-        !target.closest(
-          ".project-action-menu",
-        )
+        !target.closest(".project-action-menu")
       ) {
-        setOpenMenuTestItemId(
-          null,
-        );
+        setOpenMenuTestItemId(null);
       }
     }
 
@@ -293,17 +266,17 @@ function TestRecordDetailPage({
       }
 
       if (openMenuTestItemId) {
-        setOpenMenuTestItemId(
-          null,
-        );
+        setOpenMenuTestItemId(null);
         return;
       }
 
       if (
         isTestItemModalOpen ||
+        isCompletionModalOpen ||
         testItemToDelete ||
         isDeletingTestItem ||
-        creatingIssueTestItemId
+        creatingIssueTestItemId ||
+        isReopening
       ) {
         return;
       }
@@ -332,88 +305,87 @@ function TestRecordDetailPage({
     };
   }, [
     creatingIssueTestItemId,
+    isCompletionModalOpen,
     isDeletingTestItem,
+    isReopening,
     isTestItemModalOpen,
     onBack,
     openMenuTestItemId,
     testItemToDelete,
   ]);
 
-  const filteredTestItems =
-    useMemo(() => {
-      const normalizedQuery =
-        searchQuery
-          .trim()
-          .toLowerCase();
+  const filteredTestItems = useMemo(() => {
+    const normalizedQuery = searchQuery
+      .trim()
+      .toLowerCase();
 
-      return testItems.filter(
-        (testItem) => {
-          const matchesResult =
-            resultFilter === "all" ||
-            testItem.result ===
-              resultFilter;
-          const searchableText = [
-            testItem.description,
-            testItem.acceptanceCriteria,
-            testItem.notes,
-            formatItemResult(
-              testItem.result,
-            ),
-            testItem.linkedIssueStatus
-              ? formatIssueStatus(
-                  testItem.linkedIssueStatus,
-                )
-              : "",
-          ]
-            .join(" ")
-            .toLowerCase();
-          const matchesSearch =
-            normalizedQuery.length ===
-              0 ||
-            searchableText.includes(
-              normalizedQuery,
-            );
+    return testItems.filter((testItem) => {
+      const matchesResult =
+        resultFilter === "all" ||
+        testItem.result === resultFilter;
+      const searchableText = [
+        testItem.description,
+        testItem.acceptanceCriteria,
+        testItem.notes,
+        formatItemResult(testItem.result),
+        testItem.linkedIssueStatus
+          ? formatIssueStatus(testItem.linkedIssueStatus)
+          : "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      const matchesSearch =
+        normalizedQuery.length === 0 ||
+        searchableText.includes(normalizedQuery);
 
-          return (
-            matchesResult &&
-            matchesSearch
-          );
-        },
-      );
-    }, [
-      resultFilter,
-      searchQuery,
-      testItems,
-    ]);
+      return matchesResult && matchesSearch;
+    });
+  }, [resultFilter, searchQuery, testItems]);
 
-  const nextSortOrder =
-    useMemo(() => {
-      if (testItems.length === 0) {
-        return 0;
-      }
+  const nextSortOrder = useMemo(() => {
+    if (testItems.length === 0) {
+      return 0;
+    }
 
-      return (
-        Math.max(
-          ...testItems.map(
-            (testItem) =>
-              testItem.sortOrder,
-          ),
-        ) + 1
-      );
-    }, [testItems]);
+    return (
+      Math.max(
+        ...testItems.map((testItem) => testItem.sortOrder),
+      ) + 1
+    );
+  }, [testItems]);
+
+  async function refreshRecordAndItems() {
+    const [refreshedRecord, refreshedItems] =
+      await Promise.all([
+        getTestRecordById(currentRecord.id),
+        listTestItems(currentRecord.id),
+      ]);
+
+    setCurrentRecord(refreshedRecord);
+    setTestItems(sortTestItems(refreshedItems));
+    onRecordUpdated(refreshedRecord);
+  }
 
   function handleAddTestItem() {
+    if (isSignedOff) {
+      return;
+    }
+
     setOpenMenuTestItemId(null);
     setIssueCreationError(null);
+    setCompletionActionError(null);
     setEditingTestItem(null);
     setIsTestItemModalOpen(true);
   }
 
-  function handleEditTestItem(
-    testItem: TestItem,
-  ) {
+  function handleEditTestItem(testItem: TestItem) {
+    if (isSignedOff) {
+      return;
+    }
+
     setOpenMenuTestItemId(null);
     setIssueCreationError(null);
+    setCompletionActionError(null);
     setEditingTestItem(testItem);
     setIsTestItemModalOpen(true);
   }
@@ -423,82 +395,41 @@ function TestRecordDetailPage({
     setEditingTestItem(null);
   }
 
-  async function refreshRecordAndItems() {
-    const [
-      refreshedRecord,
-      refreshedItems,
-    ] = await Promise.all([
-      getTestRecordById(
-        currentRecord.id,
-      ),
-      listTestItems(
-        currentRecord.id,
-      ),
-    ]);
-
-    setCurrentRecord(
-      refreshedRecord,
-    );
-    setTestItems(
-      sortTestItems(
-        refreshedItems,
-      ),
-    );
-    onRecordUpdated(
-      refreshedRecord,
-    );
-  }
-
   async function handleSaveTestItem(
     input: TestItemInput,
   ): Promise<void> {
+    if (isSignedOff) {
+      throw new Error(
+        "Reopen this record before changing its items.",
+      );
+    }
+
     if (editingTestItem) {
-      await updateTestItem(
-        editingTestItem.id,
-        input,
-      );
+      await updateTestItem(editingTestItem.id, input);
     } else {
-      await createTestItem(
-        currentRecord.id,
-        input,
-      );
+      await createTestItem(currentRecord.id, input);
     }
 
     await refreshRecordAndItems();
     handleCloseTestItemModal();
   }
 
-  async function handleCreateIssue(
-    testItem: TestItem,
-  ) {
+  async function handleCreateIssue(testItem: TestItem) {
     if (
-      creatingIssueTestItemId !==
-      null
+      isSignedOff ||
+      creatingIssueTestItemId !== null
     ) {
       return;
     }
 
     setOpenMenuTestItemId(null);
     setIssueCreationError(null);
-    setCreatingIssueTestItemId(
-      testItem.id,
-    );
+    setCompletionActionError(null);
+    setCreatingIssueTestItemId(testItem.id);
 
     try {
-      await createIssueFromFailedTestItem(
-        testItem.id,
-      );
-
-      const refreshedItems =
-        await listTestItems(
-          currentRecord.id,
-        );
-
-      setTestItems(
-        sortTestItems(
-          refreshedItems,
-        ),
-      );
+      await createIssueFromFailedTestItem(testItem.id);
+      await refreshRecordAndItems();
     } catch (error) {
       setIssueCreationError(
         error instanceof Error
@@ -506,17 +437,20 @@ function TestRecordDetailPage({
           : "Failed to create an issue from this test item.",
       );
     } finally {
-      setCreatingIssueTestItemId(
-        null,
-      );
+      setCreatingIssueTestItemId(null);
     }
   }
 
   function handleRequestDeleteTestItem(
     testItem: TestItem,
   ) {
+    if (isSignedOff) {
+      return;
+    }
+
     setOpenMenuTestItemId(null);
     setIssueCreationError(null);
+    setCompletionActionError(null);
     setTestItemDeleteError(null);
     setTestItemToDelete(testItem);
   }
@@ -531,20 +465,16 @@ function TestRecordDetailPage({
   }
 
   async function handleConfirmDeleteTestItem() {
-    if (!testItemToDelete) {
+    if (!testItemToDelete || isSignedOff) {
       return;
     }
 
-    const deletingTestItem =
-      testItemToDelete;
-
+    const deletingItem = testItemToDelete;
     setIsDeletingTestItem(true);
     setTestItemDeleteError(null);
 
     try {
-      await deleteTestItem(
-        deletingTestItem.id,
-      );
+      await deleteTestItem(deletingItem.id);
       await refreshRecordAndItems();
       setTestItemToDelete(null);
     } catch (error) {
@@ -558,6 +488,45 @@ function TestRecordDetailPage({
     }
   }
 
+  async function handleCompleteRecord(
+    input: TestRecordCompletionInput,
+  ): Promise<void> {
+    setCompletionActionError(null);
+    const completedRecord = await completeTestRecord(
+      currentRecord.id,
+      input,
+    );
+
+    setCurrentRecord(completedRecord);
+    onRecordUpdated(completedRecord);
+    setIsCompletionModalOpen(false);
+  }
+
+  async function handleReopenRecord() {
+    if (!isSignedOff || isReopening) {
+      return;
+    }
+
+    setIsReopening(true);
+    setCompletionActionError(null);
+
+    try {
+      const reopenedRecord = await reopenTestRecord(
+        currentRecord.id,
+      );
+      setCurrentRecord(reopenedRecord);
+      onRecordUpdated(reopenedRecord);
+    } catch (error) {
+      setCompletionActionError(
+        error instanceof Error
+          ? error.message
+          : "Failed to reopen this record.",
+      );
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   return (
     <>
       <section className="content-card section-card assets-card issues-card test-record-detail-page">
@@ -568,28 +537,18 @@ function TestRecordDetailPage({
               type="button"
               onClick={onBack}
             >
-              <span aria-hidden="true">
-                ←
-              </span>
+              <span aria-hidden="true">←</span>
               Back to Checklists &amp; Tests
             </button>
 
-            <h3>
-              {currentRecord.title}
-            </h3>
+            <h3>{currentRecord.title}</h3>
 
             <p>
-              {formatRecordType(
-                currentRecord.recordType,
-              )}
+              {formatRecordType(currentRecord.recordType)}
               {" · "}
               {currentRecord.assetTag ? (
                 <>
-                  <strong>
-                    {
-                      currentRecord.assetTag
-                    }
-                  </strong>
+                  <strong>{currentRecord.assetTag}</strong>
                   {currentRecord.assetName
                     ? ` — ${currentRecord.assetName}`
                     : ""}
@@ -601,9 +560,7 @@ function TestRecordDetailPage({
 
             {currentRecord.description && (
               <p className="test-record-page-description">
-                {
-                  currentRecord.description
-                }
+                {currentRecord.description}
               </p>
             )}
           </div>
@@ -612,23 +569,14 @@ function TestRecordDetailPage({
             <div className="test-record-page-summary-item">
               <span>Progress</span>
               <strong>
-                {
-                  currentRecord.completedItemCount
-                }{" "}
-                of{" "}
-                {
-                  currentRecord.totalItemCount
-                }
+                {currentRecord.completedItemCount} of{" "}
+                {currentRecord.totalItemCount}
               </strong>
             </div>
 
             <div className="test-record-page-summary-item">
               <span>Failed</span>
-              <strong>
-                {
-                  currentRecord.failedItemCount
-                }
-              </strong>
+              <strong>{currentRecord.failedItemCount}</strong>
             </div>
 
             <div className="test-record-page-summary-item">
@@ -636,13 +584,57 @@ function TestRecordDetailPage({
               <strong
                 className={`test-record-status-text ${currentRecord.status}`}
               >
-                {formatRecordStatus(
-                  currentRecord.status,
-                )}
+                {formatRecordStatus(currentRecord.status)}
               </strong>
             </div>
           </div>
         </div>
+
+        {completionActionError && (
+          <p
+            className="projects-action-error"
+            role="alert"
+          >
+            {completionActionError}
+          </p>
+        )}
+
+        {isSignedOff && (
+          <section className="test-record-signoff-panel">
+            <div>
+              <span>Executed by</span>
+              <strong>{currentRecord.executedBy || "—"}</strong>
+            </div>
+            <div>
+              <span>Witnessed by</span>
+              <strong>{currentRecord.witnessedBy || "—"}</strong>
+            </div>
+            <div>
+              <span>Execution date</span>
+              <strong>
+                {formatExecutionDate(
+                  currentRecord.executionDate,
+                )}
+              </strong>
+            </div>
+            <div>
+              <span>Signed off by</span>
+              <strong>{currentRecord.signedOffBy}</strong>
+            </div>
+            <div>
+              <span>Signed at</span>
+              <strong>
+                {formatDateTime(currentRecord.signedOffAt)}
+              </strong>
+            </div>
+            {currentRecord.completionNotes && (
+              <div className="test-record-signoff-notes">
+                <span>Completion notes</span>
+                <strong>{currentRecord.completionNotes}</strong>
+              </div>
+            )}
+          </section>
+        )}
 
         <div className="assets-toolbar issues-toolbar test-record-items-toolbar">
           <input
@@ -652,9 +644,7 @@ function TestRecordDetailPage({
             placeholder="Search item, criteria, notes, or issue status"
             aria-label="Search checklist items"
             onChange={(event) =>
-              setSearchQuery(
-                event.target.value,
-              )
+              setSearchQuery(event.target.value)
             }
           />
 
@@ -664,44 +654,69 @@ function TestRecordDetailPage({
             aria-label="Filter items by result"
             onChange={(event) =>
               setResultFilter(
-                event.target
-                  .value as TestItemResultFilter,
+                event.target.value as TestItemResultFilter,
               )
             }
           >
-            <option value="all">
-              All results
-            </option>
-            <option value="pending">
-              Pending
-            </option>
-            <option value="pass">
-              Pass
-            </option>
-            <option value="fail">
-              Fail
-            </option>
-            <option value="not_applicable">
-              N/A
-            </option>
+            <option value="all">All results</option>
+            <option value="pending">Pending</option>
+            <option value="pass">Pass</option>
+            <option value="fail">Fail</option>
+            <option value="not_applicable">N/A</option>
           </select>
 
-          <button
-            className="primary-button toolbar-primary-button"
-            type="button"
-            disabled={isLoading}
-            onClick={handleAddTestItem}
-          >
-            Add item
-          </button>
+          <div className="test-record-toolbar-actions">
+            <button
+              className="primary-button toolbar-primary-button"
+              type="button"
+              disabled={isLoading || isSignedOff}
+              title={
+                isSignedOff
+                  ? "Reopen the record before adding items."
+                  : undefined
+              }
+              onClick={handleAddTestItem}
+            >
+              Add item
+            </button>
+
+            {isSignedOff ? (
+              <button
+                className="secondary-button toolbar-primary-button"
+                type="button"
+                disabled={isReopening}
+                onClick={() => {
+                  void handleReopenRecord();
+                }}
+              >
+                {isReopening ? "Reopening..." : "Reopen"}
+              </button>
+            ) : (
+              <button
+                className="primary-button toolbar-primary-button"
+                type="button"
+                disabled={isLoading}
+                onClick={() => {
+                  setCompletionActionError(null);
+                  setIsCompletionModalOpen(true);
+                }}
+              >
+                Complete record
+              </button>
+            )}
+          </div>
 
           <span className="asset-result-count">
-            {
-              filteredTestItems.length
-            }{" "}
-            of {testItems.length}
+            {filteredTestItems.length} of {testItems.length}
           </span>
         </div>
+
+        {isSignedOff && (
+          <p className="test-record-read-only-notice">
+            This signed record is read-only. Reopen it to
+            change items or create additional issues.
+          </p>
+        )}
 
         {issueCreationError && (
           <p
@@ -715,36 +730,25 @@ function TestRecordDetailPage({
         {isLoading ? (
           <div className="empty-state test-record-detail-state">
             <h3>Loading items</h3>
-            <p>
-              Reading checklist and
-              test items.
-            </p>
+            <p>Reading checklist and test items.</p>
           </div>
         ) : loadError ? (
           <div className="empty-state test-record-detail-state">
-            <h3>
-              Unable to load items
-            </h3>
+            <h3>Unable to load items</h3>
             <p>{loadError}</p>
           </div>
         ) : testItems.length === 0 ? (
           <div className="empty-state test-record-detail-state">
             <h3>No items yet</h3>
             <p>
-              Add an inspection or test
-              item from the toolbar above.
+              Add an inspection or test item from the toolbar
+              above.
             </p>
           </div>
-        ) : filteredTestItems.length ===
-          0 ? (
+        ) : filteredTestItems.length === 0 ? (
           <div className="empty-state compact test-record-detail-state">
-            <h3>
-              No matching items
-            </h3>
-            <p>
-              Change the search text or
-              result filter.
-            </p>
+            <h3>No matching items</h3>
+            <p>Change the search text or result filter.</p>
           </div>
         ) : (
           <FixedHeaderTable
@@ -754,9 +758,7 @@ function TestRecordDetailPage({
             header={
               <tr>
                 <th>Item</th>
-                <th>
-                  Acceptance criteria
-                </th>
+                <th>Acceptance criteria</th>
                 <th>Result</th>
                 <th>Notes</th>
                 <th aria-label="Item actions" />
@@ -764,157 +766,127 @@ function TestRecordDetailPage({
             }
             body={
               <>
-                {filteredTestItems.map(
-                  (testItem) => {
-                    const itemNumber =
-                      testItems.findIndex(
-                        (current) =>
-                          current.id ===
-                          testItem.id,
-                      ) + 1;
-                    const isCreatingIssue =
-                      creatingIssueTestItemId ===
-                      testItem.id;
+                {filteredTestItems.map((testItem) => {
+                  const itemNumber =
+                    testItems.findIndex(
+                      (current) => current.id === testItem.id,
+                    ) + 1;
+                  const isCreatingIssue =
+                    creatingIssueTestItemId === testItem.id;
 
-                    return (
-                      <tr key={testItem.id}>
-                        <td>
-                          <div className="test-item-description">
-                            <span className="test-item-number">
-                              {itemNumber}
-                            </span>
-                            <strong>
-                              {
-                                testItem.description
-                              }
-                            </strong>
-                          </div>
-                        </td>
-
-                        <td>
-                          {testItem.acceptanceCriteria ||
-                            "—"}
-                        </td>
-
-                        <td>
-                          <span
-                            className={`test-item-result ${testItem.result}`}
-                          >
-                            {formatItemResult(
-                              testItem.result,
-                            )}
+                  return (
+                    <tr key={testItem.id}>
+                      <td>
+                        <div className="test-item-description">
+                          <span className="test-item-number">
+                            {itemNumber}
                           </span>
-                        </td>
+                          <strong>{testItem.description}</strong>
+                        </div>
+                      </td>
 
-                        <td>
-                          {testItem.notes ||
-                            "—"}
-                        </td>
+                      <td>
+                        {testItem.acceptanceCriteria || "—"}
+                      </td>
 
-                        <td className="table-action-cell">
-                          <div className="project-row-actions">
-                            {testItem.linkedIssueStatus ? (
-                              <button
-                                className="row-action-button test-item-issue-action"
-                                type="button"
-                                disabled
-                                title={`Linked issue status: ${formatIssueStatus(
-                                  testItem.linkedIssueStatus,
-                                )}`}
-                              >
-                                Issue linked
-                              </button>
-                            ) : testItem.result ===
-                              "fail" ? (
-                              <button
-                                className="row-action-button test-item-issue-action"
-                                type="button"
-                                disabled={
-                                  creatingIssueTestItemId !==
-                                  null
-                                }
-                                onClick={() => {
-                                  void handleCreateIssue(
-                                    testItem,
-                                  );
-                                }}
-                              >
-                                {isCreatingIssue
-                                  ? "Creating..."
-                                  : "Create issue"}
-                              </button>
-                            ) : null}
+                      <td>
+                        <span
+                          className={`test-item-result ${testItem.result}`}
+                        >
+                          {formatItemResult(testItem.result)}
+                        </span>
+                      </td>
 
+                      <td>{testItem.notes || "—"}</td>
+
+                      <td className="table-action-cell">
+                        <div className="project-row-actions">
+                          {testItem.linkedIssueStatus ? (
                             <button
-                              className="row-action-button"
+                              className="row-action-button test-item-issue-action"
+                              type="button"
+                              disabled
+                              title={`Linked issue status: ${formatIssueStatus(
+                                testItem.linkedIssueStatus,
+                              )}`}
+                            >
+                              Issue linked
+                            </button>
+                          ) : testItem.result === "fail" ? (
+                            <button
+                              className="row-action-button test-item-issue-action"
                               type="button"
                               disabled={
-                                creatingIssueTestItemId !==
-                                null
+                                isSignedOff ||
+                                creatingIssueTestItemId !== null
                               }
+                              onClick={() => {
+                                void handleCreateIssue(testItem);
+                              }}
+                            >
+                              {isCreatingIssue
+                                ? "Creating..."
+                                : "Create issue"}
+                            </button>
+                          ) : null}
+
+                          <button
+                            className="row-action-button"
+                            type="button"
+                            disabled={isSignedOff}
+                            onClick={() =>
+                              handleEditTestItem(testItem)
+                            }
+                          >
+                            Edit
+                          </button>
+
+                          <div className="project-action-menu">
+                            <button
+                              className="more-actions-button"
+                              type="button"
+                              aria-label={`More actions for ${testItem.description}`}
+                              aria-haspopup="menu"
+                              aria-expanded={
+                                openMenuTestItemId === testItem.id
+                              }
+                              disabled={isSignedOff}
                               onClick={() =>
-                                handleEditTestItem(
-                                  testItem,
+                                setOpenMenuTestItemId((current) =>
+                                  current === testItem.id
+                                    ? null
+                                    : testItem.id,
                                 )
                               }
                             >
-                              Edit
+                              ⋯
                             </button>
 
-                            <div className="project-action-menu">
-                              <button
-                                className="more-actions-button"
-                                type="button"
-                                disabled={
-                                  creatingIssueTestItemId !==
-                                  null
-                                }
-                                aria-label={`More actions for ${testItem.description}`}
-                                aria-haspopup="menu"
-                                aria-expanded={
-                                  openMenuTestItemId ===
-                                  testItem.id
-                                }
-                                onClick={() =>
-                                  setOpenMenuTestItemId(
-                                    (current) =>
-                                      current ===
-                                      testItem.id
-                                        ? null
-                                        : testItem.id,
-                                  )
-                                }
+                            {openMenuTestItemId === testItem.id && (
+                              <div
+                                className="project-action-menu-panel"
+                                role="menu"
                               >
-                                ⋯
-                              </button>
-
-                              {openMenuTestItemId ===
-                                testItem.id && (
-                                <div
-                                  className="project-action-menu-panel"
-                                  role="menu"
+                                <button
+                                  className="project-menu-item danger"
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() =>
+                                    handleRequestDeleteTestItem(
+                                      testItem,
+                                    )
+                                  }
                                 >
-                                  <button
-                                    className="project-menu-item danger"
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() =>
-                                      handleRequestDeleteTestItem(
-                                        testItem,
-                                      )
-                                    }
-                                  >
-                                    Delete item
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                                  Delete item
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  },
-                )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </>
             }
           />
@@ -922,54 +894,37 @@ function TestRecordDetailPage({
       </section>
 
       <TestItemModal
-        isOpen={
-          isTestItemModalOpen
-        }
-        testItem={
-          editingTestItem
-        }
-        nextSortOrder={
-          nextSortOrder
-        }
-        onClose={
-          handleCloseTestItemModal
-        }
-        onSave={
-          handleSaveTestItem
-        }
+        isOpen={isTestItemModalOpen}
+        testItem={editingTestItem}
+        nextSortOrder={nextSortOrder}
+        onClose={handleCloseTestItemModal}
+        onSave={handleSaveTestItem}
+      />
+
+      <TestRecordCompletionModal
+        isOpen={isCompletionModalOpen}
+        testRecord={currentRecord}
+        onClose={() => setIsCompletionModalOpen(false)}
+        onComplete={handleCompleteRecord}
       />
 
       <DeleteConfirmationModal
-        isOpen={
-          testItemToDelete !== null
-        }
+        isOpen={testItemToDelete !== null}
         title="Delete checklist item"
         message={
           testItemToDelete ? (
             <>
-              Delete{" "}
-              <strong>
-                {
-                  testItemToDelete.description
-                }
-              </strong>
-              ? This action cannot be
-              undone. A linked Issue will
+              Delete <strong>{testItemToDelete.description}</strong>?
+              This action cannot be undone. A linked Issue will
               remain in the Issues page.
             </>
           ) : null
         }
         confirmLabel="Delete item"
         submittingLabel="Deleting item..."
-        isSubmitting={
-          isDeletingTestItem
-        }
-        error={
-          testItemDeleteError
-        }
-        onClose={
-          handleCloseDeleteTestItem
-        }
+        isSubmitting={isDeletingTestItem}
+        error={testItemDeleteError}
+        onClose={handleCloseDeleteTestItem}
         onConfirm={() => {
           void handleConfirmDeleteTestItem();
         }}

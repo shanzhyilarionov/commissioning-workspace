@@ -223,6 +223,30 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "add_test_record_signoff",
+            sql: r#"
+                ALTER TABLE test_records
+                    ADD COLUMN executed_by TEXT NOT NULL DEFAULT '';
+
+                ALTER TABLE test_records
+                    ADD COLUMN witnessed_by TEXT NOT NULL DEFAULT '';
+
+                ALTER TABLE test_records
+                    ADD COLUMN execution_date TEXT;
+
+                ALTER TABLE test_records
+                    ADD COLUMN signed_off_by TEXT NOT NULL DEFAULT '';
+
+                ALTER TABLE test_records
+                    ADD COLUMN signed_off_at TEXT;
+
+                ALTER TABLE test_records
+                    ADD COLUMN completion_notes TEXT NOT NULL DEFAULT '';
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
