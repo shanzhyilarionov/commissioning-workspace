@@ -6,24 +6,42 @@
   align-items: flex-start;
 }
 
-.reports-toolbar {
+.assets-toolbar.reports-toolbar {
   display: grid;
   grid-template-columns:
     minmax(190px, 1fr)
-    minmax(130px, auto)
+    minmax(130px, 160px)
     minmax(145px, auto)
     minmax(145px, auto)
     auto;
+  grid-template-areas: "search type from to count";
   gap: 8px;
   align-items: center;
 }
 
-.reports-search-input {
+.reports-toolbar .reports-search-input {
+  grid-area: search;
+  width: 100%;
   min-width: 0;
+}
+
+.reports-toolbar .asset-status-filter {
+  grid-area: type;
+  width: 100%;
+  min-width: 0;
+}
+
+.reports-toolbar .reports-date-filter:nth-of-type(1) {
+  grid-area: from;
+}
+
+.reports-toolbar .reports-date-filter:nth-of-type(2) {
+  grid-area: to;
 }
 
 .reports-date-filter {
   display: flex;
+  width: 100%;
   min-width: 0;
   height: 34px;
   align-items: center;
@@ -50,6 +68,7 @@
   min-width: 0;
   height: 100%;
   padding: 0 7px;
+  flex: 1 1 auto;
   color: var(--text-primary);
   background: transparent;
   border: 0;
@@ -58,8 +77,10 @@
   font-size: 12px;
 }
 
-.reports-result-count {
+.reports-toolbar .reports-result-count {
+  grid-area: count;
   justify-self: end;
+  margin-left: 0;
   white-space: nowrap;
 }
 
@@ -194,15 +215,43 @@
 }
 
 @media (max-width: 1120px) {
-  .reports-toolbar {
-    grid-template-columns: minmax(190px, 1fr) auto auto;
+  .assets-toolbar.reports-toolbar {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(145px, auto)
+      minmax(145px, auto);
+    grid-template-areas:
+      "search search search"
+      "type from to"
+      "count count count";
   }
 
-  .reports-date-filter {
-    grid-row: 2;
+  .reports-toolbar .reports-result-count {
+    justify-self: start;
   }
+}
 
-  .reports-result-count {
-    grid-row: 2;
+@media (max-width: 760px) {
+  .assets-toolbar.reports-toolbar {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+    grid-template-areas:
+      "search search"
+      "type type"
+      "from to"
+      "count count";
+  }
+}
+
+@media (max-width: 560px) {
+  .assets-toolbar.reports-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "search"
+      "type"
+      "from"
+      "to"
+      "count";
   }
 }

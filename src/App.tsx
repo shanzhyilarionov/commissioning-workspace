@@ -11,6 +11,7 @@ import AssetsPage from "./pages/AssetsPage";
 import ChecklistsTestsPage from "./pages/ChecklistsTestsPage";
 import ProjectOverviewPage from "./pages/DashboardPage";
 import IssuesPage from "./pages/IssuesPage";
+import DocumentsPage from "./pages/DocumentsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ReportsPage from "./pages/ReportsPage";
 import {
@@ -416,6 +417,14 @@ function App() {
 
         return <IssuesPage currentProject={currentProject} />;
 
+      case "Documents":
+        if (!currentProject) {
+          return renderNoProjectSelected(
+            "Open or create a project before managing documents.",
+          );
+        }
+
+        return <DocumentsPage currentProject={currentProject} />;
       case "Reports":
         if (!currentProject) {
           return renderNoProjectSelected(

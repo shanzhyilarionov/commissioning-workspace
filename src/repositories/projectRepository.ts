@@ -1,3 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
+
 import { getDatabase } from "../services/database";
 import type {
   CreateProjectInput,
@@ -217,12 +219,28 @@ export async function deleteProject(projectId: string): Promise<void> {
   const database = await getDatabase();
 
   await getProjectById(projectId);
+  await database.execute("BEGIN IMMEDIATE");
 
-  await database.execute(
-    `
-      DELETE FROM projects
-      WHERE id = $1
-    `,
-    [projectId],
-  );
+  try {
+    await database.execute(
+      `
+        DELETE FROM projects
+        WHERE id = $1
+      `,
+      [projectId],
+    );
+
+    await invoke("delete_project_document_project_files", {
+      projectId,
+    });
+
+    await database.execute("COMMIT");
+  } catch (error) {
+    try {
+      await database.execute("ROLLBACK");
+    } catch {
+    }
+
+    throw error;
+  }
 }

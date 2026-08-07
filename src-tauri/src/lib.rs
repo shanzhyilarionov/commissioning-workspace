@@ -1,4 +1,7 @@
-use std::path::Path;
+use serde::Serialize;
+use std::path::{Path, PathBuf};
+use tauri::Manager;
+use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[tauri::command]
@@ -24,6 +27,209 @@ fn save_report_pdf(path: String, bytes: Vec<u8>) -> Result<(), String> {
 
     std::fs::write(output_path, bytes)
         .map_err(|error| format!("Failed to save the PDF report: {error}"))
+}
+
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportedProjectDocumentFile {
+    original_file_name: String,
+    stored_path: String,
+    mime_type: String,
+    file_size: u64,
+}
+
+fn validate_storage_id(value: &str, field_name: &str) -> Result<(), String> {
+    if value.is_empty()
+        || !value
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '-' || character == '_')
+    {
+        return Err(format!("Invalid {field_name}."));
+    }
+
+    Ok(())
+}
+
+fn project_storage_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|path| path.join("projects"))
+        .map_err(|error| format!("Failed to resolve the application data directory: {error}"))
+}
+
+fn mime_type_for_path(path: &Path) -> String {
+    match path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| extension.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("pdf") => "application/pdf",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("webp") => "image/webp",
+        Some("tif") | Some("tiff") => "image/tiff",
+        Some("doc") => "application/msword",
+        Some("docx") => {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        }
+        Some("xls") => "application/vnd.ms-excel",
+        Some("xlsx") => {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+        Some("ppt") => "application/vnd.ms-powerpoint",
+        Some("pptx") => {
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        }
+        Some("txt") => "text/plain",
+        Some("csv") => "text/csv",
+        _ => "application/octet-stream",
+    }
+    .to_string()
+}
+
+fn managed_document_path(
+    app: &tauri::AppHandle,
+    stored_path: &str,
+) -> Result<Option<PathBuf>, String> {
+    let path = PathBuf::from(stored_path);
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let canonical_path = std::fs::canonicalize(&path)
+        .map_err(|error| format!("Failed to resolve the managed document path: {error}"))?;
+    let storage_root = project_storage_root(app)?;
+
+    if !storage_root.exists() {
+        return Err("The managed document storage directory does not exist.".to_string());
+    }
+
+    let canonical_root = std::fs::canonicalize(storage_root)
+        .map_err(|error| format!("Failed to resolve the managed document storage directory: {error}"))?;
+
+    if !canonical_path.starts_with(canonical_root) {
+        return Err("The requested file is outside managed document storage.".to_string());
+    }
+
+    Ok(Some(canonical_path))
+}
+
+fn remove_empty_parent_directories(path: &Path, stop_at: &Path) {
+    let mut current = path.parent();
+
+    while let Some(directory) = current {
+        if directory == stop_at || !directory.starts_with(stop_at) {
+            break;
+        }
+
+        match std::fs::remove_dir(directory) {
+            Ok(()) => current = directory.parent(),
+            Err(_) => break,
+        }
+    }
+}
+
+#[tauri::command]
+fn import_project_document(
+    app: tauri::AppHandle,
+    source_path: String,
+    project_id: String,
+    document_id: String,
+) -> Result<ImportedProjectDocumentFile, String> {
+    validate_storage_id(&project_id, "project ID")?;
+    validate_storage_id(&document_id, "document ID")?;
+
+    let source = std::fs::canonicalize(&source_path)
+        .map_err(|error| format!("Failed to resolve the selected document: {error}"))?;
+
+    if !source.is_file() {
+        return Err("The selected path is not a file.".to_string());
+    }
+
+    let original_file_name = source
+        .file_name()
+        .and_then(|file_name| file_name.to_str())
+        .filter(|file_name| !file_name.is_empty())
+        .ok_or_else(|| "The selected document has an invalid file name.".to_string())?
+        .to_string();
+
+    let storage_root = project_storage_root(&app)?;
+    let document_directory = storage_root
+        .join(&project_id)
+        .join("documents")
+        .join(&document_id);
+
+    std::fs::create_dir_all(&document_directory)
+        .map_err(|error| format!("Failed to create managed document storage: {error}"))?;
+
+    let destination = document_directory.join(&original_file_name);
+
+    if let Err(error) = std::fs::copy(&source, &destination) {
+        let _ = std::fs::remove_dir_all(&document_directory);
+        return Err(format!("Failed to import the document: {error}"));
+    }
+
+    let metadata = std::fs::metadata(&destination)
+        .map_err(|error| format!("Failed to read the imported document metadata: {error}"))?;
+
+    Ok(ImportedProjectDocumentFile {
+        original_file_name,
+        stored_path: destination.to_string_lossy().into_owned(),
+        mime_type: mime_type_for_path(&destination),
+        file_size: metadata.len(),
+    })
+}
+
+#[tauri::command]
+fn open_project_document(
+    app: tauri::AppHandle,
+    stored_path: String,
+) -> Result<(), String> {
+    let path = managed_document_path(&app, &stored_path)?
+        .ok_or_else(|| "The managed document file no longer exists.".to_string())?;
+
+    app.opener()
+        .open_path(path.to_string_lossy().into_owned(), None::<&str>)
+        .map_err(|error| format!("Failed to open the document: {error}"))
+}
+
+#[tauri::command]
+fn delete_project_document_file(
+    app: tauri::AppHandle,
+    stored_path: String,
+) -> Result<(), String> {
+    let Some(path) = managed_document_path(&app, &stored_path)? else {
+        return Ok(());
+    };
+
+    let storage_root = project_storage_root(&app)?;
+
+    std::fs::remove_file(&path)
+        .map_err(|error| format!("Failed to delete the managed document: {error}"))?;
+
+    remove_empty_parent_directories(&path, &storage_root);
+
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_project_document_project_files(
+    app: tauri::AppHandle,
+    project_id: String,
+) -> Result<(), String> {
+    validate_storage_id(&project_id, "project ID")?;
+
+    let project_directory = project_storage_root(&app)?.join(project_id);
+
+    if project_directory.exists() {
+        std::fs::remove_dir_all(project_directory)
+            .map_err(|error| format!("Failed to delete the project document storage: {error}"))?;
+    }
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -268,6 +474,72 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "create_project_documents_table",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS project_documents (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    asset_id TEXT,
+                    title TEXT NOT NULL,
+                    category TEXT NOT NULL DEFAULT 'other'
+                        CHECK (
+                            category IN (
+                                'drawing',
+                                'manual',
+                                'datasheet',
+                                'procedure',
+                                'certificate',
+                                'report',
+                                'other'
+                            )
+                        ),
+                    revision TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'draft'
+                        CHECK (
+                            status IN (
+                                'draft',
+                                'for_review',
+                                'approved',
+                                'superseded'
+                            )
+                        ),
+                    original_file_name TEXT NOT NULL,
+                    stored_path TEXT NOT NULL UNIQUE,
+                    mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+                    file_size INTEGER NOT NULL DEFAULT 0,
+                    notes TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE,
+
+                    FOREIGN KEY (asset_id)
+                        REFERENCES assets(id)
+                        ON DELETE SET NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_project_id
+                ON project_documents(project_id);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_project_status
+                ON project_documents(project_id, status);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_project_category
+                ON project_documents(project_id, category);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_asset_id
+                ON project_documents(asset_id);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -281,7 +553,14 @@ pub fn run() {
                 )
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![greet, save_report_pdf])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            save_report_pdf,
+            import_project_document,
+            open_project_document,
+            delete_project_document_file,
+            delete_project_document_project_files
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
