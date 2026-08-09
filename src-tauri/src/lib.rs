@@ -540,6 +540,112 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 8,
+            description: "add_systems_and_subsystems",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS systems (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    code TEXT NOT NULL DEFAULT '',
+                    name TEXT NOT NULL COLLATE NOCASE,
+                    description TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE,
+
+                    UNIQUE (project_id, name)
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_systems_project_id
+                ON systems(project_id);
+
+                CREATE UNIQUE INDEX IF NOT EXISTS
+                    idx_systems_project_code_unique
+                ON systems(project_id, code)
+                WHERE trim(code) <> '';
+
+                CREATE TABLE IF NOT EXISTS subsystems (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    system_id TEXT NOT NULL,
+                    code TEXT NOT NULL DEFAULT '',
+                    name TEXT NOT NULL COLLATE NOCASE,
+                    description TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+
+                    FOREIGN KEY (system_id)
+                        REFERENCES systems(id)
+                        ON DELETE CASCADE,
+
+                    UNIQUE (system_id, name)
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_subsystems_system_id
+                ON subsystems(system_id);
+
+                CREATE UNIQUE INDEX IF NOT EXISTS
+                    idx_subsystems_system_code_unique
+                ON subsystems(system_id, code)
+                WHERE trim(code) <> '';
+
+                ALTER TABLE assets
+                    ADD COLUMN system_id TEXT
+                    REFERENCES systems(id)
+                    ON DELETE SET NULL;
+
+                ALTER TABLE assets
+                    ADD COLUMN subsystem_id TEXT
+                    REFERENCES subsystems(id)
+                    ON DELETE SET NULL;
+
+                INSERT INTO systems (
+                    id,
+                    project_id,
+                    code,
+                    name,
+                    description,
+                    created_at,
+                    updated_at
+                )
+                SELECT
+                    'system-' || lower(hex(randomblob(16))),
+                    project_id,
+                    '',
+                    MIN(trim(system_name)),
+                    '',
+                    MIN(created_at),
+                    MAX(updated_at)
+                FROM assets
+                WHERE trim(system_name) <> ''
+                GROUP BY project_id, lower(trim(system_name));
+
+                UPDATE assets
+                SET system_id = (
+                    SELECT systems.id
+                    FROM systems
+                    WHERE systems.project_id = assets.project_id
+                      AND systems.name =
+                          trim(assets.system_name) COLLATE NOCASE
+                    LIMIT 1
+                )
+                WHERE trim(system_name) <> '';
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_assets_system_id
+                ON assets(system_id);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_assets_subsystem_id
+                ON assets(subsystem_id);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

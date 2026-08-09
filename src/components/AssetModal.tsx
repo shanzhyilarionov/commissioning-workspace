@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useState,
   type FormEvent,
 } from "react";
@@ -9,16 +10,27 @@ import type {
   AssetInput,
   AssetStatus,
 } from "../types/asset";
+import type {
+  CommissioningSystem,
+  Subsystem,
+} from "../types/system";
 
 interface AssetModalProps {
   isOpen: boolean;
   asset: Asset | null;
+  systems: CommissioningSystem[];
+  subsystems: Subsystem[];
   onClose: () => void;
   onSave: (input: AssetInput) => Promise<void>;
 }
 
+const NEW_OPTION = "__new__";
+
 const emptyForm: AssetInput = {
+  systemId: null,
+  subsystemId: null,
   systemName: "",
+  subsystemName: "",
   tag: "",
   name: "",
   assetType: "",
@@ -29,17 +41,30 @@ const emptyForm: AssetInput = {
 function AssetModal({
   isOpen,
   asset,
+  systems,
+  subsystems,
   onClose,
   onSave,
 }: AssetModalProps) {
-  const [form, setForm] =
-    useState<AssetInput>(emptyForm);
-
+  const [form, setForm] = useState<AssetInput>(emptyForm);
+  const [isCreatingSystem, setIsCreatingSystem] = useState(false);
+  const [isCreatingSubsystem, setIsCreatingSubsystem] = useState(false);
   const [tagError, setTagError] = useState("");
   const [nameError, setNameError] = useState("");
+  const [systemError, setSystemError] = useState("");
+  const [subsystemError, setSubsystemError] = useState("");
   const [submitError, setSubmitError] = useState("");
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const availableSubsystems = useMemo(
+    () =>
+      form.systemId
+        ? subsystems.filter(
+            (subsystem) => subsystem.systemId === form.systemId,
+          )
+        : [],
+    [form.systemId, subsystems],
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -48,19 +73,32 @@ function AssetModal({
 
     if (asset) {
       setForm({
+        systemId: asset.systemId,
+        subsystemId: asset.subsystemId,
         systemName: asset.systemName,
+        subsystemName: asset.subsystemName,
         tag: asset.tag,
         name: asset.name,
         assetType: asset.assetType,
         status: asset.status,
         description: asset.description,
       });
+      setIsCreatingSystem(
+        Boolean(asset.systemName && !asset.systemId),
+      );
+      setIsCreatingSubsystem(
+        Boolean(asset.subsystemName && !asset.subsystemId),
+      );
     } else {
       setForm(emptyForm);
+      setIsCreatingSystem(false);
+      setIsCreatingSubsystem(false);
     }
 
     setTagError("");
     setNameError("");
+    setSystemError("");
+    setSubsystemError("");
     setSubmitError("");
   }, [isOpen, asset]);
 
@@ -69,6 +107,18 @@ function AssetModal({
   }
 
   const isEditing = asset !== null;
+  const systemSelectValue = isCreatingSystem
+    ? NEW_OPTION
+    : form.systemId ?? "";
+  const subsystemSelectValue = isCreatingSubsystem
+    ? NEW_OPTION
+    : form.subsystemId ?? "";
+
+  function clearSubmitError() {
+    if (submitError) {
+      setSubmitError("");
+    }
+  }
 
   function handleClose() {
     if (isSubmitting) {
@@ -78,6 +128,88 @@ function AssetModal({
     onClose();
   }
 
+  function handleSystemChange(value: string) {
+    setSystemError("");
+    setSubsystemError("");
+    clearSubmitError();
+
+    if (value === NEW_OPTION) {
+      setIsCreatingSystem(true);
+      setIsCreatingSubsystem(false);
+      setForm((current) => ({
+        ...current,
+        systemId: null,
+        subsystemId: null,
+        systemName: "",
+        subsystemName: "",
+      }));
+      return;
+    }
+
+    if (!value) {
+      setIsCreatingSystem(false);
+      setIsCreatingSubsystem(false);
+      setForm((current) => ({
+        ...current,
+        systemId: null,
+        subsystemId: null,
+        systemName: "",
+        subsystemName: "",
+      }));
+      return;
+    }
+
+    const selectedSystem = systems.find(
+      (system) => system.id === value,
+    );
+
+    setIsCreatingSystem(false);
+    setIsCreatingSubsystem(false);
+    setForm((current) => ({
+      ...current,
+      systemId: value,
+      subsystemId: null,
+      systemName: selectedSystem?.name ?? "",
+      subsystemName: "",
+    }));
+  }
+
+  function handleSubsystemChange(value: string) {
+    setSubsystemError("");
+    clearSubmitError();
+
+    if (value === NEW_OPTION) {
+      setIsCreatingSubsystem(true);
+      setForm((current) => ({
+        ...current,
+        subsystemId: null,
+        subsystemName: "",
+      }));
+      return;
+    }
+
+    if (!value) {
+      setIsCreatingSubsystem(false);
+      setForm((current) => ({
+        ...current,
+        subsystemId: null,
+        subsystemName: "",
+      }));
+      return;
+    }
+
+    const selectedSubsystem = availableSubsystems.find(
+      (subsystem) => subsystem.id === value,
+    );
+
+    setIsCreatingSubsystem(false);
+    setForm((current) => ({
+      ...current,
+      subsystemId: value,
+      subsystemName: selectedSubsystem?.name ?? "",
+    }));
+  }
+
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -85,6 +217,8 @@ function AssetModal({
 
     const tag = form.tag.trim();
     const name = form.name.trim();
+    const systemName = form.systemName.trim();
+    const subsystemName = form.subsystemName.trim();
 
     let hasError = false;
 
@@ -98,6 +232,16 @@ function AssetModal({
       hasError = true;
     }
 
+    if (isCreatingSystem && !systemName) {
+      setSystemError("System name is required.");
+      hasError = true;
+    }
+
+    if (isCreatingSubsystem && !subsystemName) {
+      setSubsystemError("Subsystem name is required.");
+      hasError = true;
+    }
+
     if (hasError) {
       return;
     }
@@ -107,7 +251,13 @@ function AssetModal({
 
     try {
       await onSave({
-        systemName: form.systemName.trim(),
+        systemId: isCreatingSystem ? null : form.systemId,
+        subsystemId:
+          isCreatingSystem || isCreatingSubsystem
+            ? null
+            : form.subsystemId,
+        systemName,
+        subsystemName,
         tag,
         name,
         assetType: form.assetType.trim(),
@@ -136,7 +286,6 @@ function AssetModal({
         aria-modal="true"
         aria-labelledby="asset-modal-title"
       >
-
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <h2
@@ -145,12 +294,12 @@ function AssetModal({
             >
               {isEditing ? "Edit asset" : "Create asset"}
             </h2>
+
             <div className="asset-form-row">
               <label className="form-field">
                 <span>
                   Tag <strong>*</strong>
                 </span>
-
                 <input
                   autoFocus
                   type="text"
@@ -168,9 +317,7 @@ function AssetModal({
                       setTagError("");
                     }
 
-                    if (submitError) {
-                      setSubmitError("");
-                    }
+                    clearSubmitError();
                   }}
                 />
 
@@ -183,18 +330,18 @@ function AssetModal({
 
               <label className="form-field">
                 <span>Asset type</span>
-
                 <input
                   type="text"
                   value={form.assetType}
                   disabled={isSubmitting}
                   placeholder="Centrifugal pump"
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setForm((current) => ({
                       ...current,
                       assetType: event.target.value,
-                    }))
-                  }
+                    }));
+                    clearSubmitError();
+                  }}
                 />
               </label>
             </div>
@@ -203,7 +350,6 @@ function AssetModal({
               <span>
                 Asset name <strong>*</strong>
               </span>
-
               <input
                 type="text"
                 value={form.name}
@@ -220,9 +366,7 @@ function AssetModal({
                     setNameError("");
                   }
 
-                  if (submitError) {
-                    setSubmitError("");
-                  }
+                  clearSubmitError();
                 }}
               />
 
@@ -236,68 +380,159 @@ function AssetModal({
             <div className="asset-form-row">
               <label className="form-field">
                 <span>System</span>
-
-                <input
-                  type="text"
-                  value={form.systemName}
+                <select
+                  value={systemSelectValue}
                   disabled={isSubmitting}
-                  placeholder="Feedwater System"
+                  className={systemError ? "input-error" : ""}
                   onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      systemName: event.target.value,
-                    }))
+                    handleSystemChange(event.target.value)
                   }
-                />
+                >
+                  <option value="">No system</option>
+                  {systems.map((system) => (
+                    <option key={system.id} value={system.id}>
+                      {system.name}
+                    </option>
+                  ))}
+                  <option value={NEW_OPTION}>New system…</option>
+                </select>
+
+                {isCreatingSystem && (
+                  <input
+                    type="text"
+                    value={form.systemName}
+                    disabled={isSubmitting}
+                    className={systemError ? "input-error" : ""}
+                    placeholder="Cooling Water"
+                    onChange={(event) => {
+                      setForm((current) => ({
+                        ...current,
+                        systemName: event.target.value,
+                      }));
+                      setSystemError("");
+                      clearSubmitError();
+                    }}
+                  />
+                )}
+
+                {systemError && (
+                  <small className="field-error">
+                    {systemError}
+                  </small>
+                )}
               </label>
 
               <label className="form-field">
-                <span>Status</span>
+                <span>Subsystem</span>
+                {isCreatingSystem ? (
+                  <input
+                    type="text"
+                    value={form.subsystemName}
+                    disabled={isSubmitting}
+                    placeholder="Main Pumps"
+                    onChange={(event) => {
+                      setForm((current) => ({
+                        ...current,
+                        subsystemName: event.target.value,
+                      }));
+                      setSubsystemError("");
+                      clearSubmitError();
+                    }}
+                  />
+                ) : (
+                  <>
+                    <select
+                      value={subsystemSelectValue}
+                      disabled={isSubmitting || !form.systemId}
+                      className={subsystemError ? "input-error" : ""}
+                      onChange={(event) =>
+                        handleSubsystemChange(event.target.value)
+                      }
+                    >
+                      <option value="">
+                        {form.systemId
+                          ? "No subsystem"
+                          : "Select a system first"}
+                      </option>
+                      {availableSubsystems.map((subsystem) => (
+                        <option
+                          key={subsystem.id}
+                          value={subsystem.id}
+                        >
+                          {subsystem.name}
+                        </option>
+                      ))}
+                      {form.systemId && (
+                        <option value={NEW_OPTION}>
+                          New subsystem…
+                        </option>
+                      )}
+                    </select>
 
-                <select
-                  value={form.status}
-                  disabled={isSubmitting}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      status:
-                        event.target.value as AssetStatus,
-                    }))
-                  }
-                >
-                  <option value="not_started">
-                    Not started
-                  </option>
+                    {isCreatingSubsystem && (
+                      <input
+                        type="text"
+                        value={form.subsystemName}
+                        disabled={isSubmitting}
+                        className={
+                          subsystemError ? "input-error" : ""
+                        }
+                        placeholder="Main Pumps"
+                        onChange={(event) => {
+                          setForm((current) => ({
+                            ...current,
+                            subsystemName: event.target.value,
+                          }));
+                          setSubsystemError("");
+                          clearSubmitError();
+                        }}
+                      />
+                    )}
+                  </>
+                )}
 
-                  <option value="in_progress">
-                    In progress
-                  </option>
-
-                  <option value="completed">
-                    Completed
-                  </option>
-
-                  <option value="blocked">
-                    Blocked
-                  </option>
-                </select>
+                {subsystemError && (
+                  <small className="field-error">
+                    {subsystemError}
+                  </small>
+                )}
               </label>
             </div>
 
             <label className="form-field">
-              <span>Description</span>
+              <span>Status</span>
+              <select
+                value={form.status}
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  setForm((current) => ({
+                    ...current,
+                    status: event.target.value as AssetStatus,
+                  }));
+                  clearSubmitError();
+                }}
+              >
+                <option value="not_started">Not started</option>
+                <option value="in_progress">In progress</option>
+                <option value="completed">Completed</option>
+                <option value="blocked">Blocked</option>
+              </select>
+            </label>
 
+            <label className="form-field">
+              <span>Description</span>
               <textarea
                 rows={4}
                 value={form.description}
                 disabled={isSubmitting}
                 placeholder="Optional equipment or commissioning notes"
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((current) => ({
                     ...current,
                     description: event.target.value,
-                  }))
-                }
+                  }));
+                  clearSubmitError();
+                }}
               />
             </label>
 
@@ -317,7 +552,6 @@ function AssetModal({
             >
               Cancel
             </button>
-
             <button
               className="primary-button"
               type="submit"

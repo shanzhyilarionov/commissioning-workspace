@@ -7,7 +7,10 @@ export type AssetStatus =
 export interface Asset {
   id: string;
   projectId: string;
+  systemId: string | null;
+  subsystemId: string | null;
   systemName: string;
+  subsystemName: string;
   tag: string;
   name: string;
   assetType: string;
@@ -18,7 +21,10 @@ export interface Asset {
 }
 
 export interface AssetInput {
+  systemId: string | null;
+  subsystemId: string | null;
   systemName: string;
+  subsystemName: string;
   tag: string;
   name: string;
   assetType: string;

@@ -1,16 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AssetModal from "../components/AssetModal";
-import FixedHeaderTable from "../components/FixedHeaderTable";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import FixedHeaderTable from "../components/FixedHeaderTable";
 import {
   createAsset,
   deleteAsset,
   listAssetsByProject,
   updateAsset,
 } from "../repositories/assetRepository";
-import type { Asset, AssetInput, AssetStatus } from "../types/asset";
+import {
+  listSubsystemsByProject,
+  listSystemsByProject,
+} from "../repositories/systemRepository";
+import type {
+  Asset,
+  AssetInput,
+  AssetStatus,
+} from "../types/asset";
 import type { Project } from "../types/project";
+import type {
+  CommissioningSystem,
+  Subsystem,
+} from "../types/system";
+import "./DocumentsPage.css";
 
 interface AssetsPageProps {
   currentProject: Project;
@@ -31,6 +44,14 @@ function formatAssetStatus(status: AssetStatus) {
   }
 }
 
+function formatAssetStructure(asset: Asset) {
+  if (asset.systemName && asset.subsystemName) {
+    return `${asset.systemName} / ${asset.subsystemName}`;
+  }
+
+  return asset.systemName || "—";
+}
+
 function sortAssets(assets: Asset[]) {
   return [...assets].sort((first, second) => {
     const systemComparison = first.systemName.localeCompare(
@@ -43,6 +64,16 @@ function sortAssets(assets: Asset[]) {
       return systemComparison;
     }
 
+    const subsystemComparison = first.subsystemName.localeCompare(
+      second.subsystemName,
+      undefined,
+      { sensitivity: "base" },
+    );
+
+    if (subsystemComparison !== 0) {
+      return subsystemComparison;
+    }
+
     return first.tag.localeCompare(second.tag, undefined, {
       sensitivity: "base",
       numeric: true,
@@ -52,9 +83,13 @@ function sortAssets(assets: Asset[]) {
 
 function AssetsPage({ currentProject }: AssetsPageProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [systems, setSystems] = useState<CommissioningSystem[]>([]);
+  const [subsystems, setSubsystems] = useState<Subsystem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [systemFilter, setSystemFilter] = useState("all");
+  const [subsystemFilter, setSubsystemFilter] = useState("all");
   const [statusFilter, setStatusFilter] =
     useState<AssetStatusFilter>("all");
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
@@ -96,15 +131,22 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadAssets() {
+    async function loadProjectAssets() {
       setIsLoading(true);
       setLoadError(null);
 
       try {
-        const storedAssets = await listAssetsByProject(currentProject.id);
+        const [storedAssets, storedSystems, storedSubsystems] =
+          await Promise.all([
+            listAssetsByProject(currentProject.id),
+            listSystemsByProject(currentProject.id),
+            listSubsystemsByProject(currentProject.id),
+          ]);
 
         if (!cancelled) {
           setAssets(sortAssets(storedAssets));
+          setSystems(storedSystems);
+          setSubsystems(storedSubsystems);
         }
       } catch (error) {
         if (!cancelled) {
@@ -122,43 +164,97 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     }
 
     setSearchQuery("");
+    setSystemFilter("all");
+    setSubsystemFilter("all");
     setStatusFilter("all");
     setEditingAsset(null);
     setIsAssetModalOpen(false);
     setAssetToDelete(null);
     setAssetDeleteError(null);
     setOpenMenuAssetId(null);
-    void loadAssets();
+    void loadProjectAssets();
 
     return () => {
       cancelled = true;
     };
   }, [currentProject.id]);
 
+  const availableSubsystemFilters = useMemo(() => {
+    if (systemFilter === "unassigned") {
+      return [];
+    }
+
+    if (systemFilter === "all") {
+      return subsystems;
+    }
+
+    return subsystems.filter(
+      (subsystem) => subsystem.systemId === systemFilter,
+    );
+  }, [subsystems, systemFilter]);
+
+  const subsystemFilterDisabled =
+    systemFilter === "unassigned" ||
+    availableSubsystemFilters.length === 0;
+
+  useEffect(() => {
+    if (
+      subsystemFilter !== "all" &&
+      subsystemFilter !== "unassigned" &&
+      !availableSubsystemFilters.some(
+        (subsystem) => subsystem.id === subsystemFilter,
+      )
+    ) {
+      setSubsystemFilter("all");
+    }
+  }, [availableSubsystemFilters, subsystemFilter]);
+
   const filteredAssets = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     return assets.filter((asset) => {
+      const matchesSystem =
+        systemFilter === "all" ||
+        (systemFilter === "unassigned"
+          ? asset.systemId === null
+          : asset.systemId === systemFilter);
+
+      const matchesSubsystem =
+        subsystemFilter === "all" ||
+        (subsystemFilter === "unassigned"
+          ? asset.subsystemId === null
+          : asset.subsystemId === subsystemFilter);
+
       const matchesStatus =
         statusFilter === "all" || asset.status === statusFilter;
+
       const searchableText = [
         asset.tag,
         asset.name,
         asset.systemName,
+        asset.subsystemName,
         asset.assetType,
       ]
         .join(" ")
         .toLowerCase();
 
       return (
+        matchesSystem &&
+        matchesSubsystem &&
         matchesStatus &&
         (normalizedQuery.length === 0 ||
           searchableText.includes(normalizedQuery))
       );
     });
-  }, [assets, searchQuery, statusFilter]);
+  }, [
+    assets,
+    searchQuery,
+    statusFilter,
+    subsystemFilter,
+    systemFilter,
+  ]);
 
-    function handleCreateAsset() {
+  function handleCreateAsset() {
     setOpenMenuAssetId(null);
     setEditingAsset(null);
     setIsAssetModalOpen(true);
@@ -173,6 +269,16 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
   function handleCloseAssetModal() {
     setIsAssetModalOpen(false);
     setEditingAsset(null);
+  }
+
+  async function refreshStructureOptions() {
+    const [storedSystems, storedSubsystems] = await Promise.all([
+      listSystemsByProject(currentProject.id),
+      listSubsystemsByProject(currentProject.id),
+    ]);
+
+    setSystems(storedSystems);
+    setSubsystems(storedSubsystems);
   }
 
   async function handleSaveAsset(input: AssetInput): Promise<void> {
@@ -191,6 +297,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
       setAssets((current) => sortAssets([...current, createdAsset]));
     }
 
+    await refreshStructureOptions();
     handleCloseAssetModal();
   }
 
@@ -215,7 +322,6 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     }
 
     const asset = assetToDelete;
-
     setIsDeletingAsset(true);
     setAssetDeleteError(null);
 
@@ -270,18 +376,68 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
           </div>
         </div>
 
-        <div className="assets-toolbar">
+        <div className="documents-toolbar">
           <input
-            className="asset-search-input"
+            className="document-search-input"
             type="search"
             value={searchQuery}
-            placeholder="Search tag, name, system, or type"
+            placeholder="Search tag, name, system, subsystem, or type"
             aria-label="Search assets"
             onChange={(event) => setSearchQuery(event.target.value)}
           />
 
           <select
-            className="asset-status-filter"
+            className="document-filter document-category-filter"
+            value={systemFilter}
+            aria-label="Filter assets by system"
+            onChange={(event) => {
+              setSystemFilter(event.target.value);
+              setSubsystemFilter("all");
+            }}
+          >
+            <option value="all">All systems</option>
+            <option value="unassigned">No system</option>
+            {systems.map((system) => (
+              <option key={system.id} value={system.id}>
+                {system.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="document-filter document-status-filter"
+            value={subsystemFilter}
+            aria-label="Filter assets by subsystem"
+            disabled={subsystemFilterDisabled}
+            onChange={(event) => setSubsystemFilter(event.target.value)}
+          >
+            <option value="all">
+              {systemFilter === "unassigned"
+                ? "Not available"
+                : availableSubsystemFilters.length === 0
+                  ? "No subsystems"
+                  : "All subsystems"}
+            </option>
+            {!subsystemFilterDisabled && (
+              <option value="unassigned">No subsystem</option>
+            )}
+            {availableSubsystemFilters.map((subsystem) => {
+              const parentSystem = systems.find(
+                (system) => system.id === subsystem.systemId,
+              );
+
+              return (
+                <option key={subsystem.id} value={subsystem.id}>
+                  {systemFilter === "all" && parentSystem
+                    ? `${parentSystem.name} / ${subsystem.name}`
+                    : subsystem.name}
+                </option>
+              );
+            })}
+          </select>
+
+          <select
+            className="document-filter document-asset-filter"
             value={statusFilter}
             aria-label="Filter assets by status"
             onChange={(event) =>
@@ -303,7 +459,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             New asset
           </button>
 
-          <span className="asset-result-count">
+          <span className="document-result-count">
             {filteredAssets.length} of {assets.length}
           </span>
         </div>
@@ -317,7 +473,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
         ) : filteredAssets.length === 0 ? (
           <div className="empty-state compact">
             <h3>No matching assets</h3>
-            <p>Change the search text or status filter.</p>
+            <p>Change the search text or filters.</p>
           </div>
         ) : (
           <FixedHeaderTable
@@ -326,81 +482,79 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             ariaLabel="Assets"
             header={
               <tr>
-                                <th>Tag</th>
-                                <th>Name</th>
-                                <th>System</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Updated</th>
-                                <th aria-label="Asset actions" />
-                              </tr>
+                <th>Tag</th>
+                <th>Name</th>
+                <th>System</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Updated</th>
+                <th aria-label="Asset actions" />
+              </tr>
             }
             body={
               <>
                 {filteredAssets.map((asset) => (
-                                  <tr key={asset.id}>
-                                    <td>
-                                      <strong className="asset-tag">{asset.tag}</strong>
-                                    </td>
-                                    <td>{asset.name}</td>
-                                    <td>{asset.systemName || "—"}</td>
-                                    <td>{asset.assetType || "—"}</td>
-                                    <td className="status-cell">
-                                      <span className={`status-badge ${asset.status}`}>
-                                        {formatAssetStatus(asset.status)}
-                                      </span>
-                                    </td>
-                                    <td className="project-updated-cell">
-                                      {new Date(asset.updatedAt).toLocaleDateString("en-CA")}
-                                    </td>
-                                    <td className="table-action-cell">
-                                      <div className="project-row-actions">
-                                        <button
-                                          className="row-action-button"
-                                          type="button"
-                                          onClick={() => handleEditAsset(asset)}
-                                        >
-                                          Edit
-                                        </button>
-
-                                        <div className="project-action-menu">
-                                          <button
-                                            className="more-actions-button"
-                                            type="button"
-                                            aria-label={`More actions for ${asset.tag}`}
-                                            aria-haspopup="menu"
-                                            aria-expanded={openMenuAssetId === asset.id}
-                                            onClick={() =>
-                                              setOpenMenuAssetId((current) =>
-                                                current === asset.id ? null : asset.id,
-                                              )
-                                            }
-                                          >
-                                            ⋯
-                                          </button>
-
-                                          {openMenuAssetId === asset.id && (
-                                            <div
-                                              className="project-action-menu-panel"
-                                              role="menu"
-                                            >
-                                              <button
-                                                className="project-menu-item danger"
-                                                type="button"
-                                                role="menuitem"
-                                                onClick={() =>
-                                                  handleRequestDeleteAsset(asset)
-                                                }
-                                              >
-                                                Delete asset
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
+                  <tr key={asset.id}>
+                    <td>
+                      <strong className="asset-tag">{asset.tag}</strong>
+                    </td>
+                    <td>{asset.name}</td>
+                    <td>{formatAssetStructure(asset)}</td>
+                    <td>{asset.assetType || "—"}</td>
+                    <td className="status-cell">
+                      <span className={`status-badge ${asset.status}`}>
+                        {formatAssetStatus(asset.status)}
+                      </span>
+                    </td>
+                    <td className="project-updated-cell">
+                      {new Date(asset.updatedAt).toLocaleDateString("en-CA")}
+                    </td>
+                    <td className="table-action-cell">
+                      <div className="project-row-actions">
+                        <button
+                          className="row-action-button"
+                          type="button"
+                          onClick={() => handleEditAsset(asset)}
+                        >
+                          Edit
+                        </button>
+                        <div className="project-action-menu">
+                          <button
+                            className="more-actions-button"
+                            type="button"
+                            aria-label={`More actions for ${asset.tag}`}
+                            aria-haspopup="menu"
+                            aria-expanded={openMenuAssetId === asset.id}
+                            onClick={() =>
+                              setOpenMenuAssetId((current) =>
+                                current === asset.id ? null : asset.id,
+                              )
+                            }
+                          >
+                            ⋯
+                          </button>
+                          {openMenuAssetId === asset.id && (
+                            <div
+                              className="project-action-menu-panel"
+                              role="menu"
+                            >
+                              <button
+                                className="project-menu-item danger"
+                                type="button"
+                                role="menuitem"
+                                onClick={() =>
+                                  handleRequestDeleteAsset(asset)
+                                }
+                              >
+                                Delete asset
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </>
             }
           />
@@ -410,6 +564,8 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
       <AssetModal
         isOpen={isAssetModalOpen}
         asset={editingAsset}
+        systems={systems}
+        subsystems={subsystems}
         onClose={handleCloseAssetModal}
         onSave={handleSaveAsset}
       />

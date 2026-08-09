@@ -1,4 +1,5 @@
 import { getDatabase } from "../services/database";
+import { resolveAssetStructure } from "./systemRepository";
 import type {
   Asset,
   AssetInput,
@@ -8,7 +9,10 @@ import type {
 interface AssetRow {
   id: string;
   project_id: string;
+  system_id: string | null;
+  subsystem_id: string | null;
   system_name: string;
+  subsystem_name: string;
   tag: string;
   name: string;
   asset_type: string;
@@ -22,7 +26,10 @@ function mapAssetRow(row: AssetRow): Asset {
   return {
     id: row.id,
     projectId: row.project_id,
+    systemId: row.system_id,
+    subsystemId: row.subsystem_id,
     systemName: row.system_name,
+    subsystemName: row.subsystem_name,
     tag: row.tag,
     name: row.name,
     assetType: row.asset_type,
@@ -37,22 +44,28 @@ async function getAssetById(
   assetId: string,
 ): Promise<Asset> {
   const database = await getDatabase();
-
   const rows = await database.select<AssetRow[]>(
     `
       SELECT
-        id,
-        project_id,
-        system_name,
-        tag,
-        name,
-        asset_type,
-        status,
-        description,
-        created_at,
-        updated_at
+        assets.id,
+        assets.project_id,
+        assets.system_id,
+        assets.subsystem_id,
+        COALESCE(systems.name, assets.system_name) AS system_name,
+        COALESCE(subsystems.name, '') AS subsystem_name,
+        assets.tag,
+        assets.name,
+        assets.asset_type,
+        assets.status,
+        assets.description,
+        assets.created_at,
+        assets.updated_at
       FROM assets
-      WHERE id = $1
+      LEFT JOIN systems
+        ON systems.id = assets.system_id
+      LEFT JOIN subsystems
+        ON subsystems.id = assets.subsystem_id
+      WHERE assets.id = $1
       LIMIT 1
     `,
     [assetId],
@@ -73,7 +86,6 @@ async function assertTagAvailable(
   excludedAssetId?: string,
 ): Promise<void> {
   const database = await getDatabase();
-
   const rows = excludedAssetId
     ? await database.select<{ id: string }[]>(
         `
@@ -108,25 +120,32 @@ export async function listAssetsByProject(
   projectId: string,
 ): Promise<Asset[]> {
   const database = await getDatabase();
-
   const rows = await database.select<AssetRow[]>(
     `
       SELECT
-        id,
-        project_id,
-        system_name,
-        tag,
-        name,
-        asset_type,
-        status,
-        description,
-        created_at,
-        updated_at
+        assets.id,
+        assets.project_id,
+        assets.system_id,
+        assets.subsystem_id,
+        COALESCE(systems.name, assets.system_name) AS system_name,
+        COALESCE(subsystems.name, '') AS subsystem_name,
+        assets.tag,
+        assets.name,
+        assets.asset_type,
+        assets.status,
+        assets.description,
+        assets.created_at,
+        assets.updated_at
       FROM assets
-      WHERE project_id = $1
+      LEFT JOIN systems
+        ON systems.id = assets.system_id
+      LEFT JOIN subsystems
+        ON subsystems.id = assets.subsystem_id
+      WHERE assets.project_id = $1
       ORDER BY
-        system_name COLLATE NOCASE,
-        tag COLLATE NOCASE
+        COALESCE(systems.name, assets.system_name) COLLATE NOCASE,
+        COALESCE(subsystems.name, '') COLLATE NOCASE,
+        assets.tag COLLATE NOCASE
     `,
     [projectId],
   );
@@ -140,13 +159,23 @@ export async function createAsset(
 ): Promise<Asset> {
   await assertTagAvailable(projectId, input.tag);
 
+  const { system, subsystem } = await resolveAssetStructure(
+    projectId,
+    input.systemId,
+    input.systemName,
+    input.subsystemId,
+    input.subsystemName,
+  );
+
   const database = await getDatabase();
   const timestamp = new Date().toISOString();
-
   const asset: Asset = {
     id: crypto.randomUUID(),
     projectId,
-    systemName: input.systemName,
+    systemId: system?.id ?? null,
+    subsystemId: subsystem?.id ?? null,
+    systemName: system?.name ?? "",
+    subsystemName: subsystem?.name ?? "",
     tag: input.tag,
     name: input.name,
     assetType: input.assetType,
@@ -161,6 +190,8 @@ export async function createAsset(
       INSERT INTO assets (
         id,
         project_id,
+        system_id,
+        subsystem_id,
         system_name,
         tag,
         name,
@@ -180,12 +211,16 @@ export async function createAsset(
         $7,
         $8,
         $9,
-        $10
+        $10,
+        $11,
+        $12
       )
     `,
     [
       asset.id,
       asset.projectId,
+      asset.systemId,
+      asset.subsystemId,
       asset.systemName,
       asset.tag,
       asset.name,
@@ -212,6 +247,14 @@ export async function updateAsset(
     assetId,
   );
 
+  const { system, subsystem } = await resolveAssetStructure(
+    existingAsset.projectId,
+    input.systemId,
+    input.systemName,
+    input.subsystemId,
+    input.subsystemName,
+  );
+
   const database = await getDatabase();
   const updatedAt = new Date().toISOString();
 
@@ -219,17 +262,21 @@ export async function updateAsset(
     `
       UPDATE assets
       SET
-        system_name = $1,
-        tag = $2,
-        name = $3,
-        asset_type = $4,
-        status = $5,
-        description = $6,
-        updated_at = $7
-      WHERE id = $8
+        system_id = $1,
+        subsystem_id = $2,
+        system_name = $3,
+        tag = $4,
+        name = $5,
+        asset_type = $6,
+        status = $7,
+        description = $8,
+        updated_at = $9
+      WHERE id = $10
     `,
     [
-      input.systemName,
+      system?.id ?? null,
+      subsystem?.id ?? null,
+      system?.name ?? "",
       input.tag,
       input.name,
       input.assetType,
@@ -242,7 +289,10 @@ export async function updateAsset(
 
   return {
     ...existingAsset,
-    systemName: input.systemName,
+    systemId: system?.id ?? null,
+    subsystemId: subsystem?.id ?? null,
+    systemName: system?.name ?? "",
+    subsystemName: subsystem?.name ?? "",
     tag: input.tag,
     name: input.name,
     assetType: input.assetType,
