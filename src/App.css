@@ -441,6 +441,7 @@ select {
 
 .primary-button,
 .secondary-button,
+.complete-button,
 .danger-button {
   border-radius: 7px;
   font-size: 12px;
@@ -466,6 +467,26 @@ select {
 .primary-button:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+.complete-button {
+  padding: 8px 13px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  background: #357a45;
+  border: 1px solid #357a45;
+}
+
+.complete-button:hover:not(:disabled) {
+  color: #ffffff;
+  background: #2f6c3d;
+  border-color: #2f6c3d;
+}
+
+.complete-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(53 122 69 / 14%);
 }
 
 .toolbar-primary-button {
@@ -1096,6 +1117,7 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .primary-button:disabled,
 .secondary-button:disabled,
+.complete-button:disabled,
 .danger-button:disabled,
 .row-action-button:disabled,
 .more-actions-button:disabled,
@@ -2560,4 +2582,158 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .test-record-detail-page .test-record-items-toolbar {
   border-bottom: 0;
+}
+.assets-toolbar .asset-toolbar-actions {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.assets-toolbar .asset-toolbar-actions .toolbar-primary-button {
+  width: auto;
+  min-width: 0;
+  flex: 0 0 auto;
+  grid-area: auto;
+}
+
+@media (max-width: 1200px) {
+  .documents-toolbar.assets-toolbar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) max-content;
+    grid-template-areas:
+      "search search search search"
+      "category status asset actions"
+      "count count count count";
+  }
+
+  .documents-toolbar.assets-toolbar > .asset-toolbar-actions {
+    grid-area: actions;
+    justify-self: end;
+  }
+
+  .documents-toolbar.assets-toolbar
+    > .asset-toolbar-actions
+    > .toolbar-primary-button {
+    width: auto;
+    min-width: 0;
+    grid-column: auto;
+    grid-row: auto;
+    grid-area: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .documents-toolbar.assets-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      "search search search"
+      "category status asset"
+      "actions actions actions"
+      "count count count";
+  }
+
+  .documents-toolbar.assets-toolbar > .asset-toolbar-actions {
+    width: max-content;
+    max-width: 100%;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 680px) {
+  .documents-toolbar.assets-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "search"
+      "category"
+      "status"
+      "asset"
+      "actions"
+      "count";
+  }
+
+  .documents-toolbar.assets-toolbar > .asset-toolbar-actions {
+    width: 100%;
+  }
+
+  .documents-toolbar.assets-toolbar
+    > .asset-toolbar-actions
+    > .toolbar-primary-button {
+    flex: 1 1 0;
+  }
+}
+
+/* System / subsystem management toolbar */
+.assets-toolbar.structure-toolbar {
+  display: flex !important;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.assets-toolbar.structure-toolbar > .structure-search-input {
+  order: 1;
+  width: 360px;
+  min-width: 160px;
+  max-width: 360px;
+  flex: 0 1 360px;
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+.assets-toolbar.structure-toolbar > .structure-toolbar-actions {
+  order: 2;
+  display: flex;
+  width: auto !important;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-self: auto !important;
+  gap: 10px;
+  margin: 0 !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+.assets-toolbar.structure-toolbar > .asset-result-count,
+.assets-toolbar.structure-toolbar > .structure-result-count {
+  order: 3;
+  flex: 0 0 auto;
+  margin-left: 0 !important;
+  justify-self: auto !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  white-space: nowrap;
+}
+
+.assets-toolbar.structure-toolbar
+  > .structure-toolbar-actions
+  > .toolbar-primary-button {
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 0 0 auto;
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+@media (max-width: 680px) {
+  .assets-toolbar.structure-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .assets-toolbar.structure-toolbar > .structure-search-input {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .assets-toolbar.structure-toolbar > .structure-toolbar-actions {
+    width: auto !important;
+  }
 }

@@ -17,3 +17,12 @@ export interface Subsystem {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface StructureInput {
+  code: string;
+  name: string;
+  description: string;
+}
+
+export type SystemInput = StructureInput;
+export type SubsystemInput = StructureInput;

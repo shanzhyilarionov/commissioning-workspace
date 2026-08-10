@@ -1,0 +1,11 @@
+.asset-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.asset-toolbar-actions .toolbar-primary-button {
+  flex: 0 0 auto;
+}

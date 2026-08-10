@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-
 import AssetModal from "../components/AssetModal";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
@@ -23,6 +22,7 @@ import type {
   CommissioningSystem,
   Subsystem,
 } from "../types/system";
+import SystemManagementPage from "./SystemManagementPage";
 import "./DocumentsPage.css";
 
 interface AssetsPageProps {
@@ -100,6 +100,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     useState<string | null>(null);
   const [openMenuAssetId, setOpenMenuAssetId] =
     useState<string | null>(null);
+  const [isManagingSystems, setIsManagingSystems] = useState(false);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -172,6 +173,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     setAssetToDelete(null);
     setAssetDeleteError(null);
     setOpenMenuAssetId(null);
+    setIsManagingSystems(false);
     void loadProjectAssets();
 
     return () => {
@@ -281,10 +283,22 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     setSubsystems(storedSubsystems);
   }
 
+  async function refreshProjectStructureData() {
+    const [storedAssets, storedSystems, storedSubsystems] =
+      await Promise.all([
+        listAssetsByProject(currentProject.id),
+        listSystemsByProject(currentProject.id),
+        listSubsystemsByProject(currentProject.id),
+      ]);
+
+    setAssets(sortAssets(storedAssets));
+    setSystems(storedSystems);
+    setSubsystems(storedSubsystems);
+  }
+
   async function handleSaveAsset(input: AssetInput): Promise<void> {
     if (editingAsset) {
       const updatedAsset = await updateAsset(editingAsset.id, input);
-
       setAssets((current) =>
         sortAssets(
           current.map((asset) =>
@@ -363,6 +377,19 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     );
   }
 
+  if (isManagingSystems) {
+    return (
+      <SystemManagementPage
+        currentProject={currentProject}
+        assets={assets}
+        systems={systems}
+        subsystems={subsystems}
+        onBack={() => setIsManagingSystems(false)}
+        onStructureChanged={refreshProjectStructureData}
+      />
+    );
+  }
+
   return (
     <>
       <section className="content-card section-card assets-card">
@@ -376,7 +403,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
           </div>
         </div>
 
-        <div className="documents-toolbar">
+        <div className="documents-toolbar assets-toolbar">
           <input
             className="document-search-input"
             type="search"
@@ -385,7 +412,6 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             aria-label="Search assets"
             onChange={(event) => setSearchQuery(event.target.value)}
           />
-
           <select
             className="document-filter document-category-filter"
             value={systemFilter}
@@ -403,7 +429,6 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
               </option>
             ))}
           </select>
-
           <select
             className="document-filter document-status-filter"
             value={subsystemFilter}
@@ -435,7 +460,6 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
               );
             })}
           </select>
-
           <select
             className="document-filter document-asset-filter"
             value={statusFilter}
@@ -450,14 +474,25 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
             <option value="completed">Completed</option>
             <option value="blocked">Blocked</option>
           </select>
-
-          <button
-            className="primary-button toolbar-primary-button"
-            type="button"
-            onClick={handleCreateAsset}
-          >
-            New asset
-          </button>
+          <div className="asset-toolbar-actions">
+            <button
+              className="secondary-button toolbar-primary-button"
+              type="button"
+              onClick={() => {
+                setOpenMenuAssetId(null);
+                setIsManagingSystems(true);
+              }}
+            >
+              Manage systems
+            </button>
+            <button
+              className="primary-button toolbar-primary-button"
+              type="button"
+              onClick={handleCreateAsset}
+            >
+              New asset
+            </button>
+          </div>
 
           <span className="document-result-count">
             {filteredAssets.length} of {assets.length}

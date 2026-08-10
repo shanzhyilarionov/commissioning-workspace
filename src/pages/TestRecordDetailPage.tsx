@@ -693,7 +693,7 @@ function TestRecordDetailPage({
               </button>
             ) : (
               <button
-                className="primary-button toolbar-primary-button"
+                className="complete-button toolbar-primary-button"
                 type="button"
                 disabled={isLoading}
                 onClick={() => {
