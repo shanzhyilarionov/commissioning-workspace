@@ -55,7 +55,7 @@ const reportRecordSelect = `
     test_records.asset_id,
     assets.tag AS asset_tag,
     assets.name AS asset_name,
-    assets.system_name AS asset_system_name,
+    COALESCE(systems.name, assets.system_name) AS asset_system_name,
     test_records.title,
     test_records.record_type,
     test_records.description,
@@ -93,6 +93,8 @@ const reportRecordSelect = `
   FROM test_records
   LEFT JOIN assets
     ON assets.id = test_records.asset_id
+  LEFT JOIN systems
+    ON systems.id = assets.system_id
 `;
 
 function mapReportRecordRow(row: ReportRecordRow): ReportRecordSummary {

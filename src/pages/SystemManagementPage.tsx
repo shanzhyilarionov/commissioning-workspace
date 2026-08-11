@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import StructureEditorModal from "../components/StructureEditorModal";
@@ -10,6 +10,7 @@ import {
   updateSubsystem,
   updateSystem,
 } from "../repositories/systemRepository";
+import { getProjectStructureProgress } from "../repositories/systemProgressRepository";
 import type { Asset } from "../types/asset";
 import type { Project } from "../types/project";
 import type {
@@ -17,6 +18,11 @@ import type {
   StructureInput,
   Subsystem,
 } from "../types/system";
+import type {
+  CommissioningReadiness,
+  ProjectStructureProgress,
+  StructureProgress,
+} from "../types/systemProgress";
 import "./SystemManagementPage.css";
 
 interface SystemManagementPageProps {
@@ -25,6 +31,7 @@ interface SystemManagementPageProps {
   systems: CommissioningSystem[];
   subsystems: Subsystem[];
   onBack: () => void;
+  onViewAssets: (systemId: string | null, subsystemId?: string) => void;
   onStructureChanged: () => Promise<void>;
 }
 
@@ -50,12 +57,85 @@ type DeleteTarget =
     }
   | null;
 
+function formatReadiness(readiness: CommissioningReadiness): string {
+  switch (readiness) {
+    case "not_started":
+      return "Not started";
+    case "in_progress":
+      return "In progress";
+    case "blocked":
+      return "Blocked";
+    case "ready":
+      return "Ready";
+  }
+}
+
+function getProgressDescription(progress: StructureProgress): string {
+  const executionProgress =
+    progress.testItemTotal > 0
+      ? `${progress.testItemCompleted} of ${progress.testItemTotal} test items executed`
+      : `${progress.assetCompleted} of ${progress.assetTotal} assets completed`;
+
+  return [
+    executionProgress,
+    `${progress.testRecordCompleted} of ${progress.testRecordTotal} records signed off`,
+    `${progress.testItemFailed} failed test items`,
+    `${progress.activeIssueTotal} active issues`,
+  ].join(" · ");
+}
+
+function StructureProgressCell({
+  progress,
+}: {
+  progress: StructureProgress | null;
+}) {
+  if (!progress) {
+    return <span className="structure-progress-unavailable">—</span>;
+  }
+
+  return (
+    <div
+      className="structure-progress"
+      title={getProgressDescription(progress)}
+    >
+      <div
+        className="structure-progress-track"
+        role="progressbar"
+        aria-label="Commissioning progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress.completionPercent}
+      >
+        <span style={{ width: `${progress.completionPercent}%` }} />
+      </div>
+      <strong>{progress.completionPercent}%</strong>
+    </div>
+  );
+}
+
+function StructureStatusCell({
+  progress,
+}: {
+  progress: StructureProgress | null;
+}) {
+  if (!progress) {
+    return <span className="structure-progress-unavailable">—</span>;
+  }
+
+  return (
+    <span className={`status-badge ${progress.readiness}`}>
+      {formatReadiness(progress.readiness)}
+    </span>
+  );
+}
+
 function SystemManagementPage({
   currentProject,
   assets,
   systems,
   subsystems,
   onBack,
+  onViewAssets,
   onStructureChanged,
 }: SystemManagementPageProps) {
   const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
@@ -65,6 +145,30 @@ function SystemManagementPage({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [projectProgress, setProjectProgress] =
+    useState<ProjectStructureProgress | null>(null);
+  const [progressError, setProgressError] = useState<string | null>(null);
+
+  const refreshProgress = useCallback(async () => {
+    setProgressError(null);
+
+    try {
+      const progress = await getProjectStructureProgress(currentProject.id);
+      setProjectProgress(progress);
+    } catch (error) {
+      setProjectProgress(null);
+      setProgressError(
+        error instanceof Error
+          ? error.message
+          : "Failed to calculate commissioning progress.",
+      );
+    }
+  }, [currentProject.id]);
+
+  useEffect(() => {
+    setProjectProgress(null);
+    void refreshProgress();
+  }, [refreshProgress]);
 
   const selectedSystem =
     systems.find((system) => system.id === selectedSystemId) ?? null;
@@ -143,6 +247,30 @@ function SystemManagementPage({
     );
   }, [searchQuery, selectedSubsystems]);
 
+  const systemProgressById = useMemo(() => {
+    const progressById = new Map<string, StructureProgress>();
+
+    for (const progress of projectProgress?.systems ?? []) {
+      if (progress.structureId) {
+        progressById.set(progress.structureId, progress);
+      }
+    }
+
+    return progressById;
+  }, [projectProgress]);
+
+  const subsystemProgressById = useMemo(() => {
+    const progressById = new Map<string, StructureProgress>();
+
+    for (const progress of projectProgress?.subsystems ?? []) {
+      if (progress.structureId) {
+        progressById.set(progress.structureId, progress);
+      }
+    }
+
+    return progressById;
+  }, [projectProgress]);
+
   function countSystemAssets(systemId: string) {
     return assets.filter((asset) => asset.systemId === systemId).length;
   }
@@ -192,6 +320,7 @@ function SystemManagementPage({
     }
 
     await onStructureChanged();
+    await refreshProgress();
     setEditorTarget(null);
   }
 
@@ -231,6 +360,7 @@ function SystemManagementPage({
       }
 
       await onStructureChanged();
+      await refreshProgress();
       setDeleteTarget(null);
     } catch (error) {
       setDeleteError(
@@ -336,6 +466,12 @@ function SystemManagementPage({
             </div>
           </div>
 
+          {progressError && (
+            <div className="structure-progress-error" role="alert">
+              {progressError}
+            </div>
+          )}
+
           {selectedSubsystems.length === 0 ? (
             <div className="empty-state">
               <h3>No subsystems yet</h3>
@@ -356,6 +492,9 @@ function SystemManagementPage({
                   <th>Code</th>
                   <th>Subsystem</th>
                   <th>Description</th>
+                  <th>Progress</th>
+                  <th>Status</th>
+                  <th>Issues</th>
                   <th>Assets</th>
                   <th aria-label="Subsystem actions" />
                 </tr>
@@ -374,6 +513,24 @@ function SystemManagementPage({
                       </td>
                       <td className="structure-description-cell">
                         {subsystem.description || "—"}
+                      </td>
+                      <td className="structure-progress-cell">
+                        <StructureProgressCell
+                          progress={
+                            subsystemProgressById.get(subsystem.id) ?? null
+                          }
+                        />
+                      </td>
+                      <td className="status-cell">
+                        <StructureStatusCell
+                          progress={
+                            subsystemProgressById.get(subsystem.id) ?? null
+                          }
+                        />
+                      </td>
+                      <td className="structure-count-cell">
+                        {subsystemProgressById.get(subsystem.id)
+                          ?.activeIssueTotal ?? "—"}
                       </td>
                       <td className="structure-count-cell">
                         {countSubsystemAssets(subsystem.id)}
@@ -412,6 +569,19 @@ function SystemManagementPage({
                                 className="project-action-menu-panel"
                                 role="menu"
                               >
+                                <button
+                                  className="project-menu-item"
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() =>
+                                    onViewAssets(
+                                      selectedSystem.id,
+                                      subsystem.id,
+                                    )
+                                  }
+                                >
+                                  View assets
+                                </button>
                                 <button
                                   className="project-menu-item danger"
                                   type="button"
@@ -517,6 +687,33 @@ function SystemManagementPage({
           </div>
         </div>
 
+        {progressError && (
+          <div className="structure-progress-error" role="alert">
+            {progressError}
+          </div>
+        )}
+
+        {projectProgress && projectProgress.unassigned.assetTotal > 0 && (
+          <div className="structure-unassigned-summary">
+            <div className="structure-unassigned-copy">
+              <strong>Unassigned assets</strong>
+              <span>
+                {projectProgress.unassigned.assetTotal} assets are not assigned
+                to a system.
+              </span>
+            </div>
+            <StructureProgressCell progress={projectProgress.unassigned} />
+            <StructureStatusCell progress={projectProgress.unassigned} />
+            <button
+              className="secondary-button structure-view-assets-button"
+              type="button"
+              onClick={() => onViewAssets(null)}
+            >
+              View assets
+            </button>
+          </div>
+        )}
+
         {systems.length === 0 ? (
           <div className="empty-state">
             <h3>No systems yet</h3>
@@ -537,6 +734,9 @@ function SystemManagementPage({
                 <th>Code</th>
                 <th>System</th>
                 <th>Description</th>
+                <th>Progress</th>
+                <th>Status</th>
+                <th>Issues</th>
                 <th>Subsystems</th>
                 <th>Assets</th>
                 <th aria-label="System actions" />
@@ -554,6 +754,20 @@ function SystemManagementPage({
                     </td>
                     <td className="structure-description-cell">
                       {system.description || "—"}
+                    </td>
+                    <td className="structure-progress-cell">
+                      <StructureProgressCell
+                        progress={systemProgressById.get(system.id) ?? null}
+                      />
+                    </td>
+                    <td className="status-cell">
+                      <StructureStatusCell
+                        progress={systemProgressById.get(system.id) ?? null}
+                      />
+                    </td>
+                    <td className="structure-count-cell">
+                      {systemProgressById.get(system.id)?.activeIssueTotal ??
+                        "—"}
                     </td>
                     <td className="structure-count-cell">
                       {countSystemSubsystems(system.id)}
@@ -599,6 +813,14 @@ function SystemManagementPage({
                               className="project-action-menu-panel"
                               role="menu"
                             >
+                              <button
+                                className="project-menu-item"
+                                type="button"
+                                role="menuitem"
+                                onClick={() => onViewAssets(system.id)}
+                              >
+                                View assets
+                              </button>
                               <button
                                 className="project-menu-item danger"
                                 type="button"

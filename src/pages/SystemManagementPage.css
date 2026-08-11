@@ -47,30 +47,45 @@
 }
 
 .structure-systems-table {
-  --table-min-width: 760px;
-  --table-min-width-value: 760;
-  --table-fixed-side-count: 8;
+  --table-min-width: 942px;
+  --table-min-width-value: 942;
+  --table-fixed-side-count: 14;
   --table-grid-columns:
     calc(
-      86px +
+      72px +
       var(--table-fixed-padding-x) +
       var(--table-fixed-padding-x)
     )
     minmax(
       calc(
-        120px +
+        110px +
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.1fr
+      1.05fr
     )
     minmax(
       calc(
-        140px +
+        130px +
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.5fr
+      1.3fr
+    )
+    calc(
+      118px +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      74px +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      42px +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
     )
     calc(
       72px +
@@ -90,14 +105,22 @@
 }
 
 .structure-subsystems-table {
-  --table-min-width: 650px;
-  --table-min-width-value: 650;
-  --table-fixed-side-count: 6;
+  --table-min-width: 813px;
+  --table-min-width-value: 813;
+  --table-fixed-side-count: 12;
   --table-grid-columns:
     calc(
-      96px +
+      72px +
       var(--table-fixed-padding-x) +
       var(--table-fixed-padding-x)
+    )
+    minmax(
+      calc(
+        120px +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.05fr
     )
     minmax(
       calc(
@@ -105,15 +128,22 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.15fr
+      1.25fr
     )
-    minmax(
-      calc(
-        160px +
-        var(--table-user-padding-x) +
-        var(--table-user-padding-x)
-      ),
-      1.45fr
+    calc(
+      118px +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      74px +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      42px +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
     )
     calc(
       46px +
@@ -127,8 +157,27 @@
     );
 }
 
-.structure-systems-table tr > :is(:nth-child(1), :nth-child(4), :nth-child(5), :nth-child(6)),
-.structure-subsystems-table tr > :is(:nth-child(1), :nth-child(4), :nth-child(5)) {
+.structure-systems-table
+  tr
+  > :is(
+    :nth-child(1),
+    :nth-child(4),
+    :nth-child(5),
+    :nth-child(6),
+    :nth-child(7),
+    :nth-child(8),
+    :nth-child(9)
+  ),
+.structure-subsystems-table
+  tr
+  > :is(
+    :nth-child(1),
+    :nth-child(4),
+    :nth-child(5),
+    :nth-child(6),
+    :nth-child(7),
+    :nth-child(8)
+  ) {
   padding-inline: var(--table-fixed-padding-x);
   white-space: nowrap;
 }
@@ -162,6 +211,102 @@
 .structure-count-cell {
   justify-content: center;
   text-align: center;
+}
+
+.structure-progress-cell {
+  min-width: 0;
+}
+
+.structure-progress {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.structure-progress strong {
+  width: 34px;
+  flex: 0 0 34px;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.structure-progress-track {
+  position: relative;
+  height: 5px;
+  min-width: 32px;
+  flex: 1;
+  overflow: hidden;
+  background: #e1e3e5;
+  border-radius: 999px;
+}
+
+.structure-progress-track > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 0;
+  background: var(--gold);
+  border-radius: inherit;
+}
+
+.structure-progress-unavailable {
+  color: var(--text-muted);
+}
+
+.system-management-card .status-badge.ready {
+  color: var(--status-positive);
+}
+
+.structure-progress-error {
+  flex: 0 0 auto;
+  padding: 8px 22px;
+  color: var(--status-negative);
+  font-size: 11px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.structure-unassigned-summary {
+  display: grid;
+  min-width: 0;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(150px, 1fr) 150px 84px auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 22px;
+  background: var(--secondary-background);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.structure-unassigned-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.structure-unassigned-copy strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.structure-unassigned-copy span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structure-view-assets-button {
+  min-width: 0;
+  height: 30px;
+  padding: 0 12px;
+  white-space: nowrap;
 }
 
 .structure-editor-modal {
@@ -257,5 +402,24 @@
   .structure-toolbar-actions .toolbar-primary-button {
     min-width: 0;
     flex: 1 1 0;
+  }
+
+  .structure-unassigned-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+  }
+
+  .structure-unassigned-summary > .structure-progress {
+    grid-column: 1;
+  }
+
+  .structure-unassigned-summary > .status-badge {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .structure-view-assets-button {
+    grid-column: 2;
+    grid-row: 1;
   }
 }

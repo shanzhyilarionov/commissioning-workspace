@@ -296,6 +296,17 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     setSubsystems(storedSubsystems);
   }
 
+  function handleViewStructureAssets(
+    systemId: string | null,
+    subsystemId?: string,
+  ) {
+    setSearchQuery("");
+    setSystemFilter(systemId ?? "unassigned");
+    setSubsystemFilter(subsystemId ?? "all");
+    setStatusFilter("all");
+    setIsManagingSystems(false);
+  }
+
   async function handleSaveAsset(input: AssetInput): Promise<void> {
     if (editingAsset) {
       const updatedAsset = await updateAsset(editingAsset.id, input);
@@ -385,6 +396,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
         systems={systems}
         subsystems={subsystems}
         onBack={() => setIsManagingSystems(false)}
+        onViewAssets={handleViewStructureAssets}
         onStructureChanged={refreshProjectStructureData}
       />
     );

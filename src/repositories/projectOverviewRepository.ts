@@ -381,10 +381,10 @@ export async function getProjectOverview(
           'blocked_asset' AS attention_type,
           assets.tag || ' — ' || assets.name AS title,
           CASE
-            WHEN assets.system_name = '' THEN
+            WHEN COALESCE(systems.name, assets.system_name) = '' THEN
               'Blocked asset'
             ELSE
-              assets.system_name || ' · Blocked asset'
+              COALESCE(systems.name, assets.system_name) || ' · Blocked asset'
           END AS detail,
           assets.status AS status,
           assets.updated_at AS updated_at,
@@ -393,6 +393,8 @@ export async function getProjectOverview(
           NULL AS parent_id,
           NULL AS parent_title
         FROM assets
+        LEFT JOIN systems
+          ON systems.id = assets.system_id
         WHERE assets.project_id = $1
           AND assets.status = 'blocked'
       ) AS attention_items
