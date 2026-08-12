@@ -724,6 +724,280 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 10,
+            description: "create_turnover_packages_and_expand_document_categories",
+            sql: r#"
+                ALTER TABLE project_documents
+                    RENAME TO project_documents_legacy;
+
+                CREATE TABLE project_documents (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    asset_id TEXT,
+                    title TEXT NOT NULL,
+                    category TEXT NOT NULL DEFAULT 'other'
+                        CHECK (
+                            category IN (
+                                'drawing',
+                                'specification',
+                                'datasheet',
+                                'manual',
+                                'procedure',
+                                'certificate',
+                                'test_record',
+                                'report',
+                                'other'
+                            )
+                        ),
+                    revision TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'draft'
+                        CHECK (
+                            status IN (
+                                'draft',
+                                'for_review',
+                                'approved',
+                                'superseded'
+                            )
+                        ),
+                    required_for_readiness INTEGER NOT NULL DEFAULT 0
+                        CHECK (required_for_readiness IN (0, 1)),
+                    original_file_name TEXT NOT NULL,
+                    stored_path TEXT NOT NULL UNIQUE,
+                    mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+                    file_size INTEGER NOT NULL DEFAULT 0,
+                    notes TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE,
+
+                    FOREIGN KEY (asset_id)
+                        REFERENCES assets(id)
+                        ON DELETE SET NULL
+                );
+
+                INSERT INTO project_documents (
+                    id,
+                    project_id,
+                    asset_id,
+                    title,
+                    category,
+                    revision,
+                    status,
+                    required_for_readiness,
+                    original_file_name,
+                    stored_path,
+                    mime_type,
+                    file_size,
+                    notes,
+                    created_at,
+                    updated_at
+                )
+                SELECT
+                    id,
+                    project_id,
+                    asset_id,
+                    title,
+                    category,
+                    revision,
+                    status,
+                    required_for_readiness,
+                    original_file_name,
+                    stored_path,
+                    mime_type,
+                    file_size,
+                    notes,
+                    created_at,
+                    updated_at
+                FROM project_documents_legacy;
+
+                DROP TABLE project_documents_legacy;
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_project_id
+                ON project_documents(project_id);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_project_status
+                ON project_documents(project_id, status);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_project_category
+                ON project_documents(project_id, category);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_asset_id
+                ON project_documents(asset_id);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_required_readiness
+                ON project_documents(project_id, required_for_readiness, status);
+
+                CREATE TABLE IF NOT EXISTS turnover_packages (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    scope_kind TEXT NOT NULL
+                        CHECK (scope_kind IN ('system', 'subsystem')),
+                    scope_id TEXT NOT NULL,
+                    scope_code TEXT NOT NULL DEFAULT '',
+                    scope_name TEXT NOT NULL,
+                    package_number TEXT NOT NULL COLLATE NOCASE,
+                    revision TEXT NOT NULL COLLATE NOCASE,
+                    status TEXT NOT NULL DEFAULT 'draft'
+                        CHECK (status IN ('draft', 'final')),
+                    stage_at_generation TEXT NOT NULL
+                        CHECK (
+                            stage_at_generation IN (
+                                'not_started',
+                                'in_progress',
+                                'ready',
+                                'commissioned',
+                                'handed_over'
+                            )
+                        ),
+                    blocker_count INTEGER NOT NULL DEFAULT 0,
+                    forced_transition_count INTEGER NOT NULL DEFAULT 0,
+                    prepared_by TEXT NOT NULL,
+                    approved_by TEXT NOT NULL DEFAULT '',
+                    notes TEXT NOT NULL DEFAULT '',
+                    snapshot_json TEXT NOT NULL,
+                    generated_at TEXT NOT NULL,
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE,
+
+                    UNIQUE (project_id, package_number, revision)
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_turnover_packages_project_generated
+                ON turnover_packages(project_id, generated_at DESC);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_turnover_packages_scope
+                ON turnover_packages(project_id, scope_kind, scope_id);
+            "#,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 11,
+            description: "add_turnover_package_void_lifecycle",
+            sql: r#"
+                ALTER TABLE turnover_packages
+                    RENAME TO turnover_packages_legacy;
+
+                CREATE TABLE turnover_packages (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    scope_kind TEXT NOT NULL
+                        CHECK (scope_kind IN ('system', 'subsystem')),
+                    scope_id TEXT NOT NULL,
+                    scope_code TEXT NOT NULL DEFAULT '',
+                    scope_name TEXT NOT NULL,
+                    package_number TEXT NOT NULL COLLATE NOCASE,
+                    revision TEXT NOT NULL COLLATE NOCASE,
+                    status TEXT NOT NULL DEFAULT 'draft'
+                        CHECK (status IN ('draft', 'final', 'void')),
+                    stage_at_generation TEXT NOT NULL
+                        CHECK (
+                            stage_at_generation IN (
+                                'not_started',
+                                'in_progress',
+                                'ready',
+                                'commissioned',
+                                'handed_over'
+                            )
+                        ),
+                    blocker_count INTEGER NOT NULL DEFAULT 0,
+                    forced_transition_count INTEGER NOT NULL DEFAULT 0,
+                    prepared_by TEXT NOT NULL,
+                    approved_by TEXT NOT NULL DEFAULT '',
+                    notes TEXT NOT NULL DEFAULT '',
+                    snapshot_json TEXT NOT NULL,
+                    generated_at TEXT NOT NULL,
+                    voided_at TEXT,
+                    void_reason TEXT NOT NULL DEFAULT '',
+
+                    CHECK (
+                        (
+                            status = 'void'
+                            AND voided_at IS NOT NULL
+                            AND trim(void_reason) <> ''
+                        )
+                        OR
+                        (
+                            status IN ('draft', 'final')
+                            AND voided_at IS NULL
+                            AND trim(void_reason) = ''
+                        )
+                    ),
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE,
+
+                    UNIQUE (project_id, package_number, revision)
+                );
+
+                INSERT INTO turnover_packages (
+                    id,
+                    project_id,
+                    scope_kind,
+                    scope_id,
+                    scope_code,
+                    scope_name,
+                    package_number,
+                    revision,
+                    status,
+                    stage_at_generation,
+                    blocker_count,
+                    forced_transition_count,
+                    prepared_by,
+                    approved_by,
+                    notes,
+                    snapshot_json,
+                    generated_at,
+                    voided_at,
+                    void_reason
+                )
+                SELECT
+                    id,
+                    project_id,
+                    scope_kind,
+                    scope_id,
+                    scope_code,
+                    scope_name,
+                    package_number,
+                    revision,
+                    status,
+                    stage_at_generation,
+                    blocker_count,
+                    forced_transition_count,
+                    prepared_by,
+                    approved_by,
+                    notes,
+                    snapshot_json,
+                    generated_at,
+                    NULL,
+                    ''
+                FROM turnover_packages_legacy;
+
+                DROP TABLE turnover_packages_legacy;
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_turnover_packages_project_generated
+                ON turnover_packages(project_id, generated_at DESC);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_turnover_packages_scope
+                ON turnover_packages(project_id, scope_kind, scope_id);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
