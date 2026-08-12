@@ -18,6 +18,8 @@ import type {
   AssetStatus,
 } from "../types/asset";
 import type { Project } from "../types/project";
+import type { ProjectAttentionItem } from "../types/projectOverview";
+import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
 import type {
   CommissioningSystem,
   Subsystem,
@@ -27,9 +29,18 @@ import "./DocumentsPage.css";
 
 interface AssetsPageProps {
   currentProject: Project;
+  attentionItem?: ProjectAttentionItem | null;
+  onNavigate: (
+    page: AttentionDestinationPage,
+    item?: ProjectAttentionItem,
+  ) => void;
 }
 
 type AssetStatusFilter = "all" | AssetStatus;
+
+interface StructureAssetsReturnTarget {
+  systemId: string | null;
+}
 
 function formatAssetStatus(status: AssetStatus) {
   switch (status) {
@@ -81,7 +92,11 @@ function sortAssets(assets: Asset[]) {
   });
 }
 
-function AssetsPage({ currentProject }: AssetsPageProps) {
+function AssetsPage({
+  currentProject,
+  attentionItem = null,
+  onNavigate,
+}: AssetsPageProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [systems, setSystems] = useState<CommissioningSystem[]>([]);
   const [subsystems, setSubsystems] = useState<Subsystem[]>([]);
@@ -101,6 +116,32 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
   const [openMenuAssetId, setOpenMenuAssetId] =
     useState<string | null>(null);
   const [isManagingSystems, setIsManagingSystems] = useState(false);
+  const [structureAssetsReturnTarget, setStructureAssetsReturnTarget] =
+    useState<StructureAssetsReturnTarget | null>(null);
+
+  useEffect(() => {
+    if (!attentionItem) {
+      return;
+    }
+
+    if (attentionItem.type === "system_readiness") {
+      setStructureAssetsReturnTarget(null);
+      setIsManagingSystems(true);
+      return;
+    }
+
+    if (
+      attentionItem.type === "blocked_asset" ||
+      attentionItem.type === "incomplete_asset"
+    ) {
+      setSearchQuery("");
+      setSystemFilter("all");
+      setSubsystemFilter("all");
+      setStatusFilter("all");
+      setStructureAssetsReturnTarget(null);
+      setIsManagingSystems(false);
+    }
+  }, [attentionItem]);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -173,7 +214,8 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
     setAssetToDelete(null);
     setAssetDeleteError(null);
     setOpenMenuAssetId(null);
-    setIsManagingSystems(false);
+    setStructureAssetsReturnTarget(null);
+    setIsManagingSystems(attentionItem?.type === "system_readiness");
     void loadProjectAssets();
 
     return () => {
@@ -299,11 +341,25 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
   function handleViewStructureAssets(
     systemId: string | null,
     subsystemId?: string,
+    returnSystemId?: string,
   ) {
     setSearchQuery("");
     setSystemFilter(systemId ?? "unassigned");
     setSubsystemFilter(subsystemId ?? "all");
     setStatusFilter("all");
+    setStructureAssetsReturnTarget({
+      systemId: returnSystemId ?? null,
+    });
+    setIsManagingSystems(false);
+  }
+
+  function handleBackToStructure() {
+    setOpenMenuAssetId(null);
+    setIsManagingSystems(true);
+  }
+
+  function handleLeaveStructureManagement() {
+    setStructureAssetsReturnTarget(null);
     setIsManagingSystems(false);
   }
 
@@ -395,8 +451,10 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
         assets={assets}
         systems={systems}
         subsystems={subsystems}
-        onBack={() => setIsManagingSystems(false)}
+        initialSystemId={structureAssetsReturnTarget?.systemId ?? null}
+        onBack={handleLeaveStructureManagement}
         onViewAssets={handleViewStructureAssets}
+        onNavigate={onNavigate}
         onStructureChanged={refreshProjectStructureData}
       />
     );
@@ -407,6 +465,18 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
       <section className="content-card section-card assets-card">
         <div className="projects-header">
           <div>
+            {structureAssetsReturnTarget && (
+              <button
+                className="back-navigation-button"
+                type="button"
+                onClick={handleBackToStructure}
+              >
+                <span aria-hidden="true">←</span>
+                {structureAssetsReturnTarget.systemId
+                  ? "Back to Subsystems"
+                  : "Back to Systems"}
+              </button>
+            )}
             <h3>Assets</h3>
             <p>
               Manage equipment and commissioning status for{" "}
@@ -492,6 +562,7 @@ function AssetsPage({ currentProject }: AssetsPageProps) {
               type="button"
               onClick={() => {
                 setOpenMenuAssetId(null);
+                setStructureAssetsReturnTarget(null);
                 setIsManagingSystems(true);
               }}
             >

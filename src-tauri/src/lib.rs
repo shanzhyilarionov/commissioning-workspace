@@ -646,6 +646,84 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 9,
+            description: "add_readiness_and_turnover_workflow",
+            sql: r#"
+                ALTER TABLE systems
+                    ADD COLUMN commissioning_stage TEXT NOT NULL
+                    DEFAULT 'not_started'
+                    CHECK (
+                        commissioning_stage IN (
+                            'not_started',
+                            'in_progress',
+                            'ready',
+                            'commissioned',
+                            'handed_over'
+                        )
+                    );
+
+                ALTER TABLE subsystems
+                    ADD COLUMN commissioning_stage TEXT NOT NULL
+                    DEFAULT 'not_started'
+                    CHECK (
+                        commissioning_stage IN (
+                            'not_started',
+                            'in_progress',
+                            'ready',
+                            'commissioned',
+                            'handed_over'
+                        )
+                    );
+
+                ALTER TABLE project_documents
+                    ADD COLUMN required_for_readiness INTEGER NOT NULL
+                    DEFAULT 0
+                    CHECK (required_for_readiness IN (0, 1));
+
+                CREATE TABLE IF NOT EXISTS readiness_stage_records (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    system_id TEXT,
+                    subsystem_id TEXT,
+                    from_stage TEXT NOT NULL,
+                    to_stage TEXT NOT NULL,
+                    recorded_by TEXT NOT NULL,
+                    reason TEXT NOT NULL DEFAULT '',
+                    is_forced INTEGER NOT NULL DEFAULT 0
+                        CHECK (is_forced IN (0, 1)),
+                    blocker_count INTEGER NOT NULL DEFAULT 0,
+                    blockers_json TEXT NOT NULL DEFAULT '[]',
+                    created_at TEXT NOT NULL,
+
+                    CHECK (
+                        (system_id IS NOT NULL AND subsystem_id IS NULL)
+                        OR
+                        (system_id IS NULL AND subsystem_id IS NOT NULL)
+                    ),
+
+                    FOREIGN KEY (system_id)
+                        REFERENCES systems(id)
+                        ON DELETE CASCADE,
+
+                    FOREIGN KEY (subsystem_id)
+                        REFERENCES subsystems(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_readiness_stage_records_system
+                ON readiness_stage_records(system_id, created_at DESC);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_readiness_stage_records_subsystem
+                ON readiness_stage_records(subsystem_id, created_at DESC);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_project_documents_required_readiness
+                ON project_documents(project_id, required_for_readiness, status);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

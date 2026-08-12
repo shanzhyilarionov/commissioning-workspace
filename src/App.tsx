@@ -393,7 +393,17 @@ function App() {
           );
         }
 
-        return <AssetsPage currentProject={currentProject} />;
+        return (
+          <AssetsPage
+            currentProject={currentProject}
+            attentionItem={
+              attentionNavigation?.page === "Assets"
+                ? attentionNavigation.item
+                : null
+            }
+            onNavigate={handleOverviewNavigation}
+          />
+        );
 
       case "Checklists & Tests":
         if (!currentProject) {

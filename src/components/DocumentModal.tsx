@@ -27,6 +27,7 @@ const emptyForm: ProjectDocumentInput = {
   category: "other",
   revision: "",
   status: "draft",
+  requiredForReadiness: false,
   notes: "",
 };
 
@@ -66,6 +67,7 @@ function DocumentModal({
         category: document.category,
         revision: document.revision,
         status: document.status,
+        requiredForReadiness: document.requiredForReadiness,
         notes: document.notes,
       });
     } else {
@@ -118,6 +120,7 @@ function DocumentModal({
         category: form.category,
         revision: form.revision.trim(),
         status: form.status,
+        requiredForReadiness: form.requiredForReadiness,
         notes: form.notes.trim(),
       });
     } catch (error) {
@@ -154,6 +157,27 @@ function DocumentModal({
                 {displayedFileName}
               </strong>
             </div>
+
+            <label className="document-readiness-option">
+              <input
+                type="checkbox"
+                checked={form.requiredForReadiness}
+                disabled={isSubmitting}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    requiredForReadiness: event.target.checked,
+                  }))
+                }
+              />
+              <span>
+                <strong>Required for readiness</strong>
+                <small>
+                  When linked to an asset, this document must be approved before
+                  its system or subsystem can be marked ready.
+                </small>
+              </span>
+            </label>
 
             <label className="form-field">
               <span>

@@ -587,6 +587,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                 <th>Category</th>
                 <th>Revision</th>
                 <th>Status</th>
+                <th>Required</th>
                 <th>Asset</th>
                 <th>Size</th>
                 <th>Updated</th>
@@ -620,6 +621,9 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                         >
                           {formatDocumentStatus(document.status)}
                         </span>
+                      </td>
+                      <td className="document-required-cell">
+                        {document.requiredForReadiness ? "Yes" : "—"}
                       </td>
                       <td>
                         {asset

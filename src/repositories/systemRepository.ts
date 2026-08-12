@@ -12,6 +12,7 @@ interface SystemRow {
   code: string;
   name: string;
   description: string;
+  commissioning_stage: CommissioningSystem["stage"];
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +23,7 @@ interface SubsystemRow {
   code: string;
   name: string;
   description: string;
+  commissioning_stage: Subsystem["stage"];
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +35,7 @@ function mapSystemRow(row: SystemRow): CommissioningSystem {
     code: row.code,
     name: row.name,
     description: row.description,
+    stage: row.commissioning_stage,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -45,6 +48,7 @@ function mapSubsystemRow(row: SubsystemRow): Subsystem {
     code: row.code,
     name: row.name,
     description: row.description,
+    stage: row.commissioning_stage,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -70,6 +74,7 @@ async function getSystemById(
         code,
         name,
         description,
+        commissioning_stage,
         created_at,
         updated_at
       FROM systems
@@ -94,6 +99,7 @@ async function getSubsystemById(
         code,
         name,
         description,
+        commissioning_stage,
         created_at,
         updated_at
       FROM subsystems
@@ -119,6 +125,7 @@ async function findSystemByName(
         code,
         name,
         description,
+        commissioning_stage,
         created_at,
         updated_at
       FROM systems
@@ -145,6 +152,7 @@ async function findSubsystemByName(
         code,
         name,
         description,
+        commissioning_stage,
         created_at,
         updated_at
       FROM subsystems
@@ -300,6 +308,7 @@ export async function listSystemsByProject(
         code,
         name,
         description,
+        commissioning_stage,
         created_at,
         updated_at
       FROM systems
@@ -324,6 +333,7 @@ export async function listSubsystemsByProject(
         subsystems.code,
         subsystems.name,
         subsystems.description,
+        subsystems.commissioning_stage,
         subsystems.created_at,
         subsystems.updated_at
       FROM subsystems
@@ -383,6 +393,7 @@ export async function createSystemDetails(
     code: normalizedInput.code,
     name: normalizedInput.name,
     description: normalizedInput.description,
+    stage: "not_started",
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -543,6 +554,7 @@ export async function createSubsystemDetails(
     code: normalizedInput.code,
     name: normalizedInput.name,
     description: normalizedInput.description,
+    stage: "not_started",
     createdAt: timestamp,
     updatedAt: timestamp,
   };

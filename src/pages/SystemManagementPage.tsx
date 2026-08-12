@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ReadinessReviewModal from "../components/ReadinessReviewModal";
 import StructureEditorModal from "../components/StructureEditorModal";
+import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
+import {
+  getStructureReadinessReview,
+  listStructureReadinessSummaries,
+  transitionStructureStage,
+} from "../repositories/readinessRepository";
 import {
   createSubsystemDetails,
   createSystemDetails,
@@ -13,7 +20,16 @@ import {
 import { getProjectStructureProgress } from "../repositories/systemProgressRepository";
 import type { Asset } from "../types/asset";
 import type { Project } from "../types/project";
+import type { ProjectAttentionItem } from "../types/projectOverview";
 import type {
+  ReadinessBlocker,
+  StageTransitionInput,
+  StructureKind,
+  StructureReadinessReview,
+  StructureReadinessSummary,
+} from "../types/readiness";
+import type {
+  CommissioningStage,
   CommissioningSystem,
   StructureInput,
   Subsystem,
@@ -30,8 +46,17 @@ interface SystemManagementPageProps {
   assets: Asset[];
   systems: CommissioningSystem[];
   subsystems: Subsystem[];
+  initialSystemId?: string | null;
   onBack: () => void;
-  onViewAssets: (systemId: string | null, subsystemId?: string) => void;
+  onViewAssets: (
+    systemId: string | null,
+    subsystemId?: string,
+    returnSystemId?: string,
+  ) => void;
+  onNavigate: (
+    page: AttentionDestinationPage,
+    item?: ProjectAttentionItem,
+  ) => void;
   onStructureChanged: () => Promise<void>;
 }
 
@@ -70,62 +95,80 @@ function formatReadiness(readiness: CommissioningReadiness): string {
   }
 }
 
-function getProgressDescription(progress: StructureProgress): string {
-  const executionProgress =
-    progress.testItemTotal > 0
-      ? `${progress.testItemCompleted} of ${progress.testItemTotal} test items executed`
-      : `${progress.assetCompleted} of ${progress.assetTotal} assets completed`;
-
-  return [
-    executionProgress,
-    `${progress.testRecordCompleted} of ${progress.testRecordTotal} records signed off`,
-    `${progress.testItemFailed} failed test items`,
-    `${progress.activeIssueTotal} active issues`,
-  ].join(" · ");
-}
-
-function StructureProgressCell({
-  progress,
-}: {
-  progress: StructureProgress | null;
-}) {
-  if (!progress) {
-    return <span className="structure-progress-unavailable">—</span>;
+function formatStage(stage: CommissioningStage): string {
+  switch (stage) {
+    case "not_started":
+      return "Not started";
+    case "in_progress":
+      return "In progress";
+    case "ready":
+      return "Ready";
+    case "commissioned":
+      return "Commissioned";
+    case "handed_over":
+      return "Handed over";
   }
-
-  return (
-    <div
-      className="structure-progress"
-      title={getProgressDescription(progress)}
-    >
-      <div
-        className="structure-progress-track"
-        role="progressbar"
-        aria-label="Commissioning progress"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress.completionPercent}
-      >
-        <span style={{ width: `${progress.completionPercent}%` }} />
-      </div>
-      <strong>{progress.completionPercent}%</strong>
-    </div>
-  );
 }
 
 function StructureStatusCell({
   progress,
+  blockerCount,
 }: {
   progress: StructureProgress | null;
+  blockerCount?: number;
 }) {
   if (!progress) {
     return <span className="structure-progress-unavailable">—</span>;
   }
 
+  const readiness =
+    blockerCount === undefined
+      ? progress.readiness
+      : progress.assetTotal === 0
+        ? "not_started"
+        : blockerCount === 0
+          ? "ready"
+          : "blocked";
+
   return (
-    <span className={`status-badge ${progress.readiness}`}>
-      {formatReadiness(progress.readiness)}
+    <span className={`status-badge ${readiness}`}>
+      {formatReadiness(readiness)}
     </span>
+  );
+}
+
+function StructureStageCell({ stage }: { stage: CommissioningStage }) {
+  return (
+    <span className={`status-badge structure-stage ${stage}`}>
+      {formatStage(stage)}
+    </span>
+  );
+}
+
+function StructureBlockerButton({
+  count,
+  onClick,
+}: {
+  count: number | undefined;
+  onClick: () => void;
+}) {
+  if (count === undefined) {
+    return <span className="structure-progress-unavailable">—</span>;
+  }
+
+  return (
+    <button
+      className={`structure-blocker-button ${count > 0 ? "blocked" : "clear"}`}
+      type="button"
+      aria-label={
+        count > 0
+          ? `Review ${count} readiness ${count === 1 ? "blocker" : "blockers"}`
+          : "Review readiness"
+      }
+      onClick={onClick}
+    >
+      {count > 0 ? count : "None"}
+    </button>
   );
 }
 
@@ -134,11 +177,15 @@ function SystemManagementPage({
   assets,
   systems,
   subsystems,
+  initialSystemId = null,
   onBack,
   onViewAssets,
+  onNavigate,
   onStructureChanged,
 }: SystemManagementPageProps) {
-  const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
+  const [selectedSystemId, setSelectedSystemId] = useState<string | null>(
+    initialSystemId,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [editorTarget, setEditorTarget] = useState<EditorTarget>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
@@ -148,15 +195,31 @@ function SystemManagementPage({
   const [projectProgress, setProjectProgress] =
     useState<ProjectStructureProgress | null>(null);
   const [progressError, setProgressError] = useState<string | null>(null);
+  const [readinessSummaries, setReadinessSummaries] = useState<
+    StructureReadinessSummary[]
+  >([]);
+  const [reviewTarget, setReviewTarget] = useState<{
+    kind: StructureKind;
+    structureId: string;
+  } | null>(null);
+  const [readinessReview, setReadinessReview] =
+    useState<StructureReadinessReview | null>(null);
+  const [isLoadingReview, setIsLoadingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const refreshProgress = useCallback(async () => {
     setProgressError(null);
 
     try {
-      const progress = await getProjectStructureProgress(currentProject.id);
+      const [progress, summaries] = await Promise.all([
+        getProjectStructureProgress(currentProject.id),
+        listStructureReadinessSummaries(currentProject.id),
+      ]);
       setProjectProgress(progress);
+      setReadinessSummaries(summaries);
     } catch (error) {
       setProjectProgress(null);
+      setReadinessSummaries([]);
       setProgressError(
         error instanceof Error
           ? error.message
@@ -247,18 +310,6 @@ function SystemManagementPage({
     );
   }, [searchQuery, selectedSubsystems]);
 
-  const systemProgressById = useMemo(() => {
-    const progressById = new Map<string, StructureProgress>();
-
-    for (const progress of projectProgress?.systems ?? []) {
-      if (progress.structureId) {
-        progressById.set(progress.structureId, progress);
-      }
-    }
-
-    return progressById;
-  }, [projectProgress]);
-
   const subsystemProgressById = useMemo(() => {
     const progressById = new Map<string, StructureProgress>();
 
@@ -270,6 +321,26 @@ function SystemManagementPage({
 
     return progressById;
   }, [projectProgress]);
+
+  const systemReadinessById = useMemo(
+    () =>
+      new Map(
+        readinessSummaries
+          .filter((summary) => summary.kind === "system")
+          .map((summary) => [summary.structureId, summary]),
+      ),
+    [readinessSummaries],
+  );
+
+  const subsystemReadinessById = useMemo(
+    () =>
+      new Map(
+        readinessSummaries
+          .filter((summary) => summary.kind === "subsystem")
+          .map((summary) => [summary.structureId, summary]),
+      ),
+    [readinessSummaries],
+  );
 
   function countSystemAssets(systemId: string) {
     return assets.filter((asset) => asset.systemId === systemId).length;
@@ -294,6 +365,115 @@ function SystemManagementPage({
     setOpenMenuId(null);
     setSearchQuery("");
     setSelectedSystemId(null);
+  }
+
+  const loadReadinessReview = useCallback(
+    async (target: { kind: StructureKind; structureId: string }) => {
+      setIsLoadingReview(true);
+      setReviewError(null);
+
+      try {
+        const review = await getStructureReadinessReview(
+          target.kind,
+          target.structureId,
+        );
+        setReadinessReview(review);
+      } catch (error) {
+        setReadinessReview(null);
+        setReviewError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load the readiness review.",
+        );
+      } finally {
+        setIsLoadingReview(false);
+      }
+    },
+    [],
+  );
+
+  function handleOpenReadinessReview(
+    kind: StructureKind,
+    structureId: string,
+  ) {
+    const target = { kind, structureId };
+    setOpenMenuId(null);
+    setReviewTarget(target);
+    setReadinessReview(null);
+    void loadReadinessReview(target);
+  }
+
+  function handleCloseReadinessReview() {
+    if (isLoadingReview) {
+      return;
+    }
+
+    setReviewTarget(null);
+    setReadinessReview(null);
+    setReviewError(null);
+  }
+
+  async function handleTransitionStage(input: StageTransitionInput) {
+    if (!reviewTarget) {
+      return;
+    }
+
+    const nextReview = await transitionStructureStage(
+      reviewTarget.kind,
+      reviewTarget.structureId,
+      input,
+    );
+
+    setReadinessReview(nextReview);
+    await onStructureChanged();
+    await refreshProgress();
+  }
+
+  function handleNavigateToBlocker(blocker: ReadinessBlocker) {
+    if (blocker.type === "no_assets" && reviewTarget) {
+      if (reviewTarget.kind === "system") {
+        onViewAssets(
+          reviewTarget.structureId,
+          undefined,
+          selectedSystem?.id,
+        );
+      } else if (selectedSystem) {
+        onViewAssets(
+          selectedSystem.id,
+          reviewTarget.structureId,
+          selectedSystem.id,
+        );
+      }
+
+      setReviewTarget(null);
+      setReadinessReview(null);
+      setReviewError(null);
+      return;
+    }
+
+    if (!blocker.destinationPage) {
+      return;
+    }
+
+    if (!blocker.attentionType || !blocker.targetId) {
+      onNavigate(blocker.destinationPage);
+    } else {
+      onNavigate(blocker.destinationPage, {
+        id: blocker.targetId,
+        type: blocker.attentionType,
+        title: blocker.title,
+        detail: blocker.detail,
+        status: blocker.status,
+        updatedAt: new Date().toISOString(),
+        matchText: blocker.matchText,
+        parentId: blocker.parentId,
+        parentTitle: blocker.parentTitle,
+      });
+    }
+
+    setReviewTarget(null);
+    setReadinessReview(null);
+    setReviewError(null);
   }
 
   async function handleSaveStructure(input: StructureInput) {
@@ -427,6 +607,54 @@ function SystemManagementPage({
                 {selectedSystem.description || "Manage subsystems for this system."}
               </p>
             </div>
+
+            <div
+              className="test-record-page-summary structure-page-summary"
+              aria-label="System overview"
+            >
+              <div className="test-record-page-summary-item">
+                <span>Subsystems</span>
+                <strong>{selectedSubsystems.length}</strong>
+              </div>
+              <button
+                className="test-record-page-summary-item structure-page-summary-action"
+                type="button"
+                aria-label={`View ${countSystemAssets(selectedSystem.id)} assets`}
+                onClick={() =>
+                  onViewAssets(
+                    selectedSystem.id,
+                    undefined,
+                    selectedSystem.id,
+                  )
+                }
+              >
+                <span>Assets</span>
+                <strong>{countSystemAssets(selectedSystem.id)}</strong>
+              </button>
+              <button
+                className="test-record-page-summary-item structure-page-summary-action"
+                type="button"
+                aria-label="Review system readiness"
+                onClick={() =>
+                  handleOpenReadinessReview("system", selectedSystem.id)
+                }
+              >
+                <span>Readiness blockers</span>
+                <strong
+                  className={
+                    systemReadinessById.get(selectedSystem.id)
+                      ? systemReadinessById.get(selectedSystem.id)!.blockerCount >
+                        0
+                        ? "structure-page-summary-value blocked"
+                        : "structure-page-summary-value clear"
+                      : "structure-page-summary-value"
+                  }
+                >
+                  {systemReadinessById.get(selectedSystem.id)?.blockerCount ??
+                    "—"}
+                </strong>
+              </button>
+            </div>
           </div>
 
           <div className="assets-toolbar structure-toolbar">
@@ -492,9 +720,9 @@ function SystemManagementPage({
                   <th>Code</th>
                   <th>Subsystem</th>
                   <th>Description</th>
-                  <th>Progress</th>
-                  <th>Status</th>
-                  <th>Issues</th>
+                  <th>Stage</th>
+                  <th>Readiness</th>
+                  <th>Blockers</th>
                   <th>Assets</th>
                   <th aria-label="Subsystem actions" />
                 </tr>
@@ -514,29 +742,51 @@ function SystemManagementPage({
                       <td className="structure-description-cell">
                         {subsystem.description || "—"}
                       </td>
-                      <td className="structure-progress-cell">
-                        <StructureProgressCell
-                          progress={
-                            subsystemProgressById.get(subsystem.id) ?? null
-                          }
-                        />
+                      <td className="status-cell">
+                        <StructureStageCell stage={subsystem.stage} />
                       </td>
                       <td className="status-cell">
                         <StructureStatusCell
                           progress={
                             subsystemProgressById.get(subsystem.id) ?? null
                           }
+                          blockerCount={
+                            subsystemReadinessById.get(subsystem.id)
+                              ?.blockerCount
+                          }
                         />
                       </td>
                       <td className="structure-count-cell">
-                        {subsystemProgressById.get(subsystem.id)
-                          ?.activeIssueTotal ?? "—"}
+                        <StructureBlockerButton
+                          count={
+                            subsystemReadinessById.get(subsystem.id)
+                              ?.blockerCount
+                          }
+                          onClick={() =>
+                            handleOpenReadinessReview(
+                              "subsystem",
+                              subsystem.id,
+                            )
+                          }
+                        />
                       </td>
                       <td className="structure-count-cell">
                         {countSubsystemAssets(subsystem.id)}
                       </td>
                       <td className="table-action-cell">
                         <div className="project-row-actions">
+                          <button
+                            className="row-action-button"
+                            type="button"
+                            onClick={() =>
+                              handleOpenReadinessReview(
+                                "subsystem",
+                                subsystem.id,
+                              )
+                            }
+                          >
+                            Review
+                          </button>
                           <button
                             className="row-action-button"
                             type="button"
@@ -577,6 +827,7 @@ function SystemManagementPage({
                                     onViewAssets(
                                       selectedSystem.id,
                                       subsystem.id,
+                                      selectedSystem.id,
                                     )
                                   }
                                 >
@@ -637,6 +888,20 @@ function SystemManagementPage({
           onConfirm={() => {
             void handleConfirmDelete();
           }}
+        />
+
+        <ReadinessReviewModal
+          review={readinessReview}
+          isLoading={isLoadingReview}
+          loadError={reviewError}
+          onClose={handleCloseReadinessReview}
+          onRetry={() => {
+            if (reviewTarget) {
+              void loadReadinessReview(reviewTarget);
+            }
+          }}
+          onNavigate={handleNavigateToBlocker}
+          onTransition={handleTransitionStage}
         />
       </>
     );
@@ -702,7 +967,6 @@ function SystemManagementPage({
                 to a system.
               </span>
             </div>
-            <StructureProgressCell progress={projectProgress.unassigned} />
             <StructureStatusCell progress={projectProgress.unassigned} />
             <button
               className="secondary-button structure-view-assets-button"
@@ -734,11 +998,8 @@ function SystemManagementPage({
                 <th>Code</th>
                 <th>System</th>
                 <th>Description</th>
-                <th>Progress</th>
-                <th>Status</th>
-                <th>Issues</th>
-                <th>Subsystems</th>
-                <th>Assets</th>
+                <th>Stage</th>
+                <th>Blockers</th>
                 <th aria-label="System actions" />
               </tr>
             }
@@ -755,25 +1016,18 @@ function SystemManagementPage({
                     <td className="structure-description-cell">
                       {system.description || "—"}
                     </td>
-                    <td className="structure-progress-cell">
-                      <StructureProgressCell
-                        progress={systemProgressById.get(system.id) ?? null}
-                      />
-                    </td>
                     <td className="status-cell">
-                      <StructureStatusCell
-                        progress={systemProgressById.get(system.id) ?? null}
+                      <StructureStageCell stage={system.stage} />
+                    </td>
+                    <td className="structure-count-cell">
+                      <StructureBlockerButton
+                        count={
+                          systemReadinessById.get(system.id)?.blockerCount
+                        }
+                        onClick={() =>
+                          handleOpenReadinessReview("system", system.id)
+                        }
                       />
-                    </td>
-                    <td className="structure-count-cell">
-                      {systemProgressById.get(system.id)?.activeIssueTotal ??
-                        "—"}
-                    </td>
-                    <td className="structure-count-cell">
-                      {countSystemSubsystems(system.id)}
-                    </td>
-                    <td className="structure-count-cell">
-                      {countSystemAssets(system.id)}
                     </td>
                     <td className="table-action-cell">
                       <div className="project-row-actions">
@@ -783,6 +1037,15 @@ function SystemManagementPage({
                           onClick={() => handleOpenSystem(system.id)}
                         >
                           Open
+                        </button>
+                        <button
+                          className="row-action-button"
+                          type="button"
+                          onClick={() =>
+                            handleOpenReadinessReview("system", system.id)
+                          }
+                        >
+                          Review
                         </button>
                         <button
                           className="row-action-button"
@@ -867,6 +1130,20 @@ function SystemManagementPage({
         onConfirm={() => {
           void handleConfirmDelete();
         }}
+      />
+
+      <ReadinessReviewModal
+        review={readinessReview}
+        isLoading={isLoadingReview}
+        loadError={reviewError}
+        onClose={handleCloseReadinessReview}
+        onRetry={() => {
+          if (reviewTarget) {
+            void loadReadinessReview(reviewTarget);
+          }
+        }}
+        onNavigate={handleNavigateToBlocker}
+        onTransition={handleTransitionStage}
       />
     </>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getProjectOverview } from "../repositories/projectOverviewRepository";
+import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
 import type { Project } from "../types/project";
 import type {
   AttentionItemType,
@@ -10,7 +11,7 @@ import type {
 interface ProjectOverviewPageProps {
   currentProject: Project;
   onNavigate: (
-    page: "Assets" | "Checklists & Tests" | "Issues",
+    page: AttentionDestinationPage,
     item?: ProjectAttentionItem,
   ) => void;
   onEditProject: () => void;
@@ -47,19 +48,35 @@ function getAttentionLabel(type: AttentionItemType): string {
       return "Critical issue";
     case "failed_test_item":
       return "Failed test item";
+    case "pending_test_item":
+      return "Pending test item";
+    case "unsigned_test_record":
+      return "Unsigned test record";
     case "blocked_asset":
       return "Blocked asset";
+    case "incomplete_asset":
+      return "Incomplete asset";
+    case "required_document":
+      return "Required document";
+    case "system_readiness":
+      return "System readiness";
   }
 }
 
 function getAttentionTarget(
   type: AttentionItemType,
-): "Assets" | "Checklists & Tests" | "Issues" {
+): AttentionDestinationPage {
   switch (type) {
     case "blocked_asset":
+    case "incomplete_asset":
+    case "system_readiness":
       return "Assets";
     case "failed_test_item":
+    case "pending_test_item":
+    case "unsigned_test_record":
       return "Checklists & Tests";
+    case "required_document":
+      return "Documents";
     case "overdue_issue":
     case "critical_issue":
       return "Issues";
@@ -355,7 +372,7 @@ function ProjectOverviewPage({
                     <strong>No urgent items</strong>
                     <span>
                       No blocked assets, failed tests, critical issues,
-                      or overdue issues were found.
+                      overdue issues, or system readiness blockers were found.
                     </span>
                   </div>
                 ) : (

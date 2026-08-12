@@ -17,6 +17,7 @@ interface ProjectDocumentRow {
   category: DocumentCategory;
   revision: string;
   status: DocumentStatus;
+  required_for_readiness: number;
   original_file_name: string;
   stored_path: string;
   mime_type: string;
@@ -37,6 +38,7 @@ function mapProjectDocumentRow(
     category: row.category,
     revision: row.revision,
     status: row.status,
+    requiredForReadiness: row.required_for_readiness === 1,
     originalFileName: row.original_file_name,
     storedPath: row.stored_path,
     mimeType: row.mime_type,
@@ -61,6 +63,7 @@ async function getProjectDocumentById(
         category,
         revision,
         status,
+        required_for_readiness,
         original_file_name,
         stored_path,
         mime_type,
@@ -98,6 +101,7 @@ export async function listDocumentsByProject(
         category,
         revision,
         status,
+        required_for_readiness,
         original_file_name,
         stored_path,
         mime_type,
@@ -145,6 +149,7 @@ export async function createProjectDocument(
           category,
           revision,
           status,
+          required_for_readiness,
           original_file_name,
           stored_path,
           mime_type,
@@ -167,7 +172,8 @@ export async function createProjectDocument(
           $11,
           $12,
           $13,
-          $14
+          $14,
+          $15
         )
       `,
       [
@@ -178,6 +184,7 @@ export async function createProjectDocument(
         input.category,
         input.revision,
         input.status,
+        input.requiredForReadiness ? 1 : 0,
         importedFile.originalFileName,
         importedFile.storedPath,
         importedFile.mimeType,
@@ -218,9 +225,10 @@ export async function updateProjectDocument(
         category = $3,
         revision = $4,
         status = $5,
-        notes = $6,
-        updated_at = $7
-      WHERE id = $8
+        required_for_readiness = $6,
+        notes = $7,
+        updated_at = $8
+      WHERE id = $9
     `,
     [
       input.assetId,
@@ -228,6 +236,7 @@ export async function updateProjectDocument(
       input.category,
       input.revision,
       input.status,
+      input.requiredForReadiness ? 1 : 0,
       input.notes,
       updatedAt,
       documentId,

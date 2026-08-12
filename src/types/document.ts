@@ -23,6 +23,7 @@ export interface ProjectDocument {
   category: DocumentCategory;
   revision: string;
   status: DocumentStatus;
+  requiredForReadiness: boolean;
   originalFileName: string;
   storedPath: string;
   mimeType: string;
@@ -38,6 +39,7 @@ export interface ProjectDocumentInput {
   category: DocumentCategory;
   revision: string;
   status: DocumentStatus;
+  requiredForReadiness: boolean;
   notes: string;
 }
 

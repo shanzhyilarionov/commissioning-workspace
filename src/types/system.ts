@@ -1,9 +1,17 @@
+export type CommissioningStage =
+  | "not_started"
+  | "in_progress"
+  | "ready"
+  | "commissioned"
+  | "handed_over";
+
 export interface CommissioningSystem {
   id: string;
   projectId: string;
   code: string;
   name: string;
   description: string;
+  stage: CommissioningStage;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +22,7 @@ export interface Subsystem {
   code: string;
   name: string;
   description: string;
+  stage: CommissioningStage;
   createdAt: string;
   updatedAt: string;
 }

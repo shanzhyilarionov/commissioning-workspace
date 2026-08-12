@@ -1,4 +1,5 @@
 import { getDatabase } from "../services/database";
+import { listStructureReadinessSummaries } from "./readinessRepository";
 import type {
   AttentionItemType,
   ProjectAttentionItem,
@@ -277,9 +278,8 @@ export async function getProjectOverview(
     [projectId, today],
   );
 
-  const attentionRows = await database.select<
-    ProjectAttentionItemRow[]
-  >(
+  const [attentionRows, readinessSummaries] = await Promise.all([
+    database.select<ProjectAttentionItemRow[]>(
     `
       SELECT
         id,
@@ -403,8 +403,10 @@ export async function getProjectOverview(
         updated_at DESC
       LIMIT 12
     `,
-    [projectId, today],
-  );
+      [projectId, today],
+    ),
+    listStructureReadinessSummaries(projectId),
+  ]);
 
   const row = overviewRows[0];
 
@@ -415,6 +417,23 @@ export async function getProjectOverview(
   const testItemTotal = toNumber(row.test_item_total);
   const testItemPending = toNumber(row.test_item_pending);
   const testItemCompleted = testItemTotal - testItemPending;
+  const operationalAttentionItems = attentionRows.map(mapAttentionItem);
+  const readinessAttentionItems = readinessSummaries
+    .filter(
+      (summary) =>
+        summary.kind === "system" && summary.blockerCount > 0,
+    )
+    .map<ProjectAttentionItem>((summary) => ({
+      id: summary.structureId,
+      type: "system_readiness",
+      title: summary.name,
+      detail: `${summary.code ? `${summary.code} · ` : ""}${summary.blockerCount} readiness ${summary.blockerCount === 1 ? "blocker" : "blockers"}`,
+      status: "blocked",
+      updatedAt: summary.updatedAt,
+      matchText: summary.name,
+      parentId: null,
+      parentTitle: null,
+    }));
 
   return {
     assets: {
@@ -454,6 +473,9 @@ export async function getProjectOverview(
       resolved: toNumber(row.issue_resolved),
       closed: toNumber(row.issue_closed),
     },
-    attentionItems: attentionRows.map(mapAttentionItem),
+    attentionItems: [
+      ...operationalAttentionItems.slice(0, 8),
+      ...readinessAttentionItems,
+    ].slice(0, 12),
   };
 }

@@ -4,7 +4,8 @@ import type { ProjectAttentionItem } from "../types/projectOverview";
 export type AttentionDestinationPage =
   | "Assets"
   | "Checklists & Tests"
-  | "Issues";
+  | "Issues"
+  | "Documents";
 
 export interface AttentionNavigationRequest {
   requestId: number;
@@ -130,7 +131,8 @@ function AttentionFocusManager({
       }
 
       switch (request.item.type) {
-        case "blocked_asset": {
+        case "blocked_asset":
+        case "incomplete_asset": {
           const row = findRow(
             ".assets-table tbody tr",
             request.item.id,
@@ -157,7 +159,8 @@ function AttentionFocusManager({
           return;
         }
 
-        case "failed_test_item": {
+        case "failed_test_item":
+        case "pending_test_item": {
           const itemRow = findRow(
             ".test-record-items-table tbody tr",
             request.item.id,
@@ -186,6 +189,45 @@ function AttentionFocusManager({
           if (openButton) {
             openedParentRecord = true;
             openButton.click();
+          }
+          return;
+        }
+
+        case "unsigned_test_record": {
+          const row = findRow(
+            ".checklists-tests-table tbody tr",
+            request.item.id,
+            request.item.matchText,
+          );
+
+          if (row) {
+            finish(row);
+          }
+          return;
+        }
+
+        case "required_document": {
+          const row = findRow(
+            ".documents-table tbody tr",
+            request.item.id,
+            request.item.matchText,
+          );
+
+          if (row) {
+            finish(row);
+          }
+          return;
+        }
+
+        case "system_readiness": {
+          const row = findRow(
+            ".structure-systems-table tbody tr",
+            request.item.id,
+            request.item.matchText,
+          );
+
+          if (row) {
+            finish(row);
           }
           return;
         }

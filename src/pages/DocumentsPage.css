@@ -84,9 +84,9 @@
 }
 
 .documents-table {
-  --table-min-width: 820px;
-  --table-min-width-value: 820;
-  --table-fixed-side-count: 12;
+  --table-min-width: 886px;
+  --table-min-width-value: 886;
+  --table-fixed-side-count: 14;
   --table-grid-columns:
     minmax(
       calc(
@@ -108,6 +108,11 @@
     )
     calc(
       74px +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      52px +
       var(--table-fixed-padding-x) +
       var(--table-fixed-padding-x)
     )
@@ -143,9 +148,10 @@
 .documents-table tr > :is(
   :nth-child(2),
   :nth-child(4),
-  :nth-child(6),
+  :nth-child(5),
   :nth-child(7),
-  :nth-child(8)
+  :nth-child(8),
+  :nth-child(9)
 ) {
   padding-inline: var(--table-fixed-padding-x);
   white-space: nowrap;
@@ -195,6 +201,50 @@
 
 .document-modal {
   width: min(620px, 100%);
+}
+
+.document-required-cell {
+  justify-content: center;
+  color: var(--status-warning);
+  font-weight: 600;
+  text-align: center;
+}
+
+.document-readiness-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  background: var(--secondary-background);
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.document-readiness-option > input {
+  width: 15px;
+  height: 15px;
+  margin: 2px 0 0;
+  accent-color: var(--gold);
+}
+
+.document-readiness-option > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.document-readiness-option strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.document-readiness-option small {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 .document-file-summary {

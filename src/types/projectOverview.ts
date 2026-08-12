@@ -2,7 +2,12 @@ export type AttentionItemType =
   | "overdue_issue"
   | "critical_issue"
   | "failed_test_item"
-  | "blocked_asset";
+  | "pending_test_item"
+  | "unsigned_test_record"
+  | "blocked_asset"
+  | "incomplete_asset"
+  | "required_document"
+  | "system_readiness";
 
 export interface ProjectOverviewAssets {
   total: number;
