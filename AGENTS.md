@@ -1,6 +1,6 @@
 # Agent instructions
 
-These are common instructions for Kun's agents across all scenarios.
+These are common instructions across all scenarios.
 
 ## General Guidelines
 - Before creating, proposing, or substantially revising any implementation plan, always re-read this AGENTS.md instructions and treat them as constraints on the plan.
