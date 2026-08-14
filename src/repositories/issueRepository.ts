@@ -309,7 +309,13 @@ export async function deleteIssue(
 ): Promise<void> {
   const database = await getDatabase();
 
-  await getIssueById(issueId);
+  const issue = await getIssueById(issueId);
+
+  if (issue.status === "resolved" || issue.status === "closed") {
+    throw new Error(
+      "Resolved or closed issues are controlled records. Reopen the issue before deleting it.",
+    );
+  }
 
   await database.execute(
     `

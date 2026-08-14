@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { getProjectOverview } from "../repositories/projectOverviewRepository";
+import { listAuditEvents } from "../repositories/auditRepository";
 import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
 import type { Project } from "../types/project";
+import type {
+  AuditEntityType,
+  AuditEvent,
+} from "../types/audit";
 import type {
   AttentionItemType,
   ProjectAttentionItem,
@@ -30,6 +35,63 @@ function formatStatus(status: string): string {
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("en-CA");
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function formatAuditAction(action: string): string {
+  return action
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatAuditEntity(type: AuditEntityType): string {
+  switch (type) {
+    case "project":
+      return "Project";
+    case "system":
+      return "System";
+    case "subsystem":
+      return "Subsystem";
+    case "asset":
+      return "Asset";
+    case "issue":
+      return "Issue";
+    case "test_record":
+      return "Test record";
+    case "test_item":
+      return "Test item";
+    case "document":
+      return "Document";
+    case "turnover_package":
+      return "Turnover package";
+  }
+}
+
+function getAuditTarget(
+  type: AuditEntityType,
+): AttentionDestinationPage | null {
+  switch (type) {
+    case "system":
+    case "subsystem":
+    case "asset":
+      return "Assets";
+    case "test_record":
+    case "test_item":
+      return "Checklists & Tests";
+    case "issue":
+      return "Issues";
+    case "document":
+      return "Documents";
+    case "turnover_package":
+      return "Reports";
+    case "project":
+      return null;
+  }
 }
 
 function calculatePercent(completed: number, total: number): number {
@@ -91,6 +153,7 @@ function ProjectOverviewPage({
   const [overview, setOverview] = useState<ProjectOverview | null>(
     null,
   );
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -103,16 +166,19 @@ function ProjectOverviewPage({
       setLoadError(null);
 
       try {
-        const nextOverview = await getProjectOverview(
-          currentProject.id,
-        );
+        const [nextOverview, nextAuditEvents] = await Promise.all([
+          getProjectOverview(currentProject.id),
+          listAuditEvents(currentProject.id, 12),
+        ]);
 
         if (!cancelled) {
           setOverview(nextOverview);
+          setAuditEvents(nextAuditEvents);
         }
       } catch (error) {
         if (!cancelled) {
           setOverview(null);
+          setAuditEvents([]);
           setLoadError(
             error instanceof Error
               ? error.message
@@ -407,6 +473,66 @@ function ProjectOverviewPage({
                 )}
               </section>
             </div>
+
+            <section className="overview-panel overview-activity-panel">
+              <div className="overview-panel-header">
+                <div>
+                  <h4>Recent activity</h4>
+                  <p>Append-only project changes and controlled actions.</p>
+                </div>
+              </div>
+
+              {auditEvents.length === 0 ? (
+                <div className="overview-activity-empty">
+                  <strong>No recorded activity yet</strong>
+                  <span>New changes will appear here automatically.</span>
+                </div>
+              ) : (
+                <div className="overview-activity-list">
+                  {auditEvents.map((event) => {
+                    const target = getAuditTarget(event.entityType);
+                    const content = (
+                      <>
+                        <span className="overview-activity-marker" />
+                        <span className="overview-activity-copy">
+                          <span>
+                            {formatAuditEntity(event.entityType)}
+                            {" · "}
+                            {formatAuditAction(event.action)}
+                          </span>
+                          <strong>{event.entityLabel || "Untitled record"}</strong>
+                          <small>
+                            {event.actor}
+                            {event.reason ? ` · ${event.reason}` : ""}
+                          </small>
+                        </span>
+                        <time dateTime={event.createdAt}>
+                          {formatDateTime(event.createdAt)}
+                        </time>
+                      </>
+                    );
+
+                    return target ? (
+                      <button
+                        key={event.id}
+                        type="button"
+                        className="overview-activity-item"
+                        onClick={() => onNavigate(target)}
+                      >
+                        {content}
+                      </button>
+                    ) : (
+                      <div
+                        key={event.id}
+                        className="overview-activity-item"
+                      >
+                        {content}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
             <section className="overview-panel overview-project-panel">
               <div className="overview-panel-header">

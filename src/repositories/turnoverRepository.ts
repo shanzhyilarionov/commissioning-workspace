@@ -1,4 +1,5 @@
 import { getStructureReadinessReview } from "./readinessRepository";
+import { listAuditEvents } from "./auditRepository";
 import { getDatabase } from "../services/database";
 import {
   createSuggestedTurnoverPackageNumber,
@@ -254,14 +255,15 @@ function parseSnapshot(value: string): TurnoverPackageSnapshot {
     const parsed = JSON.parse(value) as Partial<TurnoverPackageSnapshot>;
 
     if (
-      parsed.schemaVersion !== 1 ||
+      (parsed.schemaVersion !== 1 && parsed.schemaVersion !== 2) ||
       !parsed.project ||
       !parsed.scope ||
       !parsed.readiness ||
       !Array.isArray(parsed.assets) ||
       !Array.isArray(parsed.testRecords) ||
       !Array.isArray(parsed.issues) ||
-      !Array.isArray(parsed.documents)
+      !Array.isArray(parsed.documents) ||
+      (parsed.schemaVersion === 2 && !Array.isArray(parsed.auditEvents))
     ) {
       throw new Error();
     }
@@ -730,13 +732,15 @@ export async function createTurnoverPackage(
     getProject(projectId),
     getScope(projectId, input.scopeKind, input.scopeId),
   ]);
-  const [review, assets, testRecords, issues, documents] = await Promise.all([
-    getStructureReadinessReview(input.scopeKind, input.scopeId),
-    listScopeAssets(input.scopeKind, input.scopeId),
-    listScopeTestRecords(input.scopeKind, input.scopeId),
-    listScopeIssues(input.scopeKind, input.scopeId),
-    listScopeDocuments(projectId, input.scopeKind, input.scopeId),
-  ]);
+  const [review, assets, testRecords, issues, documents, auditEvents] =
+    await Promise.all([
+      getStructureReadinessReview(input.scopeKind, input.scopeId),
+      listScopeAssets(input.scopeKind, input.scopeId),
+      listScopeTestRecords(input.scopeKind, input.scopeId),
+      listScopeIssues(input.scopeKind, input.scopeId),
+      listScopeDocuments(projectId, input.scopeKind, input.scopeId),
+      listAuditEvents(projectId, 500),
+    ]);
   const eligibility = getTurnoverFinalEligibility(
     review.stage,
     review.blockers.length,
@@ -774,7 +778,7 @@ export async function createTurnoverPackage(
     stage: review.stage,
   };
   const snapshot: TurnoverPackageSnapshot = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt,
     project,
     scope: currentScope,
@@ -786,6 +790,7 @@ export async function createTurnoverPackage(
     testRecords,
     issues,
     documents,
+    auditEvents,
   };
   const turnoverPackage: TurnoverPackage = {
     id: crypto.randomUUID(),

@@ -1,4 +1,8 @@
 import { getDatabase } from "../services/database";
+import {
+  clearAuditOperationContext,
+  setAuditOperationContext,
+} from "./auditRepository";
 import type { IssueStatus } from "../types/issue";
 import type {
   TestItem,
@@ -7,6 +11,8 @@ import type {
   TestRecord,
   TestRecordCompletionInput,
   TestRecordInput,
+  TestRecordReopenInput,
+  TestRecordRevision,
   TestRecordStatus,
   TestRecordType,
 } from "../types/testRecord";
@@ -29,8 +35,24 @@ interface TestRecordRow {
   signed_off_by: string;
   signed_off_at: string | null;
   completion_notes: string;
+  revision_count: number;
   created_at: string;
   updated_at: string;
+}
+
+interface TestRecordRevisionRow {
+  id: string;
+  test_record_id: string;
+  revision_number: number;
+  snapshot_json: string;
+  reopened_by: string;
+  reopen_reason: string;
+  created_at: string;
+}
+
+interface TestRecordRevisionSnapshot {
+  record: TestRecord;
+  items: TestItem[];
 }
 
 interface TestItemRow {
@@ -86,6 +108,11 @@ const testRecordSelect = `
     test_records.signed_off_by,
     test_records.signed_off_at,
     test_records.completion_notes,
+    (
+      SELECT COUNT(*)
+      FROM test_record_revisions
+      WHERE test_record_revisions.test_record_id = test_records.id
+    ) AS revision_count,
     test_records.created_at,
     test_records.updated_at
   FROM test_records
@@ -163,8 +190,31 @@ function mapTestRecordRow(row: TestRecordRow): TestRecord {
     signedOffBy: row.signed_off_by,
     signedOffAt: row.signed_off_at,
     completionNotes: row.completion_notes,
+    revisionCount: Number(row.revision_count),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapTestRecordRevision(
+  row: TestRecordRevisionRow,
+): TestRecordRevision {
+  let snapshot: TestRecordRevisionSnapshot | null = null;
+
+  try {
+    snapshot = JSON.parse(row.snapshot_json) as TestRecordRevisionSnapshot;
+  } catch {
+  }
+
+  return {
+    id: row.id,
+    testRecordId: row.test_record_id,
+    revisionNumber: Number(row.revision_number),
+    signedOffBy: snapshot?.record.signedOffBy ?? "",
+    signedOffAt: snapshot?.record.signedOffAt ?? "",
+    reopenedBy: row.reopened_by,
+    reopenReason: row.reopen_reason,
+    createdAt: row.created_at,
   };
 }
 
@@ -236,6 +286,20 @@ async function touchTestRecord(
     `,
     [updatedAt, testRecordId],
   );
+}
+
+async function assertTestRecordEditable(
+  testRecordId: string,
+): Promise<TestRecord> {
+  const testRecord = await getTestRecordById(testRecordId);
+
+  if (testRecord.signedOffAt) {
+    throw new Error(
+      "Reopen this signed record before making changes.",
+    );
+  }
+
+  return testRecord;
 }
 
 export async function getTestRecordById(
@@ -350,6 +414,12 @@ export async function updateTestRecord(
 
   if (!title) {
     throw new Error("Checklist or test title is required.");
+  }
+
+  if (existingTestRecord.signedOffAt) {
+    throw new Error(
+      "Reopen this signed record before changing its details.",
+    );
   }
 
   await assertAssetBelongsToProject(
@@ -474,64 +544,197 @@ export async function completeTestRecord(
 
   const signedOffAt = new Date().toISOString();
 
-  await database.execute(
-    `
-      UPDATE test_records
-      SET
-        executed_by = $1,
-        witnessed_by = $2,
-        execution_date = $3,
-        signed_off_by = $4,
-        signed_off_at = $5,
-        completion_notes = $6,
-        updated_at = $5
-      WHERE id = $7
-    `,
-    [
-      executedBy,
-      witnessedBy,
-      executionDate,
-      signedOffBy,
-      signedOffAt,
-      completionNotes,
-      testRecordId,
-    ],
-  );
+  await database.execute("BEGIN IMMEDIATE");
+
+  try {
+    await setAuditOperationContext({
+      action: "signed",
+      actor: signedOffBy,
+      reason: completionNotes,
+    });
+
+    const result = await database.execute(
+      `
+        UPDATE test_records
+        SET
+          executed_by = $1,
+          witnessed_by = $2,
+          execution_date = $3,
+          signed_off_by = $4,
+          signed_off_at = $5,
+          completion_notes = $6,
+          updated_at = $5
+        WHERE id = $7
+          AND signed_off_at IS NULL
+      `,
+      [
+        executedBy,
+        witnessedBy,
+        executionDate,
+        signedOffBy,
+        signedOffAt,
+        completionNotes,
+        testRecordId,
+      ],
+    );
+
+    if (result.rowsAffected !== 1) {
+      throw new Error("This record was already signed.");
+    }
+
+    await clearAuditOperationContext();
+    await database.execute("COMMIT");
+  } catch (error) {
+    await database.execute("ROLLBACK");
+    throw error;
+  }
 
   return getTestRecordById(testRecordId);
 }
 
 export async function reopenTestRecord(
   testRecordId: string,
+  input: TestRecordReopenInput,
 ): Promise<TestRecord> {
   const existingTestRecord = await getTestRecordById(testRecordId);
+  const reopenedBy = input.reopenedBy.trim();
+  const reason = input.reason.trim();
 
   if (!existingTestRecord.signedOffAt) {
     return existingTestRecord;
   }
 
+  if (!reopenedBy) {
+    throw new Error("Reopened by is required.");
+  }
+
+  if (!reason) {
+    throw new Error("A reopen reason is required.");
+  }
+
+  const items = await listTestItems(testRecordId);
+  const snapshot: TestRecordRevisionSnapshot = {
+    record: existingTestRecord,
+    items,
+  };
+
   const database = await getDatabase();
   const updatedAt = new Date().toISOString();
+  const revisionId = crypto.randomUUID();
 
-  await database.execute(
-    `
-      UPDATE test_records
-      SET
-        signed_off_by = '',
-        signed_off_at = NULL,
-        updated_at = $1
-      WHERE id = $2
-    `,
-    [updatedAt, testRecordId],
-  );
+  await database.execute("BEGIN IMMEDIATE");
+
+  try {
+    const revisionRows = await database.select<{
+      next_revision: number;
+    }[]>(
+      `
+        SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision
+        FROM test_record_revisions
+        WHERE test_record_id = $1
+      `,
+      [testRecordId],
+    );
+    const revisionNumber = Number(
+      revisionRows[0]?.next_revision ?? 1,
+    );
+
+    await setAuditOperationContext({
+      action: "reopened",
+      actor: reopenedBy,
+      reason,
+    });
+
+    await database.execute(
+      `
+        INSERT INTO test_record_revisions (
+          id,
+          project_id,
+          test_record_id,
+          revision_number,
+          snapshot_json,
+          reopened_by,
+          reopen_reason,
+          created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `,
+      [
+        revisionId,
+        existingTestRecord.projectId,
+        testRecordId,
+        revisionNumber,
+        JSON.stringify(snapshot),
+        reopenedBy,
+        reason,
+        updatedAt,
+      ],
+    );
+
+    const result = await database.execute(
+      `
+        UPDATE test_records
+        SET
+          signed_off_by = '',
+          signed_off_at = NULL,
+          updated_at = $1
+        WHERE id = $2
+          AND signed_off_at = $3
+      `,
+      [updatedAt, testRecordId, existingTestRecord.signedOffAt],
+    );
+
+    if (result.rowsAffected !== 1) {
+      throw new Error(
+        "The record changed while it was being reopened.",
+      );
+    }
+
+    await clearAuditOperationContext();
+    await database.execute("COMMIT");
+  } catch (error) {
+    await database.execute("ROLLBACK");
+    throw error;
+  }
 
   return getTestRecordById(testRecordId);
+}
+
+export async function listTestRecordRevisions(
+  testRecordId: string,
+): Promise<TestRecordRevision[]> {
+  await getTestRecordById(testRecordId);
+  const database = await getDatabase();
+  const rows = await database.select<TestRecordRevisionRow[]>(
+    `
+      SELECT
+        id,
+        test_record_id,
+        revision_number,
+        snapshot_json,
+        reopened_by,
+        reopen_reason,
+        created_at
+      FROM test_record_revisions
+      WHERE test_record_id = $1
+      ORDER BY revision_number DESC
+    `,
+    [testRecordId],
+  );
+
+  return rows.map(mapTestRecordRevision);
 }
 
 export async function deleteTestRecord(
   testRecordId: string,
 ): Promise<void> {
-  await getTestRecordById(testRecordId);
+  const testRecord = await getTestRecordById(testRecordId);
+
+  if (testRecord.signedOffAt || testRecord.revisionCount > 0) {
+    throw new Error(
+      "Signed or revised records are controlled records and cannot be deleted.",
+    );
+  }
   const database = await getDatabase();
 
   await database.execute(
@@ -566,7 +769,7 @@ export async function createTestItem(
   testRecordId: string,
   input: TestItemInput,
 ): Promise<TestItem> {
-  await getTestRecordById(testRecordId);
+  await assertTestRecordEditable(testRecordId);
   const description = input.description.trim();
 
   if (!description) {
@@ -614,6 +817,7 @@ export async function updateTestItem(
   input: TestItemInput,
 ): Promise<TestItem> {
   const existingTestItem = await getTestItemById(testItemId);
+  await assertTestRecordEditable(existingTestItem.testRecordId);
   const description = input.description.trim();
 
   if (!description) {
@@ -654,6 +858,7 @@ export async function deleteTestItem(
   testItemId: string,
 ): Promise<void> {
   const existingTestItem = await getTestItemById(testItemId);
+  await assertTestRecordEditable(existingTestItem.testRecordId);
   const database = await getDatabase();
 
   await database.execute(

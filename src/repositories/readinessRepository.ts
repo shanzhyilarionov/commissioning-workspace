@@ -1,4 +1,8 @@
 import { getDatabase } from "../services/database";
+import {
+  clearAuditOperationContext,
+  setAuditOperationContext,
+} from "./auditRepository";
 import type {
   ReadinessBlocker,
   ReadinessStageRecord,
@@ -538,6 +542,12 @@ export async function transitionStructureStage(
   await database.execute("BEGIN IMMEDIATE");
 
   try {
+    await setAuditOperationContext({
+      action: "stage_advanced",
+      actor: recordedBy,
+      reason,
+    });
+
     const updateResult = await database.execute(
       `
         UPDATE ${table}
@@ -583,6 +593,7 @@ export async function transitionStructureStage(
       ],
     );
 
+    await clearAuditOperationContext();
     await database.execute("COMMIT");
   } catch (error) {
     await database.execute("ROLLBACK");

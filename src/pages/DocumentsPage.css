@@ -205,9 +205,16 @@
 
 .document-required-cell {
   justify-content: center;
-  color: var(--status-warning);
   font-weight: 600;
   text-align: center;
+}
+
+.document-required-cell.required {
+  color: var(--status-warning);
+}
+
+.document-required-cell.not-required {
+  color: var(--text-secondary);
 }
 
 .document-readiness-option {

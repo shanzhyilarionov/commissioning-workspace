@@ -516,7 +516,7 @@ function drawPackageContents(
     },
   );
 
-  drawTableSection(
+  y = drawTableSection(
     document,
     "Document index",
     ["Asset", "Document", "Category", "Revision", "Status", "Readiness", "File"],
@@ -538,6 +538,29 @@ function drawPackageContents(
       5: { cellWidth: 23 },
     },
   );
+
+  if (snapshot.auditEvents && snapshot.auditEvents.length > 0) {
+    drawTableSection(
+      document,
+      "Audit trail",
+      ["Time", "Record type", "Record", "Action", "Operator", "Reason"],
+      snapshot.auditEvents.map((event) => [
+        formatDateTime(event.createdAt),
+        formatLabel(event.entityType),
+        displayText(event.entityLabel),
+        formatLabel(event.action),
+        displayText(event.actor),
+        displayText(event.reason),
+      ]),
+      y,
+      {
+        0: { cellWidth: 32 },
+        1: { cellWidth: 25 },
+        3: { cellWidth: 24 },
+        4: { cellWidth: 28 },
+      },
+    );
+  }
 }
 
 function drawPageFurniture(

@@ -89,6 +89,9 @@ function DocumentModal({
   }
 
   const isEditing = document !== null;
+  const isApproved = document?.status === "approved";
+  const isSuperseded = document?.status === "superseded";
+  const metadataLocked = isApproved || isSuperseded;
   const displayedFileName =
     document?.originalFileName ?? sourceFileName ?? "No file selected";
 
@@ -162,7 +165,7 @@ function DocumentModal({
               <input
                 type="checkbox"
                 checked={form.requiredForReadiness}
-                disabled={isSubmitting}
+                disabled={isSubmitting || metadataLocked}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
@@ -188,7 +191,7 @@ function DocumentModal({
                 type="text"
                 value={form.title}
                 className={titleError ? "input-error" : ""}
-                disabled={isSubmitting}
+                disabled={isSubmitting || metadataLocked}
                 placeholder="Motor control centre commissioning report"
                 onChange={(event) => {
                   setForm((current) => ({
@@ -211,7 +214,7 @@ function DocumentModal({
                 <span>Category</span>
                 <select
                   value={form.category}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || metadataLocked}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -237,7 +240,7 @@ function DocumentModal({
                 <input
                   type="text"
                   value={form.revision}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || metadataLocked}
                   placeholder="Optional"
                   onChange={(event) =>
                     setForm((current) => ({
@@ -254,7 +257,7 @@ function DocumentModal({
                 <span>Status</span>
                 <select
                   value={form.status}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isSuperseded}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -263,8 +266,10 @@ function DocumentModal({
                     }))
                   }
                 >
-                  <option value="draft">Draft</option>
-                  <option value="for_review">For review</option>
+                  <option value="draft" disabled={isApproved}>Draft</option>
+                  <option value="for_review" disabled={isApproved}>
+                    For review
+                  </option>
                   <option value="approved">Approved</option>
                   <option value="superseded">Superseded</option>
                 </select>
@@ -274,7 +279,7 @@ function DocumentModal({
                 <span>Linked asset</span>
                 <select
                   value={form.assetId ?? ""}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || metadataLocked}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -296,7 +301,7 @@ function DocumentModal({
               <span>Notes</span>
               <textarea
                 value={form.notes}
-                disabled={isSubmitting}
+                disabled={isSubmitting || metadataLocked}
                 placeholder="Add document notes or review information"
                 onChange={(event) =>
                   setForm((current) => ({
@@ -326,7 +331,7 @@ function DocumentModal({
             <button
               className="primary-button"
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSuperseded}
             >
               {isSubmitting
                 ? isEditing

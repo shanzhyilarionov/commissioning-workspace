@@ -5,7 +5,8 @@ export type AttentionDestinationPage =
   | "Assets"
   | "Checklists & Tests"
   | "Issues"
-  | "Documents";
+  | "Documents"
+  | "Reports";
 
 export interface AttentionNavigationRequest {
   requestId: number;

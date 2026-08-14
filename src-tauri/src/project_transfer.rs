@@ -154,6 +154,28 @@ const TURNOVER_COLUMNS: &[&str] = &[
     "voided_at",
     "void_reason",
 ];
+const TEST_RECORD_REVISION_COLUMNS: &[&str] = &[
+    "id",
+    "project_id",
+    "test_record_id",
+    "revision_number",
+    "snapshot_json",
+    "reopened_by",
+    "reopen_reason",
+    "created_at",
+];
+const AUDIT_EVENT_COLUMNS: &[&str] = &[
+    "id",
+    "project_id",
+    "entity_type",
+    "entity_id",
+    "action",
+    "entity_label",
+    "actor",
+    "reason",
+    "details_json",
+    "created_at",
+];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -711,6 +733,19 @@ fn remap_json_column(
     Ok(())
 }
 
+fn remap_text_if_known(
+    row: &mut [SqlValue],
+    index: usize,
+    mapping: &HashMap<String, String>,
+    field: &str,
+) -> Result<(), String> {
+    let old_value = text_value(&row[index], field)?;
+    if let Some(new_value) = mapping.get(&old_value) {
+        row[index] = SqlValue::Text(new_value.clone());
+    }
+    Ok(())
+}
+
 fn unique_imported_name(base_name: &str, used_names: &mut HashSet<String>) -> String {
     if used_names.insert(base_name.to_lowercase()) {
         return base_name.to_string();
@@ -785,6 +820,12 @@ fn import_package_data(
     let mut document_rows = load_rows(&source, "project_documents", DOCUMENT_COLUMNS)?;
     let mut readiness_rows = load_rows(&source, "readiness_stage_records", READINESS_COLUMNS)?;
     let mut turnover_rows = load_rows(&source, "turnover_packages", TURNOVER_COLUMNS)?;
+    let mut revision_rows = load_rows(
+        &source,
+        "test_record_revisions",
+        TEST_RECORD_REVISION_COLUMNS,
+    )?;
+    let mut audit_rows = load_rows(&source, "audit_events", AUDIT_EVENT_COLUMNS)?;
 
     let project_map = build_id_map(&transaction, &project_rows, "project", "project ID")?;
     let system_map = build_id_map(&transaction, &system_rows, "system", "system ID")?;
@@ -811,6 +852,18 @@ fn import_package_data(
         "turnover",
         "turnover package ID",
     )?;
+    let revision_map = build_id_map(
+        &transaction,
+        &revision_rows,
+        "test-record-revision",
+        "test record revision ID",
+    )?;
+    let audit_map = build_id_map(
+        &transaction,
+        &audit_rows,
+        "audit-event",
+        "audit event ID",
+    )?;
     let all_ids = merge_id_maps(&[
         &project_map,
         &system_map,
@@ -822,6 +875,8 @@ fn import_package_data(
         &document_map,
         &readiness_map,
         &turnover_map,
+        &revision_map,
+        &audit_map,
     ])?;
 
     let mut existing_names = {
@@ -982,6 +1037,39 @@ fn import_package_data(
         }
         remap_json_column(row, 15, &all_ids, "turnover snapshot")?;
     }
+    transform_rows(
+        &mut revision_rows,
+        &[
+            (0, &revision_map, false, "test record revision ID"),
+            (1, &project_map, false, "test record revision project ID"),
+            (2, &test_record_map, false, "test record revision record ID"),
+        ],
+    )?;
+    for row in &mut revision_rows {
+        remap_json_column(row, 4, &all_ids, "test record revision snapshot")?;
+    }
+    transform_rows(
+        &mut audit_rows,
+        &[
+            (0, &audit_map, false, "audit event ID"),
+            (1, &project_map, false, "audit event project ID"),
+        ],
+    )?;
+    for row in &mut audit_rows {
+        remap_text_if_known(row, 3, &all_ids, "audit event entity ID")?;
+        remap_json_column(row, 8, &all_ids, "audit event details")?;
+    }
+
+    transaction
+        .execute(
+            "
+                UPDATE audit_operation_context
+                SET enabled = 0, action = '', actor = '', reason = ''
+                WHERE id = 1
+            ",
+            [],
+        )
+        .map_err(|error| format!("Failed to pause audit capture during import: {error}"))?;
 
     insert_rows(&transaction, "projects", PROJECT_COLUMNS, &project_rows)?;
     insert_rows(&transaction, "systems", SYSTEM_COLUMNS, &system_rows)?;
@@ -1029,6 +1117,29 @@ fn import_package_data(
         TURNOVER_COLUMNS,
         &turnover_rows,
     )?;
+    insert_rows(
+        &transaction,
+        "test_record_revisions",
+        TEST_RECORD_REVISION_COLUMNS,
+        &revision_rows,
+    )?;
+    insert_rows(
+        &transaction,
+        "audit_events",
+        AUDIT_EVENT_COLUMNS,
+        &audit_rows,
+    )?;
+
+    transaction
+        .execute(
+            "
+                UPDATE audit_operation_context
+                SET enabled = 1, action = '', actor = '', reason = ''
+                WHERE id = 1
+            ",
+            [],
+        )
+        .map_err(|error| format!("Failed to resume audit capture after import: {error}"))?;
 
     let relationship_errors: i64 = transaction
         .query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| {
@@ -1119,6 +1230,19 @@ fn selected_projects_and_prune(
     connection
         .execute(&delete, params_from_iter(project_ids.iter()))
         .map_err(|error| format!("Failed to isolate the selected projects: {error}"))?;
+    connection
+        .execute_batch(
+            "
+                UPDATE workspace_settings
+                SET value = ''
+                WHERE key = 'current_operator';
+
+                UPDATE audit_operation_context
+                SET enabled = 1, action = '', actor = '', reason = ''
+                WHERE id = 1;
+            ",
+        )
+        .map_err(|error| format!("Failed to remove workspace-only package data: {error}"))?;
     connection
         .execute_batch("VACUUM;")
         .map_err(|error| format!("Failed to finalize the project package database: {error}"))?;
@@ -1302,7 +1426,7 @@ mod tests {
                     version INTEGER PRIMARY KEY,
                     success INTEGER NOT NULL
                 );
-                INSERT INTO _sqlx_migrations (version, success) VALUES (11, 1);
+                INSERT INTO _sqlx_migrations (version, success) VALUES (12, 1);
                 CREATE TABLE projects (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -1442,6 +1566,43 @@ mod tests {
                     voided_at TEXT,
                     void_reason TEXT NOT NULL
                 );
+                CREATE TABLE workspace_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE audit_operation_context (
+                    id INTEGER PRIMARY KEY,
+                    enabled INTEGER NOT NULL,
+                    action TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    reason TEXT NOT NULL
+                );
+                INSERT INTO audit_operation_context
+                VALUES (1, 1, '', '', '');
+                CREATE TABLE test_record_revisions (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    test_record_id TEXT NOT NULL,
+                    revision_number INTEGER NOT NULL,
+                    snapshot_json TEXT NOT NULL,
+                    reopened_by TEXT NOT NULL,
+                    reopen_reason TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE (test_record_id, revision_number)
+                );
+                CREATE TABLE audit_events (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    entity_type TEXT NOT NULL,
+                    entity_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    entity_label TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    details_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
                 "#,
             )
             .unwrap();
@@ -1538,6 +1699,24 @@ mod tests {
                 params![
                     r#"{"project":{"id":"project-one"},"scope":{"id":"system-one"},"assets":[{"id":"asset-one"}],"issues":[{"id":"issue-one"}],"documents":[{"id":"document-one"}]}"#,
                     "2026-01-01T00:00:00Z"
+                ],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO test_record_revisions VALUES ('revision-one', 'project-one', 'record-one', 1, ?1, 'Tester', 'Corrected reading', ?2)",
+                params![
+                    r#"{"record":{"id":"record-one","projectId":"project-one"},"items":[{"id":"item-one"}]}"#,
+                    "2026-01-02T00:00:00Z"
+                ],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO audit_events VALUES ('audit-one', 'project-one', 'test_record', 'record-one', 'reopened', 'Test', 'Tester', 'Corrected reading', ?1, ?2)",
+                params![
+                    r#"{"recordId":"record-one","projectId":"project-one"}"#,
+                    "2026-01-02T00:00:00Z"
                 ],
             )
             .unwrap();
@@ -1643,6 +1822,25 @@ mod tests {
         assert!(!snapshot.contains("system-one"));
         assert!(!snapshot.contains("asset-one"));
         assert!(snapshot.contains(&imported[0].id));
+        let revision_snapshot: String = destination
+            .query_row(
+                "SELECT snapshot_json FROM test_record_revisions WHERE project_id = ?1",
+                [&imported[0].id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(!revision_snapshot.contains("record-one"));
+        assert!(!revision_snapshot.contains("item-one"));
+        let audit_relationship: (String, String, String) = destination
+            .query_row(
+                "SELECT project_id, entity_id, details_json FROM audit_events WHERE project_id = ?1",
+                [&imported[0].id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(audit_relationship.0, imported[0].id);
+        assert_ne!(audit_relationship.1, "record-one");
+        assert!(!audit_relationship.2.contains("record-one"));
         drop(destination);
 
         let imported_again = import_package_data(

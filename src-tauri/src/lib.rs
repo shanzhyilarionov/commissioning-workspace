@@ -973,6 +973,520 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 12,
+            description: "add_audit_trail_and_test_record_revisions",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS workspace_settings (
+                    key TEXT PRIMARY KEY NOT NULL,
+                    value TEXT NOT NULL DEFAULT '',
+                    updated_at TEXT NOT NULL
+                );
+
+                INSERT OR IGNORE INTO workspace_settings (
+                    key,
+                    value,
+                    updated_at
+                )
+                VALUES (
+                    'current_operator',
+                    '',
+                    strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                );
+
+                CREATE TABLE IF NOT EXISTS audit_operation_context (
+                    id INTEGER PRIMARY KEY NOT NULL
+                        CHECK (id = 1),
+                    enabled INTEGER NOT NULL DEFAULT 1
+                        CHECK (enabled IN (0, 1)),
+                    action TEXT NOT NULL DEFAULT '',
+                    actor TEXT NOT NULL DEFAULT '',
+                    reason TEXT NOT NULL DEFAULT ''
+                );
+
+                INSERT OR IGNORE INTO audit_operation_context (
+                    id,
+                    enabled,
+                    action,
+                    actor,
+                    reason
+                )
+                VALUES (1, 1, '', '', '');
+
+                CREATE TABLE IF NOT EXISTS audit_events (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    entity_type TEXT NOT NULL,
+                    entity_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    entity_label TEXT NOT NULL DEFAULT '',
+                    actor TEXT NOT NULL,
+                    reason TEXT NOT NULL DEFAULT '',
+                    details_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_audit_events_project_created
+                ON audit_events(project_id, created_at DESC);
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_audit_events_entity
+                ON audit_events(project_id, entity_type, entity_id, created_at DESC);
+
+                CREATE TABLE IF NOT EXISTS test_record_revisions (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    project_id TEXT NOT NULL,
+                    test_record_id TEXT NOT NULL,
+                    revision_number INTEGER NOT NULL
+                        CHECK (revision_number > 0),
+                    snapshot_json TEXT NOT NULL,
+                    reopened_by TEXT NOT NULL,
+                    reopen_reason TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE,
+
+                    UNIQUE (test_record_id, revision_number)
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    idx_test_record_revisions_record
+                ON test_record_revisions(test_record_id, revision_number DESC);
+
+                CREATE TRIGGER audit_projects_insert
+                AFTER INSERT ON projects
+                WHEN COALESCE(
+                    (SELECT enabled FROM audit_operation_context WHERE id = 1),
+                    1
+                ) = 1
+                BEGIN
+                    INSERT INTO audit_events (
+                        id, project_id, entity_type, entity_id, action,
+                        entity_label, actor, reason, details_json, created_at
+                    )
+                    VALUES (
+                        lower(hex(randomblob(16))), NEW.id, 'project', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        NEW.name,
+                        COALESCE(
+                            NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''),
+                            NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''),
+                            'Local operator'
+                        ),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('name', NEW.name, 'status', NEW.status),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_projects_update
+                AFTER UPDATE ON projects
+                WHEN COALESCE(
+                    (SELECT enabled FROM audit_operation_context WHERE id = 1),
+                    1
+                ) = 1
+                BEGIN
+                    INSERT INTO audit_events (
+                        id, project_id, entity_type, entity_id, action,
+                        entity_label, actor, reason, details_json, created_at
+                    )
+                    VALUES (
+                        lower(hex(randomblob(16))), NEW.id, 'project', NEW.id,
+                        COALESCE(
+                            NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''),
+                            CASE WHEN OLD.status <> NEW.status THEN 'status_changed' ELSE 'updated' END
+                        ),
+                        NEW.name,
+                        COALESCE(
+                            NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''),
+                            NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''),
+                            'Local operator'
+                        ),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object(
+                            'before', json_object('name', OLD.name, 'status', OLD.status),
+                            'after', json_object('name', NEW.name, 'status', NEW.status)
+                        ),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_systems_insert
+                AFTER INSERT ON systems
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'system', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        trim(NEW.code || ' - ' || NEW.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('code', NEW.code, 'name', NEW.name, 'stage', NEW.commissioning_stage),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_systems_update
+                AFTER UPDATE ON systems
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'system', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN OLD.commissioning_stage <> NEW.commissioning_stage THEN 'stage_advanced' ELSE 'updated' END),
+                        trim(NEW.code || ' - ' || NEW.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('before', json_object('code', OLD.code, 'name', OLD.name, 'stage', OLD.commissioning_stage), 'after', json_object('code', NEW.code, 'name', NEW.name, 'stage', NEW.commissioning_stage)),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_systems_delete
+                BEFORE DELETE ON systems
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), OLD.project_id, 'system', OLD.id, 'deleted',
+                        trim(OLD.code || ' - ' || OLD.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('code', OLD.code, 'name', OLD.name, 'stage', OLD.commissioning_stage),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_subsystems_insert
+                AFTER INSERT ON subsystems
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), (SELECT project_id FROM systems WHERE id = NEW.system_id), 'subsystem', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        trim(NEW.code || ' - ' || NEW.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('code', NEW.code, 'name', NEW.name, 'stage', NEW.commissioning_stage),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_subsystems_update
+                AFTER UPDATE ON subsystems
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), (SELECT project_id FROM systems WHERE id = NEW.system_id), 'subsystem', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN OLD.commissioning_stage <> NEW.commissioning_stage THEN 'stage_advanced' ELSE 'updated' END),
+                        trim(NEW.code || ' - ' || NEW.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('before', json_object('code', OLD.code, 'name', OLD.name, 'stage', OLD.commissioning_stage), 'after', json_object('code', NEW.code, 'name', NEW.name, 'stage', NEW.commissioning_stage)),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_subsystems_delete
+                BEFORE DELETE ON subsystems
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), (SELECT project_id FROM systems WHERE id = OLD.system_id), 'subsystem', OLD.id, 'deleted',
+                        trim(OLD.code || ' - ' || OLD.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('code', OLD.code, 'name', OLD.name, 'stage', OLD.commissioning_stage),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_assets_insert
+                AFTER INSERT ON assets
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'asset', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        trim(NEW.tag || ' - ' || NEW.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('tag', NEW.tag, 'name', NEW.name, 'status', NEW.status),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_assets_update
+                AFTER UPDATE ON assets
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'asset', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN OLD.status <> NEW.status THEN 'status_changed' ELSE 'updated' END),
+                        trim(NEW.tag || ' - ' || NEW.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('before', json_object('tag', OLD.tag, 'name', OLD.name, 'status', OLD.status), 'after', json_object('tag', NEW.tag, 'name', NEW.name, 'status', NEW.status)),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_assets_delete
+                BEFORE DELETE ON assets
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), OLD.project_id, 'asset', OLD.id, 'deleted',
+                        trim(OLD.tag || ' - ' || OLD.name),
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('tag', OLD.tag, 'name', OLD.name, 'status', OLD.status),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_issues_insert
+                AFTER INSERT ON issues
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'issue', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        NEW.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('title', NEW.title, 'priority', NEW.priority, 'status', NEW.status),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_issues_update
+                AFTER UPDATE ON issues
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'issue', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN OLD.status <> NEW.status THEN 'status_changed' ELSE 'updated' END),
+                        NEW.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('before', json_object('title', OLD.title, 'priority', OLD.priority, 'status', OLD.status), 'after', json_object('title', NEW.title, 'priority', NEW.priority, 'status', NEW.status)),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_issues_delete
+                BEFORE DELETE ON issues
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), OLD.project_id, 'issue', OLD.id, 'deleted', OLD.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('title', OLD.title, 'priority', OLD.priority, 'status', OLD.status),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_test_records_insert
+                AFTER INSERT ON test_records
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'test_record', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        NEW.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('title', NEW.title, 'type', NEW.record_type, 'signedOffAt', NEW.signed_off_at),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_test_records_update
+                AFTER UPDATE ON test_records
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                    AND (
+                        OLD.asset_id IS NOT NEW.asset_id
+                        OR OLD.title <> NEW.title
+                        OR OLD.record_type <> NEW.record_type
+                        OR OLD.description <> NEW.description
+                        OR OLD.executed_by <> NEW.executed_by
+                        OR OLD.witnessed_by <> NEW.witnessed_by
+                        OR OLD.execution_date IS NOT NEW.execution_date
+                        OR OLD.signed_off_by <> NEW.signed_off_by
+                        OR OLD.signed_off_at IS NOT NEW.signed_off_at
+                        OR OLD.completion_notes <> NEW.completion_notes
+                    )
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'test_record', NEW.id,
+                        COALESCE(
+                            NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''),
+                            CASE
+                                WHEN OLD.signed_off_at IS NULL AND NEW.signed_off_at IS NOT NULL THEN 'signed'
+                                WHEN OLD.signed_off_at IS NOT NULL AND NEW.signed_off_at IS NULL THEN 'reopened'
+                                ELSE 'updated'
+                            END
+                        ),
+                        NEW.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('before', json_object('title', OLD.title, 'signedOffBy', OLD.signed_off_by, 'signedOffAt', OLD.signed_off_at), 'after', json_object('title', NEW.title, 'signedOffBy', NEW.signed_off_by, 'signedOffAt', NEW.signed_off_at)),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_test_records_delete
+                BEFORE DELETE ON test_records
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), OLD.project_id, 'test_record', OLD.id, 'deleted', OLD.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('title', OLD.title, 'type', OLD.record_type, 'signedOffBy', OLD.signed_off_by, 'signedOffAt', OLD.signed_off_at),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_test_items_insert
+                AFTER INSERT ON test_items
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), (SELECT project_id FROM test_records WHERE id = NEW.test_record_id), 'test_item', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        NEW.description,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('recordId', NEW.test_record_id, 'description', NEW.description, 'result', NEW.result),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_test_items_update
+                AFTER UPDATE ON test_items
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), (SELECT project_id FROM test_records WHERE id = NEW.test_record_id), 'test_item', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN OLD.result <> NEW.result THEN 'result_changed' ELSE 'updated' END),
+                        NEW.description,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('recordId', NEW.test_record_id, 'before', json_object('description', OLD.description, 'result', OLD.result), 'after', json_object('description', NEW.description, 'result', NEW.result)),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_test_items_delete
+                BEFORE DELETE ON test_items
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), (SELECT project_id FROM test_records WHERE id = OLD.test_record_id), 'test_item', OLD.id, 'deleted', OLD.description,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('recordId', OLD.test_record_id, 'description', OLD.description, 'result', OLD.result),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_documents_insert
+                AFTER INSERT ON project_documents
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'document', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), 'created'),
+                        NEW.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('title', NEW.title, 'revision', NEW.revision, 'status', NEW.status),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_documents_update
+                AFTER UPDATE ON project_documents
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'document', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN OLD.status <> NEW.status THEN 'status_changed' ELSE 'updated' END),
+                        NEW.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('before', json_object('title', OLD.title, 'revision', OLD.revision, 'status', OLD.status), 'after', json_object('title', NEW.title, 'revision', NEW.revision, 'status', NEW.status)),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_documents_delete
+                BEFORE DELETE ON project_documents
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), OLD.project_id, 'document', OLD.id, 'deleted', OLD.title,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('title', OLD.title, 'revision', OLD.revision, 'status', OLD.status),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_turnover_insert
+                AFTER INSERT ON turnover_packages
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'turnover_package', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN NEW.status = 'final' THEN 'finalized' ELSE 'created' END),
+                        NEW.package_number || ' Rev ' || NEW.revision,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF(NEW.prepared_by, ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('packageNumber', NEW.package_number, 'revision', NEW.revision, 'status', NEW.status, 'scope', NEW.scope_name),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_turnover_update
+                AFTER UPDATE ON turnover_packages
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), NEW.project_id, 'turnover_package', NEW.id,
+                        COALESCE(NULLIF((SELECT action FROM audit_operation_context WHERE id = 1), ''), CASE WHEN NEW.status = 'void' AND OLD.status <> 'void' THEN 'voided' ELSE 'updated' END),
+                        NEW.package_number || ' Rev ' || NEW.revision,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE(NULLIF((SELECT reason FROM audit_operation_context WHERE id = 1), ''), NEW.void_reason, ''),
+                        json_object('beforeStatus', OLD.status, 'afterStatus', NEW.status, 'packageNumber', NEW.package_number, 'revision', NEW.revision),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+
+                CREATE TRIGGER audit_turnover_delete
+                BEFORE DELETE ON turnover_packages
+                WHEN COALESCE((SELECT enabled FROM audit_operation_context WHERE id = 1), 1) = 1
+                BEGIN
+                    INSERT INTO audit_events VALUES (
+                        lower(hex(randomblob(16))), OLD.project_id, 'turnover_package', OLD.id, 'deleted',
+                        OLD.package_number || ' Rev ' || OLD.revision,
+                        COALESCE(NULLIF((SELECT actor FROM audit_operation_context WHERE id = 1), ''), NULLIF((SELECT value FROM workspace_settings WHERE key = 'current_operator'), ''), 'Local operator'),
+                        COALESCE((SELECT reason FROM audit_operation_context WHERE id = 1), ''),
+                        json_object('packageNumber', OLD.package_number, 'revision', OLD.revision, 'status', OLD.status, 'scope', OLD.scope_name),
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    );
+                END;
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

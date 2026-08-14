@@ -12,7 +12,7 @@ use walkdir::WalkDir;
 use zip::{write::SimpleFileOptions, CompressionMethod, ZipArchive, ZipWriter};
 
 const BACKUP_FORMAT_VERSION: u32 = 1;
-pub(crate) const CURRENT_SCHEMA_VERSION: u32 = 11;
+pub(crate) const CURRENT_SCHEMA_VERSION: u32 = 12;
 const DATABASE_ENTRY: &str = "data/commissioning-workspace.db";
 const DOCUMENTS_PREFIX: &str = "data/projects";
 const MANIFEST_ENTRY: &str = "manifest.json";

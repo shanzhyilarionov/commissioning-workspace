@@ -117,6 +117,20 @@ function App() {
     projects.find(
       (project) => project.id === currentProjectId,
     ) ?? null;
+  const hasProjects = projects.length > 0;
+
+  useEffect(() => {
+    if (
+      !isLoadingProjects &&
+      !projectLoadError &&
+      !hasProjects &&
+      (activePage === "Projects" || isProjectPage(activePage))
+    ) {
+      setCurrentProjectId(null);
+      setAttentionNavigation(null);
+      setActivePage("Home");
+    }
+  }, [activePage, hasProjects, isLoadingProjects, projectLoadError]);
 
   function handleNavigation(page: Page) {
     setAttentionNavigation(null);
@@ -254,17 +268,21 @@ function App() {
     try {
       await deleteProject(project.id);
 
-      setProjects((current) =>
-        current.filter(
-          (currentProject) => currentProject.id !== project.id,
-        ),
+      const remainingProjects = projects.filter(
+        (currentProject) => currentProject.id !== project.id,
       );
+
+      setProjects(remainingProjects);
 
       setEditingProject((current) =>
         current?.id === project.id ? null : current,
       );
 
-      if (currentProjectId === project.id) {
+      if (remainingProjects.length === 0) {
+        setCurrentProjectId(null);
+        setAttentionNavigation(null);
+        setActivePage("Home");
+      } else if (currentProjectId === project.id) {
         setCurrentProjectId(null);
         setAttentionNavigation(null);
         setActivePage("Projects");
@@ -334,6 +352,27 @@ function App() {
         <section className="content-card placeholder">
           <h3>Unable to load projects</h3>
           <p>{projectLoadError}</p>
+        </section>
+      );
+    }
+
+    if (!hasProjects) {
+      return (
+        <section
+          className="first-project-welcome"
+          aria-labelledby="first-project-welcome-title"
+        >
+          <div className="first-project-welcome-copy">
+            <h2 id="first-project-welcome-title">Welcome!</h2>
+            <h3>To begin with, create your first project.</h3>
+          </div>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => setIsCreateProjectOpen(true)}
+          >
+            Create project
+          </button>
         </section>
       );
     }
@@ -499,20 +538,24 @@ function App() {
           </div>
           <div className="sidebar-body">
             <nav className="navigation">
-              {globalPages.map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  className={
-                    activePage === page
-                      ? "nav-item active"
-                      : "nav-item"
-                  }
-                  onClick={() => handleNavigation(page)}
-                >
-                  {page}
-                </button>
-              ))}
+              {globalPages
+                .filter(
+                  (page) => page !== "Projects" || hasProjects,
+                )
+                .map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={
+                      activePage === page
+                        ? "nav-item active"
+                        : "nav-item"
+                    }
+                    onClick={() => handleNavigation(page)}
+                  >
+                    {page}
+                  </button>
+                ))}
             </nav>
 
             {currentProject && (

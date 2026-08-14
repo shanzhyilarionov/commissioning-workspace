@@ -277,6 +277,10 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
   }
 
   function handleRequestDeleteIssue(issue: Issue) {
+    if (issue.status === "resolved" || issue.status === "closed") {
+      return;
+    }
+
     setOpenMenuIssueId(null);
     setIssueDeleteError(null);
     setIssueToDelete(issue);
@@ -553,6 +557,12 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
                                                   className="project-menu-item danger"
                                                   type="button"
                                                   role="menuitem"
+                                                  disabled={isClosed}
+                                                  title={
+                                                    isClosed
+                                                      ? "Reopen the issue before deleting it."
+                                                      : undefined
+                                                  }
                                                   onClick={() =>
                                                     handleRequestDeleteIssue(issue)
                                                   }

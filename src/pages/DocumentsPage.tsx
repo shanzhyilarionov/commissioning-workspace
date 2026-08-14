@@ -402,6 +402,10 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
   function handleRequestDeleteDocument(
     document: ProjectDocument,
   ) {
+    if (document.status === "approved" || document.status === "superseded") {
+      return;
+    }
+
     setOpenMenuDocumentId(null);
     setDocumentDeleteError(null);
     setDocumentToDelete(document);
@@ -622,8 +626,14 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                           {formatDocumentStatus(document.status)}
                         </span>
                       </td>
-                      <td className="document-required-cell">
-                        {document.requiredForReadiness ? "Yes" : "—"}
+                      <td
+                        className={`document-required-cell ${
+                          document.requiredForReadiness
+                            ? "required"
+                            : "not-required"
+                        }`}
+                      >
+                        {document.requiredForReadiness ? "Yes" : "No"}
                       </td>
                       <td>
                         {asset
@@ -641,6 +651,12 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                           <button
                             className="row-action-button"
                             type="button"
+                            disabled={document.status === "superseded"}
+                            title={
+                              document.status === "superseded"
+                                ? "Superseded documents are read-only."
+                                : undefined
+                            }
                             onClick={() => {
                               void handleOpenDocument(document);
                             }}
@@ -696,6 +712,16 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                                   className="project-menu-item danger"
                                   type="button"
                                   role="menuitem"
+                                  disabled={
+                                    document.status === "approved" ||
+                                    document.status === "superseded"
+                                  }
+                                  title={
+                                    document.status === "approved" ||
+                                    document.status === "superseded"
+                                      ? "Approved or superseded documents cannot be deleted."
+                                      : undefined
+                                  }
                                   onClick={() =>
                                     handleRequestDeleteDocument(
                                       document,

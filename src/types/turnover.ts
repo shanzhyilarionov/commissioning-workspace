@@ -8,6 +8,7 @@ import type {
   StructureKind,
 } from "./readiness";
 import type { CommissioningStage } from "./system";
+import type { AuditEvent } from "./audit";
 import type { TestRecordType } from "./testRecord";
 
 export type TurnoverPackageStatus = "draft" | "final" | "void";
@@ -87,7 +88,7 @@ export interface TurnoverDocumentSnapshot {
 }
 
 export interface TurnoverPackageSnapshot {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   generatedAt: string;
   project: TurnoverProjectSnapshot;
   scope: TurnoverScopeSnapshot;
@@ -99,6 +100,7 @@ export interface TurnoverPackageSnapshot {
   testRecords: TurnoverTestRecordSnapshot[];
   issues: TurnoverIssueSnapshot[];
   documents: TurnoverDocumentSnapshot[];
+  auditEvents?: AuditEvent[];
 }
 
 export interface TurnoverPackageSummary {

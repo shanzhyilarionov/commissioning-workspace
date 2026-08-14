@@ -213,7 +213,34 @@ export async function updateProjectDocument(
   input: ProjectDocumentInput,
 ): Promise<ProjectDocument> {
   const database = await getDatabase();
-  await getProjectDocumentById(documentId);
+  const existingDocument = await getProjectDocumentById(documentId);
+
+  if (existingDocument.status === "superseded") {
+    throw new Error("Superseded documents are read-only controlled records.");
+  }
+
+  if (existingDocument.status === "approved") {
+    const metadataChanged =
+      existingDocument.assetId !== input.assetId ||
+      existingDocument.title !== input.title ||
+      existingDocument.category !== input.category ||
+      existingDocument.revision !== input.revision ||
+      existingDocument.requiredForReadiness !== input.requiredForReadiness ||
+      existingDocument.notes !== input.notes;
+
+    if (metadataChanged) {
+      throw new Error(
+        "Approved document metadata is read-only. Import a new revision instead.",
+      );
+    }
+
+    if (input.status !== "approved" && input.status !== "superseded") {
+      throw new Error(
+        "An approved document can only remain Approved or become Superseded.",
+      );
+    }
+  }
+
   const updatedAt = new Date().toISOString();
 
   await database.execute(
@@ -251,7 +278,16 @@ export async function deleteProjectDocument(
 ): Promise<void> {
   const database = await getDatabase();
 
-  await getProjectDocumentById(document.id);
+  const storedDocument = await getProjectDocumentById(document.id);
+
+  if (
+    storedDocument.status === "approved" ||
+    storedDocument.status === "superseded"
+  ) {
+    throw new Error(
+      "Approved or superseded documents are controlled records and cannot be deleted.",
+    );
+  }
 
   const result = await database.execute(
     `

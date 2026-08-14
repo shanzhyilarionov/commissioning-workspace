@@ -609,31 +609,30 @@ function ReportsPage({ currentProject }: ReportsPageProps) {
     <>
       <section className="content-card section-card assets-card issues-card reports-card">
         <div className="projects-header reports-header">
-          <div>
-            <h3>Reports</h3>
+          <div className="reports-heading">
+            <div className="reports-view-switch" aria-label="Report view">
+              <button
+                className={activeView === "records" ? "active" : ""}
+                type="button"
+                aria-pressed={activeView === "records"}
+                onClick={() => handleViewChange("records")}
+              >
+                Record reports
+              </button>
+              <button
+                className={activeView === "turnover" ? "active" : ""}
+                type="button"
+                aria-pressed={activeView === "turnover"}
+                onClick={() => handleViewChange("turnover")}
+              >
+                Turnover packages
+              </button>
+            </div>
             <p>
               {activeView === "records"
-                ? `Generate signed checklist and functional test reports for ${currentProject.name}.`
-                : `Create immutable commissioning turnover packages for ${currentProject.name}.`}
+                ? `Generate signed PDFs from completed checklists and functional tests for ${currentProject.name}.`
+                : `Create controlled handover packages from commissioned system and subsystem snapshots for ${currentProject.name}.`}
             </p>
-          </div>
-          <div className="reports-view-switch" aria-label="Report view">
-            <button
-              className={activeView === "records" ? "active" : ""}
-              type="button"
-              aria-pressed={activeView === "records"}
-              onClick={() => handleViewChange("records")}
-            >
-              Record reports
-            </button>
-            <button
-              className={activeView === "turnover" ? "active" : ""}
-              type="button"
-              aria-pressed={activeView === "turnover"}
-              onClick={() => handleViewChange("turnover")}
-            >
-              Turnover packages
-            </button>
           </div>
         </div>
 

@@ -6,14 +6,17 @@ import {
 
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ReopenTestRecordModal from "../components/ReopenTestRecordModal";
 import TestItemModal from "../components/TestItemModal";
 import TestRecordCompletionModal from "../components/TestRecordCompletionModal";
 import { createIssueFromFailedTestItem } from "../repositories/commissioningWorkflowRepository";
+import { getCurrentOperator } from "../repositories/auditRepository";
 import {
   completeTestRecord,
   createTestItem,
   deleteTestItem,
   getTestRecordById,
+  listTestRecordRevisions,
   listTestItems,
   reopenTestRecord,
   updateTestItem,
@@ -25,6 +28,8 @@ import type {
   TestItemResult,
   TestRecord,
   TestRecordCompletionInput,
+  TestRecordReopenInput,
+  TestRecordRevision,
   TestRecordStatus,
   TestRecordType,
 } from "../types/testRecord";
@@ -177,8 +182,12 @@ function TestRecordDetailPage({
     useState<string | null>(null);
   const [isCompletionModalOpen, setIsCompletionModalOpen] =
     useState(false);
+  const [isReopenModalOpen, setIsReopenModalOpen] =
+    useState(false);
   const [isReopening, setIsReopening] =
     useState(false);
+  const [operatorName, setOperatorName] = useState("");
+  const [revisions, setRevisions] = useState<TestRecordRevision[]>([]);
   const [completionActionError, setCompletionActionError] =
     useState<string | null>(null);
 
@@ -205,14 +214,19 @@ function TestRecordDetailPage({
       setCreatingIssueTestItemId(null);
       setIssueCreationError(null);
       setIsCompletionModalOpen(false);
+      setIsReopenModalOpen(false);
       setIsReopening(false);
+      setOperatorName("");
+      setRevisions([]);
       setCompletionActionError(null);
 
       try {
-        const [storedRecord, storedItems] =
+        const [storedRecord, storedItems, storedRevisions, storedOperator] =
           await Promise.all([
             getTestRecordById(testRecordId),
             listTestItems(testRecordId),
+            listTestRecordRevisions(testRecordId),
+            getCurrentOperator(),
           ]);
 
         if (cancelled) {
@@ -221,6 +235,8 @@ function TestRecordDetailPage({
 
         setCurrentRecord(storedRecord);
         setTestItems(sortTestItems(storedItems));
+        setRevisions(storedRevisions);
+        setOperatorName(storedOperator);
         onRecordUpdated(storedRecord);
       } catch (error) {
         if (!cancelled) {
@@ -273,6 +289,7 @@ function TestRecordDetailPage({
       if (
         isTestItemModalOpen ||
         isCompletionModalOpen ||
+        isReopenModalOpen ||
         testItemToDelete ||
         isDeletingTestItem ||
         creatingIssueTestItemId ||
@@ -308,6 +325,7 @@ function TestRecordDetailPage({
     isCompletionModalOpen,
     isDeletingTestItem,
     isReopening,
+    isReopenModalOpen,
     isTestItemModalOpen,
     onBack,
     openMenuTestItemId,
@@ -355,14 +373,16 @@ function TestRecordDetailPage({
   }, [testItems]);
 
   async function refreshRecordAndItems() {
-    const [refreshedRecord, refreshedItems] =
+    const [refreshedRecord, refreshedItems, refreshedRevisions] =
       await Promise.all([
         getTestRecordById(currentRecord.id),
         listTestItems(currentRecord.id),
+        listTestRecordRevisions(currentRecord.id),
       ]);
 
     setCurrentRecord(refreshedRecord);
     setTestItems(sortTestItems(refreshedItems));
+    setRevisions(refreshedRevisions);
     onRecordUpdated(refreshedRecord);
   }
 
@@ -502,7 +522,9 @@ function TestRecordDetailPage({
     setIsCompletionModalOpen(false);
   }
 
-  async function handleReopenRecord() {
+  async function handleReopenRecord(
+    input: TestRecordReopenInput,
+  ): Promise<void> {
     if (!isSignedOff || isReopening) {
       return;
     }
@@ -513,15 +535,22 @@ function TestRecordDetailPage({
     try {
       const reopenedRecord = await reopenTestRecord(
         currentRecord.id,
+        input,
       );
       setCurrentRecord(reopenedRecord);
+      setOperatorName(input.reopenedBy.trim());
+      setRevisions(
+        await listTestRecordRevisions(currentRecord.id),
+      );
       onRecordUpdated(reopenedRecord);
+      setIsReopenModalOpen(false);
     } catch (error) {
       setCompletionActionError(
         error instanceof Error
           ? error.message
           : "Failed to reopen this record.",
       );
+      throw error;
     } finally {
       setIsReopening(false);
     }
@@ -636,6 +665,55 @@ function TestRecordDetailPage({
           </section>
         )}
 
+        {revisions.length > 0 && (
+          <section className="test-record-revision-panel">
+            <div className="test-record-revision-heading">
+              <div>
+                <h4>Revision history</h4>
+                <p>Previously signed versions preserved before reopening.</p>
+              </div>
+              <span>{revisions.length}</span>
+            </div>
+            <div className="test-record-revision-list">
+              {revisions.map((revision) => (
+                <div
+                  className="test-record-revision-item"
+                  key={revision.id}
+                >
+                  <div>
+                    <strong>Revision {revision.revisionNumber}</strong>
+                    <span>
+                      Signed by {revision.signedOffBy || "Unknown"}
+                      {" · "}
+                      {formatDateTime(revision.signedOffAt)}
+                    </span>
+                  </div>
+                  <div>
+                    <span>Reopened by {revision.reopenedBy}</span>
+                    <strong>{revision.reopenReason}</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {isSignedOff && (
+          <p className="test-record-read-only-notice">
+            This signed record is read-only. Reopen it to
+            change items or create additional issues.
+          </p>
+        )}
+
+        {issueCreationError && (
+          <p
+            className="projects-action-error"
+            role="alert"
+          >
+            {issueCreationError}
+          </p>
+        )}
+
         <div className="assets-toolbar issues-toolbar test-record-items-toolbar">
           <input
             className="asset-search-input"
@@ -686,10 +764,11 @@ function TestRecordDetailPage({
                 type="button"
                 disabled={isReopening}
                 onClick={() => {
-                  void handleReopenRecord();
+                  setCompletionActionError(null);
+                  setIsReopenModalOpen(true);
                 }}
               >
-                {isReopening ? "Reopening..." : "Reopen"}
+                Reopen
               </button>
             ) : (
               <button
@@ -710,22 +789,6 @@ function TestRecordDetailPage({
             {filteredTestItems.length} of {testItems.length}
           </span>
         </div>
-
-        {isSignedOff && (
-          <p className="test-record-read-only-notice">
-            This signed record is read-only. Reopen it to
-            change items or create additional issues.
-          </p>
-        )}
-
-        {issueCreationError && (
-          <p
-            className="projects-action-error"
-            role="alert"
-          >
-            {issueCreationError}
-          </p>
-        )}
 
         {isLoading ? (
           <div className="empty-state test-record-detail-state">
@@ -906,6 +969,18 @@ function TestRecordDetailPage({
         testRecord={currentRecord}
         onClose={() => setIsCompletionModalOpen(false)}
         onComplete={handleCompleteRecord}
+      />
+
+      <ReopenTestRecordModal
+        isOpen={isReopenModalOpen}
+        recordTitle={currentRecord.title}
+        defaultOperator={operatorName}
+        onClose={() => {
+          if (!isReopening) {
+            setIsReopenModalOpen(false);
+          }
+        }}
+        onReopen={handleReopenRecord}
       />
 
       <DeleteConfirmationModal

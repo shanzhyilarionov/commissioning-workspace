@@ -369,6 +369,10 @@ function ChecklistsTestsPage({
   function handleEditTestRecord(
     testRecord: TestRecord,
   ) {
+    if (testRecord.signedOffAt) {
+      return;
+    }
+
     setOpenMenuTestRecordId(null);
     setEditingTestRecord(testRecord);
     setIsTestRecordModalOpen(true);
@@ -432,6 +436,10 @@ function ChecklistsTestsPage({
   function handleRequestDeleteTestRecord(
     testRecord: TestRecord,
   ) {
+    if (testRecord.signedOffAt || testRecord.revisionCount > 0) {
+      return;
+    }
+
     setOpenMenuTestRecordId(null);
     setTestRecordDeleteError(null);
     setTestRecordToDelete(testRecord);
@@ -768,6 +776,14 @@ function ChecklistsTestsPage({
                                           <button
                                             className="row-action-button"
                                             type="button"
+                                            disabled={
+                                              testRecord.signedOffAt !== null
+                                            }
+                                            title={
+                                              testRecord.signedOffAt
+                                                ? "Reopen the signed record before editing it."
+                                                : undefined
+                                            }
                                             onClick={() =>
                                               handleEditTestRecord(
                                                 testRecord,
@@ -823,6 +839,16 @@ function ChecklistsTestsPage({
                                                   className="project-menu-item danger"
                                                   type="button"
                                                   role="menuitem"
+                                                  disabled={
+                                                    testRecord.signedOffAt !== null ||
+                                                    testRecord.revisionCount > 0
+                                                  }
+                                                  title={
+                                                    testRecord.signedOffAt !== null ||
+                                                    testRecord.revisionCount > 0
+                                                      ? "Signed or revised records cannot be deleted."
+                                                      : undefined
+                                                  }
                                                   onClick={() =>
                                                     handleRequestDeleteTestRecord(
                                                       testRecord,

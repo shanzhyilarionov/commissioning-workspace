@@ -35,6 +35,7 @@ export interface TestRecord {
   signedOffBy: string;
   signedOffAt: string | null;
   completionNotes: string;
+  revisionCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +53,22 @@ export interface TestRecordCompletionInput {
   executionDate: string;
   signedOffBy: string;
   completionNotes: string;
+}
+
+export interface TestRecordReopenInput {
+  reopenedBy: string;
+  reason: string;
+}
+
+export interface TestRecordRevision {
+  id: string;
+  testRecordId: string;
+  revisionNumber: number;
+  signedOffBy: string;
+  signedOffAt: string;
+  reopenedBy: string;
+  reopenReason: string;
+  createdAt: string;
 }
 
 export interface TestItem {

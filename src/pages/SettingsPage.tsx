@@ -1,4 +1,8 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+} from "react";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import ProjectExportModal from "../components/ProjectExportModal";
 import {
@@ -15,6 +19,10 @@ import {
   restoreWorkspaceBackup,
   revealBackup,
 } from "../services/workspaceBackupService";
+import {
+  getCurrentOperator,
+  setCurrentOperator,
+} from "../repositories/auditRepository";
 import type { Project } from "../types/project";
 import type {
   ProjectPackageImportSummary,
@@ -62,6 +70,10 @@ function projectCountLabel(count: number): string {
 }
 
 function SettingsPage({ projects, onProjectsImported }: SettingsPageProps) {
+  const [operatorName, setOperatorName] = useState("");
+  const [savedOperatorName, setSavedOperatorName] = useState("");
+  const [isSavingOperator, setIsSavingOperator] = useState(false);
+  const [operatorError, setOperatorError] = useState<string | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isInspectingImport, setIsInspectingImport] = useState(false);
@@ -85,6 +97,57 @@ function SettingsPage({ projects, onProjectsImported }: SettingsPageProps) {
     useState<WorkspaceBackupSummary | null>(null);
   const [selectedBackup, setSelectedBackup] =
     useState<WorkspaceBackupInspection | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOperator() {
+      try {
+        const storedOperator = await getCurrentOperator();
+        if (!cancelled) {
+          setOperatorName(storedOperator);
+          setSavedOperatorName(storedOperator);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setOperatorError(
+            errorMessage(error, "Failed to load the current operator."),
+          );
+        }
+      }
+    }
+
+    void loadOperator();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSaveOperator(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (isSavingOperator) {
+      return;
+    }
+
+    setIsSavingOperator(true);
+    setOperatorError(null);
+
+    try {
+      const savedOperator = await setCurrentOperator(operatorName);
+      setOperatorName(savedOperator);
+      setSavedOperatorName(savedOperator);
+    } catch (error) {
+      setOperatorError(
+        errorMessage(error, "Failed to save the current operator."),
+      );
+    } finally {
+      setIsSavingOperator(false);
+    }
+  }
 
   async function handleExportProjects(projectIds: string[]) {
     if (isExporting) {
@@ -287,6 +350,61 @@ function SettingsPage({ projects, onProjectsImported }: SettingsPageProps) {
 
         <div className="settings-scroll-container">
           <div className="settings-content">
+            <section className="settings-group">
+              <div className="settings-group-heading">
+                <h4>Identity</h4>
+              </div>
+
+              <form
+                className="settings-identity-card"
+                onSubmit={(event) => void handleSaveOperator(event)}
+              >
+                <div>
+                  <p>
+                    This name is recorded as the default operator for audit
+                    events and controlled workflow actions.
+                  </p>
+                </div>
+                <input
+                  className="settings-identity-input"
+                  type="text"
+                  value={operatorName}
+                  disabled={isSavingOperator}
+                  placeholder="Technician, engineer, or approver"
+                  aria-label="Current operator"
+                  onChange={(event) => {
+                    setOperatorName(event.target.value);
+                    setOperatorError(null);
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="secondary-button settings-card-button"
+                  disabled={
+                    isSavingOperator ||
+                    operatorName.trim() === savedOperatorName
+                  }
+                >
+                  {isSavingOperator
+                    ? operatorName.trim()
+                      ? "Saving..."
+                      : "Clearing..."
+                    : operatorName.trim()
+                      ? "Save operator"
+                      : "Clear operator"}
+                </button>
+              </form>
+
+              {operatorError && (
+                <p
+                  className="settings-message settings-message-error"
+                  role="alert"
+                >
+                  {operatorError}
+                </p>
+              )}
+            </section>
+
             <section className="settings-group">
               <div className="settings-group-heading">
                 <h4>Project data</h4>

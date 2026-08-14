@@ -25,6 +25,7 @@
   width: 100%;
   gap: 24px;
   padding: var(--section-spacing);
+  container-type: inline-size;
 }
 
 .settings-group {
@@ -94,6 +95,60 @@
   align-self: center;
   margin-left: auto;
   white-space: nowrap;
+}
+
+.settings-identity-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(180px, 1fr) minmax(190px, 280px) auto;
+  align-items: center;
+  gap: 14px 20px;
+  padding: 16px;
+  background: var(--secondary-background);
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+}
+
+.settings-identity-card > div {
+  min-width: 0;
+}
+
+.settings-identity-card p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.settings-identity-input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 11px;
+  color: #34373a;
+  background: var(--white);
+  border: 1px solid #c8cbce;
+  border-radius: 7px;
+  font-size: 12px;
+  outline: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.settings-identity-input:focus {
+  position: relative;
+  z-index: 1;
+  border-color: var(--gold);
+  box-shadow: var(--focus-ring);
+}
+
+.settings-identity-input:disabled {
+  cursor: not-allowed;
+  color: #9a9da0;
+  background: #f3f3f3;
+  border-color: #d7d9db;
 }
 
 .settings-message {
@@ -322,6 +377,20 @@
 
 .project-export-error {
   margin: 0 21px 14px;
+}
+
+@container (max-width: 720px) {
+  .settings-identity-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settings-identity-card > div {
+    grid-column: 1 / -1;
+  }
+
+  .settings-identity-card .settings-card-button {
+    grid-column: 2;
+  }
 }
 
 @container (max-width: 860px) {
