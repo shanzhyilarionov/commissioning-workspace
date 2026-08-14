@@ -14,3 +14,18 @@ export function getDatabase(): Promise<Database> {
 
   return databasePromise;
 }
+
+export async function closeDatabase(): Promise<void> {
+  const currentDatabasePromise = databasePromise;
+  databasePromise = null;
+
+  if (!currentDatabasePromise) {
+    return;
+  }
+
+  try {
+    const database = await currentDatabasePromise;
+    await database.close();
+  } catch {
+  }
+}

@@ -8,6 +8,7 @@ interface DeleteConfirmationModalProps {
   submittingLabel?: string;
   isSubmitting: boolean;
   error: string | null;
+  confirmTone?: "danger" | "primary";
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -20,6 +21,7 @@ function DeleteConfirmationModal({
   submittingLabel = "Deleting...",
   isSubmitting,
   error,
+  confirmTone = "danger",
   onClose,
   onConfirm,
 }: DeleteConfirmationModalProps) {
@@ -34,15 +36,7 @@ function DeleteConfirmationModal({
   }
 
   return (
-    <div
-      className="modal-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          handleClose();
-        }
-      }}
-    >
+    <div className="modal-backdrop" role="presentation">
       <section
         className="modal modal-small delete-confirmation-modal"
         role="dialog"
@@ -84,7 +78,9 @@ function DeleteConfirmationModal({
 
           <button
             type="button"
-            className="danger-button"
+            className={
+              confirmTone === "primary" ? "primary-button" : "danger-button"
+            }
             disabled={isSubmitting}
             onClick={onConfirm}
           >

@@ -4,6 +4,10 @@ use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod backup;
+mod project_deletion;
+mod project_transfer;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -29,7 +33,6 @@ fn save_report_pdf(path: String, bytes: Vec<u8>) -> Result<(), String> {
         .map_err(|error| format!("Failed to save the PDF report: {error}"))
 }
 
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ImportedProjectDocumentFile {
@@ -41,9 +44,9 @@ struct ImportedProjectDocumentFile {
 
 fn validate_storage_id(value: &str, field_name: &str) -> Result<(), String> {
     if value.is_empty()
-        || !value
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || character == '-' || character == '_')
+        || !value.chars().all(|character| {
+            character.is_ascii_alphanumeric() || character == '-' || character == '_'
+        })
     {
         return Err(format!("Invalid {field_name}."));
     }
@@ -71,17 +74,11 @@ fn mime_type_for_path(path: &Path) -> String {
         Some("webp") => "image/webp",
         Some("tif") | Some("tiff") => "image/tiff",
         Some("doc") => "application/msword",
-        Some("docx") => {
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        }
+        Some("docx") => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         Some("xls") => "application/vnd.ms-excel",
-        Some("xlsx") => {
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        }
+        Some("xlsx") => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         Some("ppt") => "application/vnd.ms-powerpoint",
-        Some("pptx") => {
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        }
+        Some("pptx") => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         Some("txt") => "text/plain",
         Some("csv") => "text/csv",
         _ => "application/octet-stream",
@@ -107,8 +104,9 @@ fn managed_document_path(
         return Err("The managed document storage directory does not exist.".to_string());
     }
 
-    let canonical_root = std::fs::canonicalize(storage_root)
-        .map_err(|error| format!("Failed to resolve the managed document storage directory: {error}"))?;
+    let canonical_root = std::fs::canonicalize(storage_root).map_err(|error| {
+        format!("Failed to resolve the managed document storage directory: {error}")
+    })?;
 
     if !canonical_path.starts_with(canonical_root) {
         return Err("The requested file is outside managed document storage.".to_string());
@@ -184,10 +182,7 @@ fn import_project_document(
 }
 
 #[tauri::command]
-fn open_project_document(
-    app: tauri::AppHandle,
-    stored_path: String,
-) -> Result<(), String> {
+fn open_project_document(app: tauri::AppHandle, stored_path: String) -> Result<(), String> {
     let path = managed_document_path(&app, &stored_path)?
         .ok_or_else(|| "The managed document file no longer exists.".to_string())?;
 
@@ -197,10 +192,7 @@ fn open_project_document(
 }
 
 #[tauri::command]
-fn delete_project_document_file(
-    app: tauri::AppHandle,
-    stored_path: String,
-) -> Result<(), String> {
+fn delete_project_document_file(app: tauri::AppHandle, stored_path: String) -> Result<(), String> {
     let Some(path) = managed_document_path(&app, &stored_path)? else {
         return Ok(());
     };
@@ -211,23 +203,6 @@ fn delete_project_document_file(
         .map_err(|error| format!("Failed to delete the managed document: {error}"))?;
 
     remove_empty_parent_directories(&path, &storage_root);
-
-    Ok(())
-}
-
-#[tauri::command]
-fn delete_project_document_project_files(
-    app: tauri::AppHandle,
-    project_id: String,
-) -> Result<(), String> {
-    validate_storage_id(&project_id, "project ID")?;
-
-    let project_directory = project_storage_root(&app)?.join(project_id);
-
-    if project_directory.exists() {
-        std::fs::remove_dir_all(project_directory)
-            .map_err(|error| format!("Failed to delete the project document storage: {error}"))?;
-    }
 
     Ok(())
 }
@@ -1005,10 +980,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
-                .add_migrations(
-                    "sqlite:commissioning-workspace.db",
-                    migrations,
-                )
+                .add_migrations("sqlite:commissioning-workspace.db", migrations)
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
@@ -1017,7 +989,15 @@ pub fn run() {
             import_project_document,
             open_project_document,
             delete_project_document_file,
-            delete_project_document_project_files
+            project_deletion::delete_project,
+            project_transfer::create_project_package,
+            project_transfer::inspect_project_package,
+            project_transfer::import_project_package,
+            backup::create_workspace_backup,
+            backup::inspect_workspace_backup,
+            backup::restore_workspace_backup,
+            backup::open_workspace_backup_directory,
+            backup::restart_application
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -14,6 +14,7 @@ import IssuesPage from "./pages/IssuesPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ReportsPage from "./pages/ReportsPage";
+import SettingsPage from "./pages/SettingsPage";
 import {
   archiveProject,
   createProject,
@@ -274,11 +275,18 @@ function App() {
       setProjectDeleteError(
         error instanceof Error
           ? error.message
-          : "Failed to delete the project.",
+          : String(error || "Failed to delete the project."),
       );
     } finally {
       setIsDeletingProject(false);
     }
+  }
+
+  async function handleProjectsImported() {
+    const storedProjects = await listProjects();
+    setProjects(storedProjects);
+    setProjectLoadError(null);
+    setIsLoadingProjects(false);
   }
 
   function renderNoProjectSelected(message: string) {
@@ -301,6 +309,15 @@ function App() {
   }
 
   function renderPage() {
+    if (activePage === "Settings") {
+      return (
+        <SettingsPage
+          projects={projects}
+          onProjectsImported={handleProjectsImported}
+        />
+      );
+    }
+
     if (isLoadingProjects) {
       return (
         <section className="content-card placeholder">

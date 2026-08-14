@@ -239,10 +239,6 @@ function TurnoverPackageModal({
                 >
                   New turnover package
                 </h2>
-                <p className="turnover-modal-description">
-                  Create an immutable commissioning and handover snapshot for a
-                  system or subsystem.
-                </p>
               </div>
 
               {!hasAnyScope ? (
