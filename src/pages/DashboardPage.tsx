@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ActivityHistoryModal from "../components/ActivityHistoryModal";
 import AuditEventDetailModal from "../components/AuditEventDetailModal";
 import { getProjectOverview } from "../repositories/projectOverviewRepository";
 import { listAuditEvents } from "../repositories/auditRepository";
@@ -157,6 +158,8 @@ function ProjectOverviewPage({
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [selectedAuditEvent, setSelectedAuditEvent] =
     useState<AuditEvent | null>(null);
+  const [isActivityHistoryOpen, setIsActivityHistoryOpen] =
+    useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -501,6 +504,15 @@ function ProjectOverviewPage({
                   <h4>Recent activity</h4>
                   <p>Append-only project changes and controlled actions.</p>
                 </div>
+                {auditEvents.length > 0 && (
+                  <button
+                    type="button"
+                    className="secondary-button overview-activity-view-all"
+                    onClick={() => setIsActivityHistoryOpen(true)}
+                  >
+                    View all
+                  </button>
+                )}
               </div>
 
               {auditEvents.length === 0 ? (
@@ -585,6 +597,14 @@ function ProjectOverviewPage({
         </div>
       </div>
       </section>
+
+      <ActivityHistoryModal
+        isOpen={isActivityHistoryOpen}
+        projectId={currentProject.id}
+        projectName={currentProject.name}
+        onClose={() => setIsActivityHistoryOpen(false)}
+        onOpenRecord={handleOpenAuditRecord}
+      />
 
       <AuditEventDetailModal
         event={selectedAuditEvent}

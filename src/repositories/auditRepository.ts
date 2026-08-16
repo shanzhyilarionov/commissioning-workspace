@@ -90,12 +90,13 @@ export async function setCurrentOperator(
   return normalizedName;
 }
 
-export async function listAuditEvents(
+async function queryAuditEvents(
   projectId: string,
-  limit = 12,
+  limit: number | null,
 ): Promise<AuditEvent[]> {
-  const normalizedLimit = Math.max(1, Math.min(2000, Math.trunc(limit)));
   const database = await getDatabase();
+  const limitClause = limit === null ? "" : "LIMIT $2";
+  const parameters = limit === null ? [projectId] : [projectId, limit];
   const rows = await database.select<AuditEventRow[]>(
     `
       SELECT
@@ -122,12 +123,26 @@ export async function listAuditEvents(
       FROM audit_events
       WHERE project_id = $1
       ORDER BY created_at DESC, id DESC
-      LIMIT $2
+      ${limitClause}
     `,
-    [projectId, normalizedLimit],
+    parameters,
   );
 
   return rows.map(mapAuditEvent);
+}
+
+export async function listAuditEvents(
+  projectId: string,
+  limit = 12,
+): Promise<AuditEvent[]> {
+  const normalizedLimit = Math.max(1, Math.min(2000, Math.trunc(limit)));
+  return queryAuditEvents(projectId, normalizedLimit);
+}
+
+export async function listAllAuditEvents(
+  projectId: string,
+): Promise<AuditEvent[]> {
+  return queryAuditEvents(projectId, null);
 }
 
 export async function setAuditOperationContext(

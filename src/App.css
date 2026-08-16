@@ -813,6 +813,105 @@ body:has(.modal-backdrop) .window-drag-region {
   flex-direction: column;
 }
 
+.activity-history-modal {
+  display: grid;
+  width: min(760px, calc(100vw - 48px));
+  height: min(680px, calc(100vh - 48px));
+  min-height: 360px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.activity-history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 21px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.activity-history-heading > div {
+  min-width: 0;
+}
+
+.activity-history-heading p {
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-history-count {
+  flex: 0 0 auto;
+  padding-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.activity-history-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  padding: 12px 21px;
+  background: var(--secondary-background);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.project-search-input.activity-history-search-input {
+  width: 100%;
+  max-width: none;
+}
+
+.activity-history-search-input:disabled {
+  color: #8a8d90;
+  background: #f0f0f0;
+  cursor: not-allowed;
+}
+
+.activity-history-content {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.activity-history-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.activity-history-state {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 28px;
+  text-align: center;
+}
+
+.activity-history-state strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.activity-history-state span {
+  max-width: 440px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.activity-history-state .secondary-button {
+  margin-top: 9px;
+}
+
 .audit-event-scroll {
   min-height: 0;
   overflow-x: hidden;
@@ -1009,6 +1108,24 @@ body:has(.modal-backdrop) .window-drag-region {
   .audit-event-modal {
     width: min(100%, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
+  }
+
+  .activity-history-modal {
+    width: min(100%, calc(100vw - 32px));
+    height: min(720px, calc(100vh - 32px));
+  }
+
+  .activity-history-heading {
+    align-items: flex-start;
+  }
+
+  .activity-history-toolbar {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .project-search-input.activity-history-search-input {
+    width: 100%;
   }
 
   .audit-event-heading,
@@ -2697,6 +2814,13 @@ button.overview-activity-item:hover {
 .overview-activity-empty span {
   font-size: 10px;
   color: var(--text-secondary);
+}
+
+.overview-activity-view-all {
+  min-height: 30px;
+  flex: 0 0 auto;
+  padding: 5px 11px;
+  white-space: nowrap;
 }
 
 .overview-project-grid {

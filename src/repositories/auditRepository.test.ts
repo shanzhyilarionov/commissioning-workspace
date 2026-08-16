@@ -11,6 +11,7 @@ vi.mock("../services/database", () => ({
 }));
 
 import {
+  listAllAuditEvents,
   listAuditEvents,
   setCurrentOperator,
 } from "./auditRepository";
@@ -91,5 +92,14 @@ describe("listAuditEvents", () => {
       "END AS parent_entity_id",
     );
     expect(mocks.select.mock.calls[0]?.[1]).toEqual(["project-1", 12]);
+  });
+
+  it("loads complete project history without a limit", async () => {
+    mocks.select.mockResolvedValue([]);
+
+    await expect(listAllAuditEvents("project-1")).resolves.toEqual([]);
+
+    expect(mocks.select.mock.calls[0]?.[0]).not.toContain("LIMIT $2");
+    expect(mocks.select.mock.calls[0]?.[1]).toEqual(["project-1"]);
   });
 });
