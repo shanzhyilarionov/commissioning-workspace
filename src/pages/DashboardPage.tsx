@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AuditEventDetailModal from "../components/AuditEventDetailModal";
 import { getProjectOverview } from "../repositories/projectOverviewRepository";
 import { listAuditEvents } from "../repositories/auditRepository";
 import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
@@ -7,9 +8,9 @@ import type {
   AuditEntityType,
   AuditEvent,
 } from "../types/audit";
+import type { ProjectNavigationItem } from "../types/navigation";
 import type {
   AttentionItemType,
-  ProjectAttentionItem,
   ProjectOverview,
 } from "../types/projectOverview";
 
@@ -17,7 +18,7 @@ interface ProjectOverviewPageProps {
   currentProject: Project;
   onNavigate: (
     page: AttentionDestinationPage,
-    item?: ProjectAttentionItem,
+    item?: ProjectNavigationItem,
   ) => void;
   onEditProject: () => void;
 }
@@ -154,6 +155,8 @@ function ProjectOverviewPage({
     null,
   );
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [selectedAuditEvent, setSelectedAuditEvent] =
+    useState<AuditEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -218,8 +221,26 @@ function ProjectOverviewPage({
       )
     : 0;
 
+  function handleOpenAuditRecord(event: AuditEvent) {
+    const target = getAuditTarget(event.entityType);
+
+    if (!target) {
+      return;
+    }
+
+    setSelectedAuditEvent(null);
+    onNavigate(target, {
+      navigationKind: "audit",
+      entityType: event.entityType,
+      id: event.entityId,
+      matchText: event.entityLabel,
+      parentId: event.parentEntityId,
+    });
+  }
+
   return (
-    <section className="content-card section-card overview-page">
+    <>
+      <section className="content-card section-card overview-page">
       <div className="card-header overview-page-header">
         <div>
           <h3>Project overview</h3>
@@ -489,10 +510,13 @@ function ProjectOverviewPage({
                 </div>
               ) : (
                 <div className="overview-activity-list">
-                  {auditEvents.map((event) => {
-                    const target = getAuditTarget(event.entityType);
-                    const content = (
-                      <>
+                  {auditEvents.map((event) => (
+                    <button
+                      key={event.id}
+                      type="button"
+                      className="overview-activity-item"
+                      onClick={() => setSelectedAuditEvent(event)}
+                    >
                         <span className="overview-activity-marker" />
                         <span className="overview-activity-copy">
                           <span>
@@ -509,27 +533,8 @@ function ProjectOverviewPage({
                         <time dateTime={event.createdAt}>
                           {formatDateTime(event.createdAt)}
                         </time>
-                      </>
-                    );
-
-                    return target ? (
-                      <button
-                        key={event.id}
-                        type="button"
-                        className="overview-activity-item"
-                        onClick={() => onNavigate(target)}
-                      >
-                        {content}
-                      </button>
-                    ) : (
-                      <div
-                        key={event.id}
-                        className="overview-activity-item"
-                      >
-                        {content}
-                      </div>
-                    );
-                  })}
+                    </button>
+                  ))}
                 </div>
               )}
             </section>
@@ -552,11 +557,11 @@ function ProjectOverviewPage({
               <div className="overview-project-grid">
                 <div>
                   <span>Client</span>
-                  <strong>{currentProject.client || "—"}</strong>
+                  <strong>{currentProject.client || "-"}</strong>
                 </div>
                 <div>
                   <span>Location</span>
-                  <strong>{currentProject.location || "—"}</strong>
+                  <strong>{currentProject.location || "-"}</strong>
                 </div>
                 <div>
                   <span>Created</span>
@@ -579,7 +584,14 @@ function ProjectOverviewPage({
         ) : null}
         </div>
       </div>
-    </section>
+      </section>
+
+      <AuditEventDetailModal
+        event={selectedAuditEvent}
+        onClose={() => setSelectedAuditEvent(null)}
+        onOpenRecord={handleOpenAuditRecord}
+      />
+    </>
   );
 }
 

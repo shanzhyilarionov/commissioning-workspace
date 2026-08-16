@@ -203,7 +203,7 @@ function IssueModal({
                       key={asset.id}
                       value={asset.id}
                     >
-                      {asset.tag} — {asset.name}
+                      {asset.tag} - {asset.name}
                     </option>
                   ))}
                 </select>

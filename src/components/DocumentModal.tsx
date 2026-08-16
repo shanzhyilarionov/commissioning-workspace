@@ -290,7 +290,7 @@ function DocumentModal({
                   <option value="">No linked asset</option>
                   {assets.map((asset) => (
                     <option key={asset.id} value={asset.id}>
-                      {asset.tag} — {asset.name}
+                      {asset.tag} - {asset.name}
                     </option>
                   ))}
                 </select>

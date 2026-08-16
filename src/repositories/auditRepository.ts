@@ -10,6 +10,7 @@ interface AuditEventRow {
   project_id: string;
   entity_type: AuditEntityType;
   entity_id: string;
+  parent_entity_id: string | null;
   action: string;
   entity_label: string;
   actor: string;
@@ -28,6 +29,7 @@ function mapAuditEvent(row: AuditEventRow): AuditEvent {
     projectId: row.project_id,
     entityType: row.entity_type,
     entityId: row.entity_id,
+    parentEntityId: row.parent_entity_id,
     action: row.action,
     entityLabel: row.entity_label,
     actor: row.actor,
@@ -101,6 +103,16 @@ export async function listAuditEvents(
         project_id,
         entity_type,
         entity_id,
+        CASE
+          WHEN entity_type = 'subsystem' THEN (
+            SELECT system_id
+            FROM subsystems
+            WHERE id = audit_events.entity_id
+          )
+          WHEN entity_type = 'test_item' THEN
+            json_extract(details_json, '$.recordId')
+          ELSE NULL
+        END AS parent_entity_id,
         action,
         entity_label,
         actor,

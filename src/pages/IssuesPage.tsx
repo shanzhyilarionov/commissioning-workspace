@@ -63,7 +63,7 @@ function formatIssuePriority(priority: IssuePriority) {
 
 function formatDueDate(dueDate: string | null) {
   if (!dueDate) {
-    return "—";
+    return "-";
   }
 
   return new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-CA");
@@ -473,10 +473,10 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
                                             <strong className="asset-tag">
                                               {issue.assetTag}
                                             </strong>
-                                            {issue.assetName ? ` — ${issue.assetName}` : ""}
+                                            {issue.assetName ? ` - ${issue.assetName}` : ""}
                                           </>
                                         ) : (
-                                          "—"
+                                          "-"
                                         )}
                                       </td>
 
@@ -495,7 +495,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
                                       </td>
 
                                       <td className="issue-owner-cell" title={issue.owner}>
-                                        {issue.owner || "—"}
+                                        {issue.owner || "-"}
                                       </td>
 
                                       <td className="issue-date-cell">

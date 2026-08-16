@@ -52,7 +52,7 @@ function formatIssuePriority(priority: ReportLinkedIssue["priority"]): string {
 
 function formatDate(value: string | null | undefined): string {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -88,7 +88,7 @@ function formatDateTime(value: string): string {
 
 function displayText(value: string | null | undefined): string {
   const normalized = value?.trim();
-  return normalized || "—";
+  return normalized || "-";
 }
 
 function sanitizeFileName(value: string): string {
@@ -103,7 +103,7 @@ function sanitizeFileName(value: string): string {
 
 function getLinkedIssueText(issue: ReportLinkedIssue | null): string {
   if (!issue) {
-    return "—";
+    return "-";
   }
 
   const details = [

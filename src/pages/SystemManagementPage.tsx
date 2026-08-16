@@ -20,7 +20,7 @@ import {
 import { getProjectStructureProgress } from "../repositories/systemProgressRepository";
 import type { Asset } from "../types/asset";
 import type { Project } from "../types/project";
-import type { ProjectAttentionItem } from "../types/projectOverview";
+import type { ProjectNavigationItem } from "../types/navigation";
 import type {
   ReadinessBlocker,
   StageTransitionInput,
@@ -55,7 +55,7 @@ interface SystemManagementPageProps {
   ) => void;
   onNavigate: (
     page: AttentionDestinationPage,
-    item?: ProjectAttentionItem,
+    item?: ProjectNavigationItem,
   ) => void;
   onStructureChanged: () => Promise<void>;
 }
@@ -118,7 +118,7 @@ function StructureStatusCell({
   blockerCount?: number;
 }) {
   if (!progress) {
-    return <span className="structure-progress-unavailable">—</span>;
+    return <span className="structure-progress-unavailable">-</span>;
   }
 
   const readiness =
@@ -153,7 +153,7 @@ function StructureBlockerButton({
   onClick: () => void;
 }) {
   if (count === undefined) {
-    return <span className="structure-progress-unavailable">—</span>;
+    return <span className="structure-progress-unavailable">-</span>;
   }
 
   return (
@@ -651,7 +651,7 @@ function SystemManagementPage({
                   }
                 >
                   {systemReadinessById.get(selectedSystem.id)?.blockerCount ??
-                    "—"}
+                    "-"}
                 </strong>
               </button>
             </div>
@@ -732,7 +732,7 @@ function SystemManagementPage({
                   {filteredSubsystems.map((subsystem) => (
                     <tr key={subsystem.id}>
                       <td className="structure-code-cell">
-                        {subsystem.code || "—"}
+                        {subsystem.code || "-"}
                       </td>
                       <td>
                         <strong className="structure-name">
@@ -740,7 +740,7 @@ function SystemManagementPage({
                         </strong>
                       </td>
                       <td className="structure-description-cell">
-                        {subsystem.description || "—"}
+                        {subsystem.description || "-"}
                       </td>
                       <td className="status-cell">
                         <StructureStageCell stage={subsystem.stage} />
@@ -1008,13 +1008,13 @@ function SystemManagementPage({
                 {filteredSystems.map((system) => (
                   <tr key={system.id}>
                     <td className="structure-code-cell">
-                      {system.code || "—"}
+                      {system.code || "-"}
                     </td>
                     <td>
                       <strong className="structure-name">{system.name}</strong>
                     </td>
                     <td className="structure-description-cell">
-                      {system.description || "—"}
+                      {system.description || "-"}
                     </td>
                     <td className="status-cell">
                       <StructureStageCell stage={system.stage} />

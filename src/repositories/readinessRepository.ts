@@ -252,7 +252,7 @@ async function getReadinessBlockers(
     ...assetRows.map<ReadinessBlocker>((row) => ({
       id: `asset-${row.id}`,
       type: "incomplete_asset",
-      title: `${row.tag} — ${row.name}`,
+      title: `${row.tag} - ${row.name}`,
       detail: `Asset is ${formatStatus(row.status).toLowerCase()}.`,
       status: row.status,
       destinationPage: "Assets",

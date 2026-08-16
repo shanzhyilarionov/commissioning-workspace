@@ -18,8 +18,11 @@ import type {
   AssetStatus,
 } from "../types/asset";
 import type { Project } from "../types/project";
-import type { ProjectAttentionItem } from "../types/projectOverview";
 import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
+import {
+  isAuditNavigationItem,
+  type ProjectNavigationItem,
+} from "../types/navigation";
 import type {
   CommissioningSystem,
   Subsystem,
@@ -29,10 +32,10 @@ import "./DocumentsPage.css";
 
 interface AssetsPageProps {
   currentProject: Project;
-  attentionItem?: ProjectAttentionItem | null;
+  attentionItem?: ProjectNavigationItem | null;
   onNavigate: (
     page: AttentionDestinationPage,
-    item?: ProjectAttentionItem,
+    item?: ProjectNavigationItem,
   ) => void;
 }
 
@@ -60,7 +63,7 @@ function formatAssetStructure(asset: Asset) {
     return `${asset.systemName} / ${asset.subsystemName}`;
   }
 
-  return asset.systemName || "—";
+  return asset.systemName || "-";
 }
 
 function sortAssets(assets: Asset[]) {
@@ -121,6 +124,32 @@ function AssetsPage({
 
   useEffect(() => {
     if (!attentionItem) {
+      return;
+    }
+
+    if (isAuditNavigationItem(attentionItem)) {
+      if (
+        attentionItem.entityType === "system" ||
+        attentionItem.entityType === "subsystem"
+      ) {
+        setStructureAssetsReturnTarget(
+          attentionItem.entityType === "subsystem"
+            ? { systemId: attentionItem.parentId }
+            : null,
+        );
+        setIsManagingSystems(true);
+        return;
+      }
+
+      if (attentionItem.entityType === "asset") {
+        setSearchQuery("");
+        setSystemFilter("all");
+        setSubsystemFilter("all");
+        setStatusFilter("all");
+        setStructureAssetsReturnTarget(null);
+        setIsManagingSystems(false);
+      }
+
       return;
     }
 
@@ -214,8 +243,25 @@ function AssetsPage({
     setAssetToDelete(null);
     setAssetDeleteError(null);
     setOpenMenuAssetId(null);
-    setStructureAssetsReturnTarget(null);
-    setIsManagingSystems(attentionItem?.type === "system_readiness");
+    const auditStructureTarget =
+      attentionItem &&
+      isAuditNavigationItem(attentionItem) &&
+      (attentionItem.entityType === "system" ||
+        attentionItem.entityType === "subsystem")
+        ? attentionItem
+        : null;
+
+    setStructureAssetsReturnTarget(
+      auditStructureTarget?.entityType === "subsystem"
+        ? { systemId: auditStructureTarget.parentId }
+        : null,
+    );
+    setIsManagingSystems(
+      auditStructureTarget !== null ||
+        (attentionItem !== null &&
+          !isAuditNavigationItem(attentionItem) &&
+          attentionItem.type === "system_readiness"),
+    );
     void loadProjectAssets();
 
     return () => {
@@ -451,7 +497,13 @@ function AssetsPage({
         assets={assets}
         systems={systems}
         subsystems={subsystems}
-        initialSystemId={structureAssetsReturnTarget?.systemId ?? null}
+        initialSystemId={
+          attentionItem &&
+          isAuditNavigationItem(attentionItem) &&
+          attentionItem.entityType === "subsystem"
+            ? attentionItem.parentId
+            : structureAssetsReturnTarget?.systemId ?? null
+        }
         onBack={handleLeaveStructureManagement}
         onViewAssets={handleViewStructureAssets}
         onNavigate={onNavigate}
@@ -618,7 +670,7 @@ function AssetsPage({
                     </td>
                     <td>{asset.name}</td>
                     <td>{formatAssetStructure(asset)}</td>
-                    <td>{asset.assetType || "—"}</td>
+                    <td>{asset.assetType || "-"}</td>
                     <td className="status-cell">
                       <span className={`status-badge ${asset.status}`}>
                         {formatAssetStatus(asset.status)}
@@ -695,7 +747,7 @@ function AssetsPage({
           assetToDelete ? (
             <>
               Delete asset <strong>{assetToDelete.tag}</strong>
-              {assetToDelete.name ? ` — ${assetToDelete.name}` : ""}? This
+              {assetToDelete.name ? ` - ${assetToDelete.name}` : ""}? This
               action cannot be undone.
             </>
           ) : null

@@ -28,7 +28,7 @@ import type {
   Project,
   UpdateProjectInput,
 } from "./types/project";
-import type { ProjectAttentionItem } from "./types/projectOverview";
+import type { ProjectNavigationItem } from "./types/navigation";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 import "./App.css";
 
@@ -139,7 +139,7 @@ function App() {
 
   function handleOverviewNavigation(
     page: AttentionDestinationPage,
-    item?: ProjectAttentionItem,
+    item?: ProjectNavigationItem,
   ) {
     if (item) {
       attentionRequestSequence.current += 1;
@@ -498,7 +498,16 @@ function App() {
           );
         }
 
-        return <ReportsPage currentProject={currentProject} />;
+        return (
+          <ReportsPage
+            currentProject={currentProject}
+            navigationItem={
+              attentionNavigation?.page === "Reports"
+                ? attentionNavigation.item
+                : null
+            }
+          />
+        );
 
       default:
         if (isProjectPage(activePage) && !currentProject) {

@@ -25,6 +25,10 @@ import {
   listSystemsByProject,
 } from "../repositories/systemRepository";
 import type { Project } from "../types/project";
+import {
+  isAuditNavigationItem,
+  type ProjectNavigationItem,
+} from "../types/navigation";
 import type { ReportRecordSummary } from "../types/report";
 import type {
   CommissioningStage,
@@ -42,6 +46,7 @@ import "./ReportsPage.css";
 
 interface ReportsPageProps {
   currentProject: Project;
+  navigationItem?: ProjectNavigationItem | null;
 }
 
 type ReportTypeFilter = "all" | TestRecordType;
@@ -117,7 +122,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function ReportsPage({ currentProject }: ReportsPageProps) {
+function ReportsPage({
+  currentProject,
+  navigationItem = null,
+}: ReportsPageProps) {
   const [activeView, setActiveView] = useState<ReportsView>("records");
   const [records, setRecords] = useState<ReportRecordSummary[]>([]);
   const [turnoverPackages, setTurnoverPackages] = useState<
@@ -159,6 +167,18 @@ function ReportsPage({ currentProject }: ReportsPageProps) {
   const [packageVoidError, setPackageVoidError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [savedReportPath, setSavedReportPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      navigationItem &&
+      isAuditNavigationItem(navigationItem) &&
+      navigationItem.entityType === "turnover_package"
+    ) {
+      setActiveView("turnover");
+      setSearchQuery("");
+      setTurnoverStatusFilter("all");
+    }
+  }, [navigationItem]);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {

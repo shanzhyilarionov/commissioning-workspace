@@ -544,7 +544,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
             <option value="unlinked">No linked asset</option>
             {assets.map((asset) => (
               <option key={asset.id} value={asset.id}>
-                {asset.tag} — {asset.name}
+                {asset.tag} - {asset.name}
               </option>
             ))}
           </select>
@@ -618,7 +618,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                       <td>
                         {formatDocumentCategory(document.category)}
                       </td>
-                      <td>{document.revision || "—"}</td>
+                      <td>{document.revision || "-"}</td>
                       <td className="status-cell">
                         <span
                           className={`status-badge ${document.status}`}
@@ -637,8 +637,8 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                       </td>
                       <td>
                         {asset
-                          ? `${asset.tag} — ${asset.name}`
-                          : "—"}
+                          ? `${asset.tag} - ${asset.name}`
+                          : "-"}
                       </td>
                       <td>{formatFileSize(document.fileSize)}</td>
                       <td className="project-updated-cell">

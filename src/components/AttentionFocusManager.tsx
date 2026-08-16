@@ -1,5 +1,8 @@
 import { useEffect } from "react";
-import type { ProjectAttentionItem } from "../types/projectOverview";
+import {
+  isAuditNavigationItem,
+  type ProjectNavigationItem,
+} from "../types/navigation";
 
 export type AttentionDestinationPage =
   | "Assets"
@@ -11,7 +14,7 @@ export type AttentionDestinationPage =
 export interface AttentionNavigationRequest {
   requestId: number;
   page: AttentionDestinationPage;
-  item: ProjectAttentionItem;
+  item: ProjectNavigationItem;
 }
 
 interface AttentionFocusManagerProps {
@@ -22,7 +25,7 @@ interface AttentionFocusManagerProps {
 
 function normalizeText(value: string): string {
   return value
-    .replace(/[—–]/g, "-")
+    .replace(/[\u2014\u2013]/g, "-")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
@@ -128,6 +131,140 @@ function AttentionFocusManager({
 
     function tryFocusTarget() {
       if (completed) {
+        return;
+      }
+
+      if (isAuditNavigationItem(request.item)) {
+        const auditItem = request.item;
+
+        switch (auditItem.entityType) {
+          case "asset": {
+            const row = findRow(
+              ".assets-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (row) {
+              finish(row);
+            }
+            return;
+          }
+
+          case "system": {
+            const row = findRow(
+              ".structure-systems-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (row) {
+              finish(row);
+            }
+            return;
+          }
+
+          case "subsystem": {
+            const row = findRow(
+              ".structure-subsystems-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (row) {
+              finish(row);
+            }
+            return;
+          }
+
+          case "issue": {
+            const row = findRow(
+              ".issues-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (row) {
+              finish(row);
+            }
+            return;
+          }
+
+          case "test_record": {
+            const row = findRow(
+              ".checklists-tests-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (row) {
+              finish(row);
+            }
+            return;
+          }
+
+          case "test_item": {
+            const itemRow = findRow(
+              ".test-record-items-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (itemRow) {
+              finish(itemRow);
+              return;
+            }
+
+            if (openedParentRecord || !auditItem.parentId) {
+              return;
+            }
+
+            const recordRow = findRow(
+              ".checklists-tests-table tbody tr",
+              auditItem.parentId,
+              "",
+            );
+            const openButton = recordRow?.querySelector<HTMLButtonElement>(
+              ".test-record-title-button",
+            );
+
+            if (openButton) {
+              openedParentRecord = true;
+              openButton.click();
+            }
+            return;
+          }
+
+          case "document": {
+            const row = findRow(
+              ".documents-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (row) {
+              finish(row);
+            }
+            return;
+          }
+
+          case "turnover_package": {
+            const row = findRow(
+              ".turnover-packages-table tbody tr",
+              auditItem.id,
+              auditItem.matchText,
+            );
+
+            if (row) {
+              finish(row);
+            }
+            return;
+          }
+
+          case "project":
+            return;
+        }
+
         return;
       }
 

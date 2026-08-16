@@ -106,7 +106,7 @@ function formatExecutionDate(
   value: string | null,
 ): string {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   const parsedDate = new Date(`${value}T00:00:00`);
@@ -121,7 +121,7 @@ function formatDateTime(
   value: string | null,
 ): string {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   const parsedDate = new Date(value);
@@ -579,7 +579,7 @@ function TestRecordDetailPage({
                 <>
                   <strong>{currentRecord.assetTag}</strong>
                   {currentRecord.assetName
-                    ? ` — ${currentRecord.assetName}`
+                    ? ` - ${currentRecord.assetName}`
                     : ""}
                 </>
               ) : (
@@ -632,11 +632,11 @@ function TestRecordDetailPage({
           <section className="test-record-signoff-panel">
             <div>
               <span>Executed by</span>
-              <strong>{currentRecord.executedBy || "—"}</strong>
+              <strong>{currentRecord.executedBy || "-"}</strong>
             </div>
             <div>
               <span>Witnessed by</span>
-              <strong>{currentRecord.witnessedBy || "—"}</strong>
+              <strong>{currentRecord.witnessedBy || "-"}</strong>
             </div>
             <div>
               <span>Execution date</span>
@@ -849,7 +849,7 @@ function TestRecordDetailPage({
                       </td>
 
                       <td>
-                        {testItem.acceptanceCriteria || "—"}
+                        {testItem.acceptanceCriteria || "-"}
                       </td>
 
                       <td>
@@ -860,7 +860,7 @@ function TestRecordDetailPage({
                         </span>
                       </td>
 
-                      <td>{testItem.notes || "—"}</td>
+                      <td>{testItem.notes || "-"}</td>
 
                       <td className="table-action-cell">
                         <div className="project-row-actions">

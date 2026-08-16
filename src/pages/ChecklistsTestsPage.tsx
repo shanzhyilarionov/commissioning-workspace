@@ -735,11 +735,11 @@ function ChecklistsTestsPage({
                                             </strong>
 
                                             {testRecord.assetName
-                                              ? ` — ${testRecord.assetName}`
+                                              ? ` - ${testRecord.assetName}`
                                               : ""}
                                           </>
                                         ) : (
-                                          "—"
+                                          "-"
                                         )}
                                       </td>
 

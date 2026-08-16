@@ -26,6 +26,7 @@ export interface AuditEvent {
   projectId: string;
   entityType: AuditEntityType;
   entityId: string;
+  parentEntityId: string | null;
   action: AuditAction | string;
   entityLabel: string;
   actor: string;

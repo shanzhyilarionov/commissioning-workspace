@@ -379,7 +379,7 @@ export async function getProjectOverview(
         SELECT
           assets.id AS id,
           'blocked_asset' AS attention_type,
-          assets.tag || ' — ' || assets.name AS title,
+          assets.tag || ' - ' || assets.name AS title,
           CASE
             WHEN COALESCE(systems.name, assets.system_name) = '' THEN
               'Blocked asset'
