@@ -730,7 +730,10 @@ function SystemManagementPage({
               body={
                 <>
                   {filteredSubsystems.map((subsystem) => (
-                    <tr key={subsystem.id}>
+                    <tr
+                      key={subsystem.id}
+                      data-navigation-id={subsystem.id}
+                    >
                       <td className="structure-code-cell">
                         {subsystem.code || "-"}
                       </td>
@@ -1006,7 +1009,7 @@ function SystemManagementPage({
             body={
               <>
                 {filteredSystems.map((system) => (
-                  <tr key={system.id}>
+                  <tr key={system.id} data-navigation-id={system.id}>
                     <td className="structure-code-cell">
                       {system.code || "-"}
                     </td>

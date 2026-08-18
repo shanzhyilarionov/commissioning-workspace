@@ -945,7 +945,10 @@ function ReportsPage({
                     exportingPackageId === turnoverPackage.id;
 
                   return (
-                    <tr key={turnoverPackage.id}>
+                    <tr
+                      key={turnoverPackage.id}
+                      data-navigation-id={turnoverPackage.id}
+                    >
                       <td
                         className="turnover-package-number-cell"
                         title={turnoverPackage.packageNumber}

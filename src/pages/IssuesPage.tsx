@@ -460,7 +460,10 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
                                   const isChangingStatus = changingIssueStatusId === issue.id;
 
                                   return (
-                                    <tr key={issue.id}>
+                                    <tr
+                                      key={issue.id}
+                                      data-navigation-id={issue.id}
+                                    >
                                       <td className="issue-title-cell" title={issue.title}>
                                         <strong className="issue-title-text">
                                           {issue.title}

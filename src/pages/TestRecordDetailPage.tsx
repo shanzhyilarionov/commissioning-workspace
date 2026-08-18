@@ -838,7 +838,10 @@ function TestRecordDetailPage({
                     creatingIssueTestItemId === testItem.id;
 
                   return (
-                    <tr key={testItem.id}>
+                    <tr
+                      key={testItem.id}
+                      data-navigation-id={testItem.id}
+                    >
                       <td>
                         <div className="test-item-description">
                           <span className="test-item-number">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { listAllAuditEvents } from "../repositories/auditRepository";
+import { saveAuditHistoryCsv } from "../services/auditExportService";
 import type { AuditEntityType, AuditEvent } from "../types/audit";
 import AuditEventDetailModal from "./AuditEventDetailModal";
 
@@ -59,6 +60,9 @@ function ActivityHistoryModal({
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportedCount, setExportedCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -95,6 +99,8 @@ function ActivityHistoryModal({
 
     setSelectedEvent(null);
     setSearchQuery("");
+    setExportError(null);
+    setExportedCount(null);
     void loadActivityHistory();
 
     return () => {
@@ -108,14 +114,14 @@ function ActivityHistoryModal({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isExporting) {
         onClose();
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, selectedEvent]);
+  }, [isExporting, isOpen, onClose, selectedEvent]);
 
   const filteredEvents = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -142,6 +148,36 @@ function ActivityHistoryModal({
     setSelectedEvent(null);
     onClose();
     onOpenRecord(event);
+  }
+
+  async function handleExport() {
+    if (isExporting || filteredEvents.length === 0) {
+      return;
+    }
+
+    const eventsToExport = filteredEvents;
+    setIsExporting(true);
+    setExportError(null);
+    setExportedCount(null);
+
+    try {
+      const path = await saveAuditHistoryCsv({
+        projectName,
+        events: eventsToExport,
+      });
+
+      if (path) {
+        setExportedCount(eventsToExport.length);
+      }
+    } catch (error) {
+      setExportError(
+        error instanceof Error
+          ? error.message
+          : "Failed to export the audit history.",
+      );
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   if (!isOpen) {
@@ -188,7 +224,11 @@ function ActivityHistoryModal({
             placeholder="Search record, operator, or reason"
             aria-label="Search activity history"
             disabled={isLoading || events.length === 0}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setExportError(null);
+              setExportedCount(null);
+            }}
           />
         </div>
 
@@ -251,9 +291,43 @@ function ActivityHistoryModal({
           )}
         </div>
 
-        <div className="modal-footer">
-          <button type="button" className="secondary-button" onClick={onClose}>
+        <div className="modal-footer activity-history-footer">
+          {exportError ? (
+            <span
+              className="activity-history-export-message error"
+              role="alert"
+            >
+              {exportError}
+            </span>
+          ) : exportedCount !== null ? (
+            <span
+              className="activity-history-export-message success"
+              role="status"
+            >
+              Exported {exportedCount}{" "}
+              {exportedCount === 1 ? "record" : "records"}.
+            </span>
+          ) : null}
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={isExporting}
+            onClick={onClose}
+          >
             Close
+          </button>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={
+              isLoading ||
+              isExporting ||
+              loadError !== null ||
+              filteredEvents.length === 0
+            }
+            onClick={() => void handleExport()}
+          >
+            {isExporting ? "Exporting..." : "Export CSV"}
           </button>
         </div>
       </section>

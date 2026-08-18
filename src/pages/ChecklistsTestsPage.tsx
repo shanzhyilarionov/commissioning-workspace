@@ -695,7 +695,10 @@ function ChecklistsTestsPage({
               <>
                 {filteredTestRecords.map(
                                   (testRecord) => (
-                                    <tr key={testRecord.id}>
+                                    <tr
+                                      key={testRecord.id}
+                                      data-navigation-id={testRecord.id}
+                                    >
                                       <td
                                         className="issue-title-cell"
                                         title={

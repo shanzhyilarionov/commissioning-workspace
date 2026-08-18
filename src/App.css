@@ -738,9 +738,12 @@ select {
   color: var(--status-neutral);
 }
 
-body:has(.modal-backdrop) .app-shell,
-body:has(.modal-backdrop) .window-drag-region {
+body:has(.modal-backdrop) .app-shell {
   pointer-events: none;
+}
+
+body:has(.modal-backdrop) .window-drag-region {
+  pointer-events: auto;
 }
 
 .modal-backdrop {
@@ -910,6 +913,28 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .activity-history-state .secondary-button {
   margin-top: 9px;
+}
+
+.activity-history-footer {
+  align-items: center;
+}
+
+.activity-history-export-message {
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-history-export-message.error {
+  color: var(--status-negative);
+}
+
+.activity-history-export-message.success {
+  color: var(--status-positive);
 }
 
 .audit-event-scroll {

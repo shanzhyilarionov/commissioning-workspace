@@ -664,7 +664,7 @@ function AssetsPage({
             body={
               <>
                 {filteredAssets.map((asset) => (
-                  <tr key={asset.id}>
+                  <tr key={asset.id} data-navigation-id={asset.id}>
                     <td>
                       <strong className="asset-tag">{asset.tag}</strong>
                     </td>

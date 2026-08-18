@@ -71,7 +71,10 @@ function findRow(
     document.querySelectorAll<HTMLTableRowElement>(selector),
   );
 
-  const exactRow = rows.find((row) => getReactKey(row) === id);
+  const exactRow = rows.find(
+    (row) =>
+      row.dataset.navigationId === id || getReactKey(row) === id,
+  );
 
   if (exactRow) {
     return exactRow;
@@ -106,6 +109,24 @@ function AttentionFocusManager({
     let completed = false;
     let openedParentRecord = false;
     let animationTimer: number | null = null;
+    let scrollFrame: number | null = null;
+
+    function startFlash(row: HTMLTableRowElement) {
+      if (!row.isConnected) {
+        completed = false;
+        tryFocusTarget();
+        return;
+      }
+
+      row.classList.remove("attention-focus-flash");
+      void row.offsetWidth;
+      row.classList.add("attention-focus-flash");
+
+      animationTimer = window.setTimeout(() => {
+        row.classList.remove("attention-focus-flash");
+        onComplete(request.requestId);
+      }, 1500);
+    }
 
     function finish(row: HTMLTableRowElement) {
       if (completed) {
@@ -119,14 +140,39 @@ function AttentionFocusManager({
         inline: "nearest",
       });
 
-      row.classList.remove("attention-focus-flash");
-      void row.offsetWidth;
-      row.classList.add("attention-focus-flash");
+      const startedAt = performance.now();
+      let previousTop = row.getBoundingClientRect().top;
+      let stableFrameCount = 0;
 
-      animationTimer = window.setTimeout(() => {
-        row.classList.remove("attention-focus-flash");
-        onComplete(request.requestId);
-      }, 1500);
+      function waitForScrollToSettle() {
+        if (!row.isConnected) {
+          scrollFrame = null;
+          completed = false;
+          tryFocusTarget();
+          return;
+        }
+
+        const currentTop = row.getBoundingClientRect().top;
+        stableFrameCount =
+          Math.abs(currentTop - previousTop) < 0.5
+            ? stableFrameCount + 1
+            : 0;
+        previousTop = currentTop;
+
+        const elapsed = performance.now() - startedAt;
+        if (
+          (elapsed >= 100 && stableFrameCount >= 3) ||
+          elapsed >= 1000
+        ) {
+          scrollFrame = null;
+          startFlash(row);
+          return;
+        }
+
+        scrollFrame = window.requestAnimationFrame(waitForScrollToSettle);
+      }
+
+      scrollFrame = window.requestAnimationFrame(waitForScrollToSettle);
     }
 
     function tryFocusTarget() {
@@ -398,6 +444,10 @@ function AttentionFocusManager({
 
       if (animationTimer !== null) {
         window.clearTimeout(animationTimer);
+      }
+
+      if (scrollFrame !== null) {
+        window.cancelAnimationFrame(scrollFrame);
       }
     };
   }, [activePage, onComplete, target]);

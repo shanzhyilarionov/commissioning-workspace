@@ -33,6 +33,33 @@ fn save_report_pdf(path: String, bytes: Vec<u8>) -> Result<(), String> {
         .map_err(|error| format!("Failed to save the PDF report: {error}"))
 }
 
+#[tauri::command]
+fn save_audit_history_csv(path: String, bytes: Vec<u8>) -> Result<(), String> {
+    let output_path = Path::new(&path);
+    let is_csv = output_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("csv"));
+
+    if !is_csv {
+        return Err("The audit history file must use the .csv extension.".to_string());
+    }
+
+    let csv_bytes = bytes
+        .as_slice()
+        .strip_prefix(&[0xef, 0xbb, 0xbf])
+        .unwrap_or(bytes.as_slice());
+    let csv = std::str::from_utf8(csv_bytes)
+        .map_err(|_| "The generated audit history is not valid UTF-8 text.".to_string())?;
+
+    if !csv.starts_with("\"Project\",\"Timestamp (UTC)\"") || csv.lines().count() < 2 {
+        return Err("The generated audit history is not a valid CSV document.".to_string());
+    }
+
+    std::fs::write(output_path, bytes)
+        .map_err(|error| format!("Failed to save the audit history CSV: {error}"))
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ImportedProjectDocumentFile {
@@ -1500,6 +1527,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             save_report_pdf,
+            save_audit_history_csv,
             import_project_document,
             open_project_document,
             delete_project_document_file,

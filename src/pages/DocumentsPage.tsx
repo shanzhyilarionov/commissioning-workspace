@@ -606,7 +606,10 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                     : null;
 
                   return (
-                    <tr key={document.id}>
+                    <tr
+                      key={document.id}
+                      data-navigation-id={document.id}
+                    >
                       <td>
                         <div className="document-title-cell">
                           <strong>{document.title}</strong>
