@@ -10,6 +10,7 @@ import type {
   TestRecordReportBundle,
 } from "../types/report";
 import type { TestItemResult, TestRecordType } from "../types/testRecord";
+import { exportColors } from "./exportTheme";
 
 interface SaveTestRecordReportInput {
   project: Project;
@@ -142,7 +143,7 @@ function drawHeader(
   const pageWidth = document.internal.pageSize.getWidth();
   const margin = 12;
 
-  document.setTextColor(26, 26, 26);
+  document.setTextColor(...exportColors.heading);
   document.setFont("helvetica", "bold");
   document.setFontSize(7.5);
   document.text("COMMISSIONING WORKSPACE", margin, 12);
@@ -156,7 +157,7 @@ function drawHeader(
 
   document.setFont("helvetica", "normal");
   document.setFontSize(8.5);
-  document.setTextColor(92, 92, 92);
+  document.setTextColor(...exportColors.secondary);
   document.text(
     `${formatRecordType(record.recordType)} completion report`,
     margin,
@@ -174,7 +175,7 @@ function drawHeader(
     align: "right",
   });
 
-  document.setDrawColor(30, 30, 30);
+  document.setDrawColor(...exportColors.divider);
   document.setLineWidth(0.6);
   document.line(margin, 30, pageWidth - margin, 30);
   return 36;
@@ -189,18 +190,18 @@ function drawField(
   label: string,
   value: string,
 ): void {
-  document.setDrawColor(215, 215, 215);
+  document.setDrawColor(...exportColors.fieldBorder);
   document.setLineWidth(0.2);
   document.rect(x, y, width, height);
 
   document.setFont("helvetica", "bold");
   document.setFontSize(6.5);
-  document.setTextColor(110, 110, 110);
+  document.setTextColor(...exportColors.label);
   document.text(label.toUpperCase(), x + 3, y + 4.2);
 
   document.setFont("helvetica", "normal");
   document.setFontSize(8.2);
-  document.setTextColor(28, 28, 28);
+  document.setTextColor(...exportColors.primary);
   document.text(fitText(document, value, width - 6, 3), x + 3, y + 9);
 }
 
@@ -280,17 +281,17 @@ function drawSummary(
 
   cards.forEach(([label, value], index) => {
     const x = margin + index * (cardWidth + gap);
-    document.setFillColor(245, 245, 245);
-    document.setDrawColor(220, 220, 220);
+    document.setFillColor(...exportColors.surfaceSubtle);
+    document.setDrawColor(...exportColors.borderSubtle);
     document.roundedRect(x, startY, cardWidth, 14, 1.5, 1.5, "FD");
 
     document.setFont("helvetica", "bold");
     document.setFontSize(6.5);
-    document.setTextColor(105, 105, 105);
+    document.setTextColor(...exportColors.label);
     document.text(label.toUpperCase(), x + 3, startY + 4.2);
 
     document.setFontSize(12);
-    document.setTextColor(28, 28, 28);
+    document.setTextColor(...exportColors.primary);
     document.text(String(value), x + 3, startY + 11);
   });
 
@@ -300,7 +301,7 @@ function drawSummary(
 function drawSectionTitle(document: jsPDF, title: string, y: number): void {
   document.setFont("helvetica", "bold");
   document.setFontSize(8);
-  document.setTextColor(35, 35, 35);
+  document.setTextColor(...exportColors.section);
   document.text(title.toUpperCase(), 12, y);
 }
 
@@ -394,13 +395,13 @@ function drawPageFooters(
 
   for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
     document.setPage(pageNumber);
-    document.setDrawColor(220, 220, 220);
+    document.setDrawColor(...exportColors.borderSubtle);
     document.setLineWidth(0.2);
     document.line(12, pageHeight - 10, pageWidth - 12, pageHeight - 10);
 
     document.setFont("helvetica", "normal");
     document.setFontSize(6.5);
-    document.setTextColor(120, 120, 120);
+    document.setTextColor(...exportColors.muted);
     document.text(
       `${project.name} · ${record.title}`,
       12,
@@ -461,20 +462,20 @@ function createPdf({ project, bundle }: SaveTestRecordReportInput): jsPDF {
       font: "helvetica",
       fontSize: 7,
       cellPadding: 2.2,
-      lineColor: [210, 210, 210],
+      lineColor: exportColors.tableBorder,
       lineWidth: 0.2,
-      textColor: [35, 35, 35],
+      textColor: exportColors.section,
       overflow: "linebreak",
       valign: "top",
     },
     headStyles: {
-      fillColor: [28, 28, 28],
-      textColor: [255, 255, 255],
+      fillColor: exportColors.primary,
+      textColor: exportColors.onStrong,
       fontStyle: "bold",
       fontSize: 6.5,
     },
     alternateRowStyles: {
-      fillColor: [248, 248, 248],
+      fillColor: exportColors.surfaceAlternate,
     },
     columnStyles: {
       0: { cellWidth: 10, halign: "center" },

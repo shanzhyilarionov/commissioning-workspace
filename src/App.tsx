@@ -30,6 +30,7 @@ import type {
 } from "./types/project";
 import type { ProjectNavigationItem } from "./types/navigation";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
+import "./theme.css";
 import "./App.css";
 
 const globalPages = ["Home", "Projects"] as const;

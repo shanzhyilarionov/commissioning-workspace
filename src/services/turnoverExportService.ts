@@ -5,6 +5,7 @@ import { autoTable, type Table } from "jspdf-autotable";
 import type { ReadinessBlockerType } from "../types/readiness";
 import type { CommissioningStage } from "../types/system";
 import type { TurnoverPackage } from "../types/turnover";
+import { exportColors } from "./exportTheme";
 
 interface SaveTurnoverPackageInput {
   turnoverPackage: TurnoverPackage;
@@ -132,18 +133,18 @@ function drawField(
   label: string,
   value: string,
 ): void {
-  document.setDrawColor(215, 215, 215);
+  document.setDrawColor(...exportColors.fieldBorder);
   document.setLineWidth(0.2);
   document.rect(x, y, width, height);
 
   document.setFont("helvetica", "bold");
   document.setFontSize(6.5);
-  document.setTextColor(105, 105, 105);
+  document.setTextColor(...exportColors.label);
   document.text(label.toUpperCase(), x + 3, y + 4.2);
 
   document.setFont("helvetica", "normal");
   document.setFontSize(8.2);
-  document.setTextColor(28, 28, 28);
+  document.setTextColor(...exportColors.primary);
   document.text(fitText(document, value, width - 6, 3), x + 3, y + 9);
 }
 
@@ -156,7 +157,7 @@ function drawCover(
   const margin = 16;
   const availableWidth = pageWidth - margin * 2;
 
-  document.setTextColor(26, 26, 26);
+  document.setTextColor(...exportColors.heading);
   document.setFont("helvetica", "bold");
   document.setFontSize(8);
   document.text("COMMISSIONING WORKSPACE", margin, 15);
@@ -166,7 +167,7 @@ function drawCover(
 
   document.setFont("helvetica", "normal");
   document.setFontSize(10);
-  document.setTextColor(92, 92, 92);
+  document.setTextColor(...exportColors.secondary);
   document.text(
     `${formatLabel(snapshot.scope.kind)} commissioning and handover dossier`,
     margin,
@@ -175,19 +176,19 @@ function drawCover(
 
   const statusText = turnoverPackage.status.toUpperCase();
   if (turnoverPackage.status === "final") {
-    document.setFillColor(53, 122, 69);
+    document.setFillColor(...exportColors.statusPositive);
   } else if (turnoverPackage.status === "void") {
-    document.setFillColor(170, 65, 65);
+    document.setFillColor(...exportColors.statusNegative);
   } else {
-    document.setFillColor(112, 112, 112);
+    document.setFillColor(...exportColors.statusNeutral);
   }
   document.roundedRect(pageWidth - margin - 28, 18, 28, 10, 2, 2, "F");
   document.setFont("helvetica", "bold");
   document.setFontSize(7.5);
-  document.setTextColor(255, 255, 255);
+  document.setTextColor(...exportColors.onStrong);
   document.text(statusText, pageWidth - margin - 14, 24.4, { align: "center" });
 
-  document.setDrawColor(30, 30, 30);
+  document.setDrawColor(...exportColors.divider);
   document.setLineWidth(0.7);
   document.line(margin, 43, pageWidth - margin, 43);
 
@@ -241,7 +242,7 @@ function drawCover(
   const readinessY = 130;
   document.setFont("helvetica", "bold");
   document.setFontSize(8);
-  document.setTextColor(35, 35, 35);
+  document.setTextColor(...exportColors.section);
   document.text("READINESS SUMMARY", margin, readinessY);
 
   const readinessCards = [
@@ -257,25 +258,25 @@ function drawCover(
 
   readinessCards.forEach(([label, value], index) => {
     const x = margin + index * (cardWidth + gap);
-    document.setFillColor(245, 245, 245);
-    document.setDrawColor(220, 220, 220);
+    document.setFillColor(...exportColors.surfaceSubtle);
+    document.setDrawColor(...exportColors.borderSubtle);
     document.roundedRect(x, readinessY + 4, cardWidth, 18, 1.5, 1.5, "FD");
     document.setFont("helvetica", "bold");
     document.setFontSize(6.2);
-    document.setTextColor(105, 105, 105);
+    document.setTextColor(...exportColors.label);
     document.text(label.toUpperCase(), x + 3, readinessY + 9);
     document.setFontSize(12);
-    document.setTextColor(28, 28, 28);
+    document.setTextColor(...exportColors.primary);
     document.text(String(value), x + 3, readinessY + 18);
   });
 
   if (turnoverPackage.forcedTransitionCount > 0) {
-    document.setFillColor(255, 248, 236);
-    document.setDrawColor(234, 211, 168);
+    document.setFillColor(...exportColors.warningBackground);
+    document.setDrawColor(...exportColors.warningBorder);
     document.roundedRect(margin, 160, availableWidth, 15, 1.5, 1.5, "FD");
     document.setFont("helvetica", "bold");
     document.setFontSize(7.5);
-    document.setTextColor(125, 82, 20);
+    document.setTextColor(...exportColors.warningText);
     document.text(
       `${turnoverPackage.forcedTransitionCount} forced stage transition${
         turnoverPackage.forcedTransitionCount === 1 ? " is" : "s are"
@@ -325,7 +326,7 @@ function ensureVerticalSpace(
 function drawSectionTitle(document: jsPDF, title: string, y: number): void {
   document.setFont("helvetica", "bold");
   document.setFontSize(8.5);
-  document.setTextColor(35, 35, 35);
+  document.setTextColor(...exportColors.section);
   document.text(title.toUpperCase(), 12, y);
 }
 
@@ -343,7 +344,7 @@ function drawTableSection(
   if (body.length === 0) {
     document.setFont("helvetica", "normal");
     document.setFontSize(7.5);
-    document.setTextColor(105, 105, 105);
+    document.setTextColor(...exportColors.label);
     document.text("No records captured for this section.", 12, y + 6);
     return y + 13;
   }
@@ -363,20 +364,20 @@ function drawTableSection(
       font: "helvetica",
       fontSize: 6.6,
       cellPadding: 2,
-      lineColor: [212, 212, 212],
+      lineColor: exportColors.tableBorder,
       lineWidth: 0.2,
-      textColor: [35, 35, 35],
+      textColor: exportColors.section,
       overflow: "linebreak",
       valign: "top",
     },
     headStyles: {
-      fillColor: [28, 28, 28],
-      textColor: [255, 255, 255],
+      fillColor: exportColors.primary,
+      textColor: exportColors.onStrong,
       fontStyle: "bold",
       fontSize: 6.3,
     },
     alternateRowStyles: {
-      fillColor: [248, 248, 248],
+      fillColor: exportColors.surfaceAlternate,
     },
     columnStyles,
   });
@@ -585,9 +586,9 @@ function drawPageFurniture(
       document.setFont("helvetica", "bold");
       document.setFontSize(48);
       if (turnoverPackage.status === "void") {
-        document.setTextColor(244, 220, 220);
+        document.setTextColor(...exportColors.watermarkNegative);
       } else {
-        document.setTextColor(232, 232, 232);
+        document.setTextColor(...exportColors.watermarkNeutral);
       }
       document.text(watermark, pageWidth / 2, pageHeight / 2, {
         align: "center",
@@ -595,12 +596,12 @@ function drawPageFurniture(
       });
     }
 
-    document.setDrawColor(220, 220, 220);
+    document.setDrawColor(...exportColors.borderSubtle);
     document.setLineWidth(0.2);
     document.line(12, pageHeight - 10, pageWidth - 12, pageHeight - 10);
     document.setFont("helvetica", "normal");
     document.setFontSize(6.5);
-    document.setTextColor(120, 120, 120);
+    document.setTextColor(...exportColors.muted);
     document.text(
       `${turnoverPackage.packageNumber} | Rev ${turnoverPackage.revision} | ${turnoverPackage.scopeName}`,
       12,

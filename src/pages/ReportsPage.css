@@ -55,20 +55,20 @@
   height: 34px;
   align-items: center;
   overflow: hidden;
-  background: var(--card-background);
-  border: 1px solid var(--border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 
 .reports-date-filter:focus-within {
-  border-color: var(--gold);
-  box-shadow: var(--focus-ring);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus-accent);
 }
 
 .reports-date-filter span {
   flex: 0 0 auto;
   padding: 0 8px;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: 11px;
 }
 
@@ -78,10 +78,10 @@
   height: 100%;
   padding: 0 7px;
   flex: 1 1 auto;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   background: transparent;
   border: 0;
-  border-left: 1px solid var(--border-light);
+  border-left: 1px solid var(--color-border-subtle);
   outline: none;
   font-size: 12px;
 }
@@ -96,7 +96,7 @@
 .reports-error {
   margin: 0;
   padding: 9px 14px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .reports-empty-state {
@@ -190,11 +190,11 @@
 }
 
 .reports-result-complete {
-  color: var(--status-positive);
+  color: var(--color-status-positive);
 }
 
 .reports-result-with-issues {
-  color: var(--status-warning);
+  color: var(--color-status-warning);
 }
 
 .reports-action-cell {
@@ -217,8 +217,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 7px 14px;
-  color: var(--status-positive);
-  border-bottom: 1px solid var(--border-light);
+  color: var(--color-status-positive);
+  border-bottom: 1px solid var(--color-border-subtle);
   font-size: 12px;
   font-weight: 650;
 }
@@ -231,8 +231,8 @@
   justify-content: space-between;
   gap: 16px;
   padding: 9px 14px;
-  background: #fff3f3;
-  border-bottom: 1px solid #e6c7c7;
+  background: var(--color-feedback-danger-background);
+  border-bottom: 1px solid var(--color-feedback-danger-border);
 }
 
 .turnover-load-error > div {
@@ -243,13 +243,13 @@
 }
 
 .turnover-load-error strong {
-  color: var(--status-negative);
+  color: var(--color-status-negative);
   font-size: 11px;
 }
 
 .turnover-load-error span {
   overflow-wrap: anywhere;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -301,15 +301,15 @@
   flex: 0 0 auto;
   align-items: center;
   padding: 2px;
-  background: var(--secondary-background);
-  border: 1px solid var(--border-light);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 7px;
 }
 
 .reports-view-switch button {
   min-height: 29px;
   padding: 0 11px;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   background: transparent;
   border: 0;
   border-radius: 5px;
@@ -322,18 +322,18 @@
 }
 
 .reports-view-switch button:hover {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
 }
 
 .reports-view-switch button.active {
-  color: var(--text-primary);
-  background: var(--white);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-segment-active);
 }
 
 .reports-view-switch button:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--shadow-focus-accent);
 }
 
 .assets-toolbar.reports-toolbar.turnover-toolbar {
@@ -455,15 +455,15 @@
 .turnover-package-status.final,
 .reports-card .status-badge.ready,
 .reports-card .status-badge.handed_over {
-  color: var(--status-positive);
+  color: var(--color-status-positive);
 }
 
 .turnover-package-status.void {
-  color: var(--status-negative);
+  color: var(--color-status-negative);
 }
 
 .reports-card .status-badge.commissioned {
-  color: var(--status-info);
+  color: var(--color-status-info);
 }
 
 .turnover-package-modal {
@@ -516,14 +516,14 @@
 
 .turnover-preflight-heading h3 {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 700;
 }
 
 .turnover-preflight-heading p {
   margin: 3px 0 0;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: 10px;
 }
 
@@ -532,8 +532,8 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
-  background: var(--border-light);
-  border: 1px solid var(--border-light);
+  background: var(--color-border-subtle);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
 }
 
@@ -543,14 +543,14 @@
   flex-direction: column;
   gap: 5px;
   padding: 10px;
-  background: var(--secondary-background);
+  background: var(--color-surface-subtle);
 }
 
 .turnover-preflight-grid span {
   display: flex;
   min-height: 22px;
   align-items: center;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: 9px;
   font-weight: 600;
   line-height: 1.25;
@@ -559,21 +559,21 @@
 }
 
 .turnover-preflight-grid strong {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 700;
 }
 
 .turnover-preflight-grid strong.blocked {
-  color: var(--status-blocked);
+  color: var(--color-status-blocked);
 }
 
 .turnover-preflight-grid strong.clear {
-  color: var(--status-positive);
+  color: var(--color-status-positive);
 }
 
 .turnover-preflight-grid strong.warning {
-  color: var(--status-warning);
+  color: var(--color-status-warning);
 }
 
 .turnover-final-eligibility {
@@ -581,27 +581,27 @@
   flex-direction: column;
   gap: 3px;
   padding: 10px 11px;
-  background: #fff8ec;
-  border: 1px solid #ead3a8;
+  background: var(--color-feedback-warning-background);
+  border: 1px solid var(--color-feedback-warning-border);
   border-radius: 7px;
 }
 
 .turnover-final-eligibility.eligible {
-  background: #f1f8f2;
-  border-color: #c9ddcc;
+  background: var(--color-feedback-positive-background);
+  border-color: var(--color-feedback-positive-border);
 }
 
 .turnover-final-eligibility strong {
-  color: var(--status-warning);
+  color: var(--color-status-warning);
   font-size: 11px;
 }
 
 .turnover-final-eligibility.eligible strong {
-  color: var(--status-positive);
+  color: var(--color-status-positive);
 }
 
 .turnover-final-eligibility span {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -609,9 +609,9 @@
 .turnover-preflight-state,
 .turnover-modal-empty {
   padding: 12px;
-  color: var(--text-muted);
-  background: var(--secondary-background);
-  border: 1px solid var(--border-light);
+  color: var(--color-text-muted);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   font-size: 11px;
   line-height: 1.5;

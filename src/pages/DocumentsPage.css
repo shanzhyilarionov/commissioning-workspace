@@ -20,16 +20,16 @@
     calc(var(--section-spacing) / 2)
     var(--section-spacing)
     var(--section-spacing);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .document-search-input,
 .document-filter {
   height: 34px;
   box-sizing: border-box;
-  color: #34373a;
-  background: var(--white);
-  border: 1px solid #c8cbce;
+  color: var(--color-text-control);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-control);
   border-radius: 7px;
   font-size: 12px;
   outline: none;
@@ -49,7 +49,7 @@
   padding: 0 34px 0 10px;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2334373a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  background-image: var(--icon-chevron-control-small);
   background-repeat: no-repeat;
   background-position: right 11px center;
   background-size: 12px;
@@ -57,10 +57,10 @@
 
 .document-filter:disabled {
   cursor: not-allowed;
-  color: #9a9da0;
-  background-color: #f3f3f3;
-  border-color: #d7d9db;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9da0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  color: var(--color-text-disabled);
+  background-color: var(--color-surface-disabled);
+  border-color: var(--color-border-disabled);
+  background-image: var(--icon-chevron-disabled);
   opacity: 1;
 }
 
@@ -68,13 +68,13 @@
 .document-filter:focus {
   position: relative;
   z-index: 1;
-  border-color: var(--gold);
-  box-shadow: var(--focus-ring);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus-accent);
 }
 
 .document-result-count {
   margin-left: auto;
-  color: #777c81;
+  color: var(--color-text-count);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -180,23 +180,23 @@
 }
 
 .document-title-cell strong {
-  color: #2f3336;
+  color: var(--color-text-strong);
   font-weight: 600;
   white-space: normal;
 }
 
 .document-title-cell span {
-  color: #85898d;
+  color: var(--color-text-subtle);
   font-size: 10px;
   white-space: nowrap;
 }
 
 .status-badge.for_review {
-  color: var(--status-warning);
+  color: var(--color-status-warning);
 }
 
 .status-badge.superseded {
-  color: var(--status-negative);
+  color: var(--color-status-negative);
 }
 
 .document-modal {
@@ -210,11 +210,11 @@
 }
 
 .document-required-cell.required {
-  color: var(--status-warning);
+  color: var(--color-status-warning);
 }
 
 .document-required-cell.not-required {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .document-readiness-option {
@@ -222,8 +222,8 @@
   align-items: flex-start;
   gap: 10px;
   padding: 11px 12px;
-  background: var(--secondary-background);
-  border: 1px solid var(--border-light);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 7px;
   cursor: pointer;
 }
@@ -232,7 +232,7 @@
   width: 15px;
   height: 15px;
   margin: 2px 0 0;
-  accent-color: var(--gold);
+  accent-color: var(--color-accent);
 }
 
 .document-readiness-option > span {
@@ -243,13 +243,13 @@
 }
 
 .document-readiness-option strong {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .document-readiness-option small {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -260,22 +260,22 @@
   flex-direction: column;
   gap: 4px;
   padding: 11px 12px;
-  background: var(--secondary-background);
-  border: 1px solid var(--border-light);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 7px;
 }
 
 .document-file-summary span {
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .document-file-summary strong {
   overflow: hidden;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

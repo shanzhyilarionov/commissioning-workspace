@@ -22,8 +22,8 @@
   gap: 10px;
   margin: 0 20px 12px;
   padding: 14px;
-  background: var(--secondary-background);
-  border: 1px solid var(--border-light);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
 }
 
@@ -37,20 +37,20 @@
 .test-record-signoff-panel span {
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .test-record-signoff-panel strong {
   overflow-wrap: anywhere;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
 }
 
 .test-record-signoff-notes {
   grid-column: 1 / -1;
   padding-top: 10px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .test-record-read-only-notice {
@@ -58,9 +58,9 @@
   padding: 9px 11px;
   font-size: 11px;
   line-height: 1.5;
-  color: var(--status-positive);
-  background: rgba(76, 175, 80, 0.08);
-  border: 1px solid rgba(76, 175, 80, 0.22);
+  color: var(--color-status-positive);
+  background: var(--color-feedback-success-highlight);
+  border: 1px solid var(--color-feedback-success-highlight-border);
   border-radius: 7px;
 }
 
@@ -72,7 +72,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .completion-form-grid {
