@@ -29,6 +29,12 @@ import type {
   UpdateProjectInput,
 } from "./types/project";
 import type { ProjectNavigationItem } from "./types/navigation";
+import {
+  getStoredTheme,
+  saveTheme,
+  type AppTheme,
+  watchSystemTheme,
+} from "./theme";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 import "./theme.css";
 import "./App.css";
@@ -56,6 +62,7 @@ function isProjectPage(page: Page): page is ProjectPage {
 }
 
 function App() {
+  const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [activePage, setActivePage] = useState<Page>("Home");
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProjectId, setCurrentProjectId] =
@@ -72,6 +79,8 @@ function App() {
     useState<Project | null>(null);
   const [isDeletingProject, setIsDeletingProject] =
     useState(false);
+
+  useEffect(() => watchSystemTheme(theme), [theme]);
   const [projectDeleteError, setProjectDeleteError] =
     useState<string | null>(null);
   const [isLoadingProjects, setIsLoadingProjects] =
@@ -308,6 +317,11 @@ function App() {
     setIsLoadingProjects(false);
   }
 
+  function handleThemeChange(nextTheme: AppTheme) {
+    saveTheme(nextTheme);
+    setTheme(nextTheme);
+  }
+
   function renderNoProjectSelected(message: string) {
     return (
       <section className="content-card placeholder">
@@ -332,7 +346,9 @@ function App() {
       return (
         <SettingsPage
           projects={projects}
+          theme={theme}
           onProjectsImported={handleProjectsImported}
+          onThemeChange={handleThemeChange}
         />
       );
     }

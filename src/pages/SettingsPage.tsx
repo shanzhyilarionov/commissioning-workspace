@@ -33,11 +33,14 @@ import type {
   WorkspaceBackupInspection,
   WorkspaceBackupSummary,
 } from "../types/workspaceBackup";
+import type { AppTheme } from "../theme";
 import "./SettingsPage.css";
 
 interface SettingsPageProps {
   projects: Project[];
+  theme: AppTheme;
   onProjectsImported: () => Promise<void>;
+  onThemeChange: (theme: AppTheme) => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -69,7 +72,12 @@ function projectCountLabel(count: number): string {
   return `${count} ${count === 1 ? "project" : "projects"}`;
 }
 
-function SettingsPage({ projects, onProjectsImported }: SettingsPageProps) {
+function SettingsPage({
+  projects,
+  theme,
+  onProjectsImported,
+  onThemeChange,
+}: SettingsPageProps) {
   const [operatorName, setOperatorName] = useState("");
   const [savedOperatorName, setSavedOperatorName] = useState("");
   const [isSavingOperator, setIsSavingOperator] = useState(false);
@@ -350,6 +358,61 @@ function SettingsPage({ projects, onProjectsImported }: SettingsPageProps) {
 
         <div className="settings-scroll-container">
           <div className="settings-content">
+            <section className="settings-group">
+              <div className="settings-group-heading">
+                <h4>Appearance</h4>
+              </div>
+
+              <div className="settings-appearance-card">
+                <p>
+                  Choose the interface appearance used throughout the
+                  application.
+                </p>
+                <div
+                  className="settings-theme-selector"
+                  role="group"
+                  aria-label="Application theme"
+                >
+                  <button
+                    type="button"
+                    className={
+                      theme === "system"
+                        ? "settings-theme-option active"
+                        : "settings-theme-option"
+                    }
+                    aria-pressed={theme === "system"}
+                    onClick={() => onThemeChange("system")}
+                  >
+                    System
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      theme === "light"
+                        ? "settings-theme-option active"
+                        : "settings-theme-option"
+                    }
+                    aria-pressed={theme === "light"}
+                    onClick={() => onThemeChange("light")}
+                  >
+                    Light
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      theme === "dark"
+                        ? "settings-theme-option active"
+                        : "settings-theme-option"
+                    }
+                    aria-pressed={theme === "dark"}
+                    onClick={() => onThemeChange("dark")}
+                  >
+                    Dark
+                  </button>
+                </div>
+              </div>
+            </section>
+
             <section className="settings-group">
               <div className="settings-group-heading">
                 <h4>Identity</h4>
