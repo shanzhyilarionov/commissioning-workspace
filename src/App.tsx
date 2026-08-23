@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import AttentionFocusManager, {
   type AttentionDestinationPage,
@@ -12,9 +17,11 @@ import ChecklistsTestsPage from "./pages/ChecklistsTestsPage";
 import ProjectOverviewPage from "./pages/DashboardPage";
 import IssuesPage from "./pages/IssuesPage";
 import DocumentsPage from "./pages/DocumentsPage";
+import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import { getCurrentOperator } from "./repositories/auditRepository";
 import {
   archiveProject,
   createProject,
@@ -65,6 +72,7 @@ function App() {
   const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [activePage, setActivePage] = useState<Page>("Home");
   const [projects, setProjects] = useState<Project[]>([]);
+  const [currentOperatorName, setCurrentOperatorName] = useState("");
   const [currentProjectId, setCurrentProjectId] =
     useState<string | null>(null);
   const [isCreateProjectOpen, setIsCreateProjectOpen] =
@@ -117,6 +125,30 @@ function App() {
     }
 
     void loadStoredProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCurrentOperator() {
+      try {
+        const operatorName = await getCurrentOperator();
+
+        if (!cancelled) {
+          setCurrentOperatorName(operatorName);
+        }
+      } catch {
+        if (!cancelled) {
+          setCurrentOperatorName("");
+        }
+      }
+    }
+
+    void loadCurrentOperator();
 
     return () => {
       cancelled = true;
@@ -347,6 +379,7 @@ function App() {
         <SettingsPage
           projects={projects}
           theme={theme}
+          onOperatorNameChange={setCurrentOperatorName}
           onProjectsImported={handleProjectsImported}
           onThemeChange={handleThemeChange}
         />
@@ -397,33 +430,10 @@ function App() {
     switch (activePage) {
       case "Home":
         return (
-          <section className="content-card section-card">
-            <div className="card-header">
-              <div>
-                <h3>Workspace</h3>
-                <p>
-                  Open an existing project or create a new
-                  commissioning project.
-                </p>
-              </div>
-            </div>
-            <div className="section-body">
-              <div className="project-summary">
-                <div>
-                  <span>Total projects</span>
-                  <strong>{projects.length}</strong>
-                </div>
-                <div>
-                  <span>Current project</span>
-                  <strong>
-                    {currentProject?.name ?? "None selected"}
-                  </strong>
-                </div>
-              </div>
-            </div>
-          </section>
+          <HomePage
+            currentOperatorName={currentOperatorName}
+          />
         );
-
       case "Projects":
         return (
           <ProjectsPage

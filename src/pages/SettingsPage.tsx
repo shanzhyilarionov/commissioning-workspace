@@ -39,6 +39,7 @@ import "./SettingsPage.css";
 interface SettingsPageProps {
   projects: Project[];
   theme: AppTheme;
+  onOperatorNameChange: (operatorName: string) => void;
   onProjectsImported: () => Promise<void>;
   onThemeChange: (theme: AppTheme) => void;
 }
@@ -75,6 +76,7 @@ function projectCountLabel(count: number): string {
 function SettingsPage({
   projects,
   theme,
+  onOperatorNameChange,
   onProjectsImported,
   onThemeChange,
 }: SettingsPageProps) {
@@ -148,6 +150,7 @@ function SettingsPage({
       const savedOperator = await setCurrentOperator(operatorName);
       setOperatorName(savedOperator);
       setSavedOperatorName(savedOperator);
+      onOperatorNameChange(savedOperator);
     } catch (error) {
       setOperatorError(
         errorMessage(error, "Failed to save the current operator."),
@@ -425,7 +428,8 @@ function SettingsPage({
                 <div>
                   <p>
                     This name is recorded as the default operator for audit
-                    events and controlled workflow actions.
+                    events and controlled workflow actions, and is used in
+                    the Home greeting.
                   </p>
                 </div>
                 <input
