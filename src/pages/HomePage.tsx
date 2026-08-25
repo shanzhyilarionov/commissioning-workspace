@@ -474,7 +474,15 @@ function AnalyticsContent({
         className="home-project-metrics"
         aria-label="Workspace commissioning summary"
       >
-        <div className="home-project-metric accent">
+        <div
+          className={`home-project-metric ${
+            analytics.assets.total === 0
+              ? "neutral"
+              : assetCompletionPercent === 100
+                ? "positive"
+                : "accent"
+          }`}
+        >
           <span>Asset completion</span>
           <strong>
             {analytics.assets.total === 0
@@ -487,7 +495,17 @@ function AnalyticsContent({
               : `${analytics.assets.completed} of ${analytics.assets.total} assets`}
           </small>
         </div>
-        <div className="home-project-metric accent">
+        <div
+          className={`home-project-metric ${
+            analytics.tests.assessed === 0
+              ? "neutral"
+              : analytics.tests.passRate === 100
+                ? "positive"
+                : analytics.tests.passRate >= 90
+                  ? "accent"
+                  : "negative"
+          }`}
+        >
           <span>Assessed test pass rate</span>
           <strong>
             {analytics.tests.assessed === 0
@@ -515,36 +533,19 @@ function AnalyticsContent({
         </div>
         <div
           className={`home-project-metric ${
-            analytics.recentActivity.closedOut === 0
-              ? "neutral"
-              : analytics.recentActivity.created >
-                  analytics.recentActivity.closedOut
-                ? "accent"
-                : "positive"
+            analytics.projectsRequiringAttention.total > 0
+              ? "negative"
+              : "positive"
           }`}
         >
-          <span>7-day closeout</span>
-          <strong>{analytics.recentActivity.closedOut}</strong>
+          <span>Projects requiring attention</span>
+          <strong>{analytics.projectsRequiringAttention.total}</strong>
           <small>
-            {analytics.recentActivity.created} created ·{" "}
-            {analytics.recentActivity.updated} updated
+            {analytics.projectsRequiringAttention.total === 0
+              ? "No active projects need attention"
+              : `${analytics.projectsRequiringAttention.critical} critical · ${analytics.projectsRequiringAttention.overdue} overdue`}
           </small>
         </div>
-      </div>
-
-      <div className="home-analytics-grid">
-        <div className="home-status-card-grid">
-          <PieChart label="Assets" segments={assetSegments} />
-          <PieChart label="Test items" segments={testSegments} />
-          <PieChart label="Issues" segments={issueSegments} />
-        </div>
-
-        <section className="home-panel home-weekly-activity-panel">
-          <div className="home-panel-header home-chart-panel-header">
-            <h4>Workspace activity</h4>
-          </div>
-          <WeeklyActivityChart activity={analytics.dailyActivity} />
-        </section>
       </div>
 
       <div className="home-closeout-row">
@@ -611,6 +612,21 @@ function AnalyticsContent({
               </div>
             ))}
           </div>
+        </section>
+      </div>
+
+      <div className="home-analytics-grid">
+        <div className="home-status-card-grid">
+          <PieChart label="Assets" segments={assetSegments} />
+          <PieChart label="Test items" segments={testSegments} />
+          <PieChart label="Issues" segments={issueSegments} />
+        </div>
+
+        <section className="home-panel home-weekly-activity-panel">
+          <div className="home-panel-header home-chart-panel-header">
+            <h4>Workspace activity</h4>
+          </div>
+          <WeeklyActivityChart activity={analytics.dailyActivity} />
         </section>
       </div>
     </>

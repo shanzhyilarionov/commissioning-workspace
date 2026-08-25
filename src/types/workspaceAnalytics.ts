@@ -33,6 +33,12 @@ export interface WorkspaceRecentActivity {
   closedOut: number;
 }
 
+export interface WorkspaceProjectAttentionAnalytics {
+  total: number;
+  critical: number;
+  overdue: number;
+}
+
 export interface WorkspaceDeliverableAnalytics {
   requiredDocumentsTotal: number;
   requiredDocumentsApproved: number;
@@ -60,6 +66,7 @@ export interface WorkspaceAnalytics {
   assets: WorkspaceAssetAnalytics;
   tests: WorkspaceTestAnalytics;
   issues: WorkspaceIssueAnalytics;
+  projectsRequiringAttention: WorkspaceProjectAttentionAnalytics;
   deliverables: WorkspaceDeliverableAnalytics;
   recentActivity: WorkspaceRecentActivity;
   weeklyActivity: WorkspaceWeeklyActivity[];

@@ -31,6 +31,30 @@ interface ProjectOverviewRow {
   issue_overdue: number;
   issue_resolved: number;
   issue_closed: number;
+  system_total: number;
+  system_not_started: number;
+  system_in_progress: number;
+  system_ready: number;
+  system_commissioned: number;
+  system_handed_over: number;
+  subsystem_total: number;
+  subsystem_not_started: number;
+  subsystem_in_progress: number;
+  subsystem_ready: number;
+  subsystem_commissioned: number;
+  subsystem_handed_over: number;
+  required_document_total: number;
+  required_document_approved: number;
+  test_record_signed: number;
+  turnover_package_total: number;
+  turnover_package_final: number;
+  issue_due_soon: number;
+  issue_no_due_date: number;
+  issue_unassigned: number;
+  assets_without_test_records: number;
+  test_records_without_items: number;
+  systems_without_assets: number;
+  subsystems_without_assets: number;
 }
 
 interface ProjectAttentionItemRow {
@@ -46,6 +70,11 @@ interface ProjectAttentionItemRow {
   parent_title: string | null;
 }
 
+interface ProjectActivityEventRow {
+  action: string;
+  details_json: string;
+}
+
 function toNumber(value: number | null | undefined): number {
   return Number(value ?? 0);
 }
@@ -57,6 +86,61 @@ function getLocalDateString(): string {
   const day = String(now.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function parseDetails(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function readNestedValue(
+  value: Record<string, unknown>,
+  objectKey: string,
+  fieldKey: string,
+): string {
+  const nestedValue = value[objectKey];
+
+  if (!nestedValue || typeof nestedValue !== "object") {
+    return "";
+  }
+
+  const fieldValue = (nestedValue as Record<string, unknown>)[
+    fieldKey
+  ];
+
+  return typeof fieldValue === "string" ? fieldValue : "";
+}
+
+function isClosedOutEvent(event: ProjectActivityEventRow): boolean {
+  if (event.action === "signed" || event.action === "finalized") {
+    return true;
+  }
+
+  const details = parseDetails(event.details_json);
+
+  if (event.action === "status_changed") {
+    const status =
+      readNestedValue(details, "after", "status") ||
+      (typeof details.afterStatus === "string"
+        ? details.afterStatus
+        : "");
+
+    return ["completed", "resolved", "closed"].includes(status);
+  }
+
+  if (event.action === "result_changed") {
+    return ["pass", "not_applicable"].includes(
+      readNestedValue(details, "after", "result"),
+    );
+  }
+
+  return false;
 }
 
 function mapAttentionItem(
@@ -80,6 +164,8 @@ export async function getProjectOverview(
 ): Promise<ProjectOverview> {
   const database = await getDatabase();
   const today = getLocalDateString();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const overviewRows = await database.select<ProjectOverviewRow[]>(
     `
@@ -273,12 +359,192 @@ export async function getProjectOverview(
           FROM issues
           WHERE project_id = $1
             AND status = 'closed'
-        ) AS issue_closed
+        ) AS issue_closed,
+        (
+          SELECT COUNT(*)
+          FROM systems
+          WHERE project_id = $1
+        ) AS system_total,
+        (
+          SELECT COUNT(*)
+          FROM systems
+          WHERE project_id = $1
+            AND commissioning_stage = 'not_started'
+        ) AS system_not_started,
+        (
+          SELECT COUNT(*)
+          FROM systems
+          WHERE project_id = $1
+            AND commissioning_stage = 'in_progress'
+        ) AS system_in_progress,
+        (
+          SELECT COUNT(*)
+          FROM systems
+          WHERE project_id = $1
+            AND commissioning_stage = 'ready'
+        ) AS system_ready,
+        (
+          SELECT COUNT(*)
+          FROM systems
+          WHERE project_id = $1
+            AND commissioning_stage = 'commissioned'
+        ) AS system_commissioned,
+        (
+          SELECT COUNT(*)
+          FROM systems
+          WHERE project_id = $1
+            AND commissioning_stage = 'handed_over'
+        ) AS system_handed_over,
+        (
+          SELECT COUNT(*)
+          FROM subsystems
+          INNER JOIN systems
+            ON systems.id = subsystems.system_id
+          WHERE systems.project_id = $1
+        ) AS subsystem_total,
+        (
+          SELECT COUNT(*)
+          FROM subsystems
+          INNER JOIN systems
+            ON systems.id = subsystems.system_id
+          WHERE systems.project_id = $1
+            AND subsystems.commissioning_stage = 'not_started'
+        ) AS subsystem_not_started,
+        (
+          SELECT COUNT(*)
+          FROM subsystems
+          INNER JOIN systems
+            ON systems.id = subsystems.system_id
+          WHERE systems.project_id = $1
+            AND subsystems.commissioning_stage = 'in_progress'
+        ) AS subsystem_in_progress,
+        (
+          SELECT COUNT(*)
+          FROM subsystems
+          INNER JOIN systems
+            ON systems.id = subsystems.system_id
+          WHERE systems.project_id = $1
+            AND subsystems.commissioning_stage = 'ready'
+        ) AS subsystem_ready,
+        (
+          SELECT COUNT(*)
+          FROM subsystems
+          INNER JOIN systems
+            ON systems.id = subsystems.system_id
+          WHERE systems.project_id = $1
+            AND subsystems.commissioning_stage = 'commissioned'
+        ) AS subsystem_commissioned,
+        (
+          SELECT COUNT(*)
+          FROM subsystems
+          INNER JOIN systems
+            ON systems.id = subsystems.system_id
+          WHERE systems.project_id = $1
+            AND subsystems.commissioning_stage = 'handed_over'
+        ) AS subsystem_handed_over,
+        (
+          SELECT COUNT(*)
+          FROM project_documents
+          WHERE project_id = $1
+            AND required_for_readiness = 1
+        ) AS required_document_total,
+        (
+          SELECT COUNT(*)
+          FROM project_documents
+          WHERE project_id = $1
+            AND required_for_readiness = 1
+            AND status = 'approved'
+        ) AS required_document_approved,
+        (
+          SELECT COUNT(*)
+          FROM test_records
+          WHERE project_id = $1
+            AND signed_off_at IS NOT NULL
+            AND TRIM(signed_off_at) <> ''
+        ) AS test_record_signed,
+        (
+          SELECT COUNT(*)
+          FROM turnover_packages
+          WHERE project_id = $1
+            AND status <> 'void'
+        ) AS turnover_package_total,
+        (
+          SELECT COUNT(*)
+          FROM turnover_packages
+          WHERE project_id = $1
+            AND status = 'final'
+        ) AS turnover_package_final,
+        (
+          SELECT COUNT(*)
+          FROM issues
+          WHERE project_id = $1
+            AND status IN ('open', 'in_progress')
+            AND due_date IS NOT NULL
+            AND TRIM(due_date) <> ''
+            AND DATE(due_date) >= DATE($2)
+            AND DATE(due_date) <= DATE($2, '+7 days')
+        ) AS issue_due_soon,
+        (
+          SELECT COUNT(*)
+          FROM issues
+          WHERE project_id = $1
+            AND status IN ('open', 'in_progress')
+            AND (due_date IS NULL OR TRIM(due_date) = '')
+        ) AS issue_no_due_date,
+        (
+          SELECT COUNT(*)
+          FROM issues
+          WHERE project_id = $1
+            AND status IN ('open', 'in_progress')
+            AND TRIM(owner) = ''
+        ) AS issue_unassigned,
+        (
+          SELECT COUNT(*)
+          FROM assets
+          WHERE project_id = $1
+            AND NOT EXISTS (
+              SELECT 1
+              FROM test_records
+              WHERE test_records.asset_id = assets.id
+            )
+        ) AS assets_without_test_records,
+        (
+          SELECT COUNT(*)
+          FROM test_records
+          WHERE project_id = $1
+            AND NOT EXISTS (
+              SELECT 1
+              FROM test_items
+              WHERE test_items.test_record_id = test_records.id
+            )
+        ) AS test_records_without_items,
+        (
+          SELECT COUNT(*)
+          FROM systems
+          WHERE project_id = $1
+            AND NOT EXISTS (
+              SELECT 1
+              FROM assets
+              WHERE assets.system_id = systems.id
+            )
+        ) AS systems_without_assets,
+        (
+          SELECT COUNT(*)
+          FROM subsystems
+          INNER JOIN systems
+            ON systems.id = subsystems.system_id
+          WHERE systems.project_id = $1
+            AND NOT EXISTS (
+              SELECT 1
+              FROM assets
+              WHERE assets.subsystem_id = subsystems.id
+            )
+        ) AS subsystems_without_assets
     `,
     [projectId, today],
   );
 
-  const [attentionRows, readinessSummaries] = await Promise.all([
+  const [attentionRows, readinessSummaries, activityRows] = await Promise.all([
     database.select<ProjectAttentionItemRow[]>(
     `
       SELECT
@@ -377,6 +643,66 @@ export async function getProjectOverview(
         UNION ALL
 
         SELECT
+          test_records.id AS id,
+          'unsigned_test_record' AS attention_type,
+          test_records.title AS title,
+          CASE
+            WHEN assets.tag IS NULL THEN
+              'All test items assessed'
+            ELSE
+              assets.tag || ' · All test items assessed'
+          END AS detail,
+          'unsigned' AS status,
+          test_records.updated_at AS updated_at,
+          4 AS sort_priority,
+          test_records.title AS match_text,
+          NULL AS parent_id,
+          NULL AS parent_title
+        FROM test_records
+        LEFT JOIN assets
+          ON assets.id = test_records.asset_id
+        WHERE test_records.project_id = $1
+          AND test_records.signed_off_at IS NULL
+          AND EXISTS (
+            SELECT 1
+            FROM test_items
+            WHERE test_items.test_record_id = test_records.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM test_items
+            WHERE test_items.test_record_id = test_records.id
+              AND test_items.result IN ('pending', 'fail')
+          )
+
+        UNION ALL
+
+        SELECT
+          project_documents.id AS id,
+          'required_document' AS attention_type,
+          project_documents.title AS title,
+          CASE
+            WHEN assets.tag IS NULL THEN
+              'Required for readiness'
+            ELSE
+              assets.tag || ' · Required for readiness'
+          END AS detail,
+          project_documents.status AS status,
+          project_documents.updated_at AS updated_at,
+          5 AS sort_priority,
+          project_documents.title AS match_text,
+          NULL AS parent_id,
+          NULL AS parent_title
+        FROM project_documents
+        LEFT JOIN assets
+          ON assets.id = project_documents.asset_id
+        WHERE project_documents.project_id = $1
+          AND project_documents.required_for_readiness = 1
+          AND project_documents.status <> 'approved'
+
+        UNION ALL
+
+        SELECT
           assets.id AS id,
           'blocked_asset' AS attention_type,
           assets.tag || ' - ' || assets.name AS title,
@@ -388,7 +714,7 @@ export async function getProjectOverview(
           END AS detail,
           assets.status AS status,
           assets.updated_at AS updated_at,
-          4 AS sort_priority,
+          6 AS sort_priority,
           assets.tag AS match_text,
           NULL AS parent_id,
           NULL AS parent_title
@@ -406,6 +732,15 @@ export async function getProjectOverview(
       [projectId, today],
     ),
     listStructureReadinessSummaries(projectId),
+    database.select<ProjectActivityEventRow[]>(
+      `
+        SELECT action, details_json
+        FROM audit_events
+        WHERE project_id = $1
+          AND created_at >= $2
+      `,
+      [projectId, sevenDaysAgo.toISOString()],
+    ),
   ]);
 
   const row = overviewRows[0];
@@ -418,6 +753,20 @@ export async function getProjectOverview(
   const testItemPending = toNumber(row.test_item_pending);
   const testItemCompleted = testItemTotal - testItemPending;
   const operationalAttentionItems = attentionRows.map(mapAttentionItem);
+  const recentActivityCreated = activityRows.filter(
+    (event) => event.action === "created",
+  ).length;
+  const recentActivityClosedOut = activityRows.filter(
+    isClosedOutEvent,
+  ).length;
+  const blockedSystemCount = readinessSummaries.filter(
+    (summary) =>
+      summary.kind === "system" && summary.blockerCount > 0,
+  ).length;
+  const blockedSubsystemCount = readinessSummaries.filter(
+    (summary) =>
+      summary.kind === "subsystem" && summary.blockerCount > 0,
+  ).length;
   const readinessAttentionItems = readinessSummaries
     .filter(
       (summary) =>
@@ -472,6 +821,61 @@ export async function getProjectOverview(
       overdue: toNumber(row.issue_overdue),
       resolved: toNumber(row.issue_resolved),
       closed: toNumber(row.issue_closed),
+    },
+    scope: {
+      systems: {
+        total: toNumber(row.system_total),
+        notStarted: toNumber(row.system_not_started),
+        inProgress: toNumber(row.system_in_progress),
+        ready: toNumber(row.system_ready),
+        commissioned: toNumber(row.system_commissioned),
+        handedOver: toNumber(row.system_handed_over),
+        blocked: blockedSystemCount,
+      },
+      subsystems: {
+        total: toNumber(row.subsystem_total),
+        notStarted: toNumber(row.subsystem_not_started),
+        inProgress: toNumber(row.subsystem_in_progress),
+        ready: toNumber(row.subsystem_ready),
+        commissioned: toNumber(row.subsystem_commissioned),
+        handedOver: toNumber(row.subsystem_handed_over),
+        blocked: blockedSubsystemCount,
+      },
+    },
+    deliverables: {
+      requiredDocumentsTotal: toNumber(row.required_document_total),
+      requiredDocumentsApproved: toNumber(
+        row.required_document_approved,
+      ),
+      testRecordsTotal: toNumber(row.test_record_total),
+      testRecordsSigned: toNumber(row.test_record_signed),
+      subsystemsTotal: toNumber(row.subsystem_total),
+      subsystemsHandedOver: toNumber(row.subsystem_handed_over),
+      turnoverPackagesTotal: toNumber(row.turnover_package_total),
+      turnoverPackagesFinal: toNumber(row.turnover_package_final),
+    },
+    deadlines: {
+      dueSoon: toNumber(row.issue_due_soon),
+      overdue: toNumber(row.issue_overdue),
+      noDueDate: toNumber(row.issue_no_due_date),
+      unassigned: toNumber(row.issue_unassigned),
+    },
+    coverage: {
+      assetsWithoutTestRecords: toNumber(
+        row.assets_without_test_records,
+      ),
+      testRecordsWithoutItems: toNumber(
+        row.test_records_without_items,
+      ),
+      systemsWithoutAssets: toNumber(row.systems_without_assets),
+      subsystemsWithoutAssets: toNumber(
+        row.subsystems_without_assets,
+      ),
+    },
+    recentActivity: {
+      created: recentActivityCreated,
+      closedOut: recentActivityClosedOut,
+      netChange: recentActivityCreated - recentActivityClosedOut,
     },
     attentionItems: [
       ...operationalAttentionItems.slice(0, 8),

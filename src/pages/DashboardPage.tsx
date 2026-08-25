@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import ActivityHistoryModal from "../components/ActivityHistoryModal";
 import AuditEventDetailModal from "../components/AuditEventDetailModal";
-import { getProjectOverview } from "../repositories/projectOverviewRepository";
-import { listAuditEvents } from "../repositories/auditRepository";
 import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
-import type { Project } from "../types/project";
+import { listAuditEvents } from "../repositories/auditRepository";
+import { getProjectOverview } from "../repositories/projectOverviewRepository";
 import type {
   AuditEntityType,
   AuditEvent,
 } from "../types/audit";
 import type { ProjectNavigationItem } from "../types/navigation";
+import type { Project } from "../types/project";
 import type {
-  AttentionItemType,
   ProjectOverview,
+  ProjectOverviewScopeStages,
 } from "../types/projectOverview";
 
 interface ProjectOverviewPageProps {
@@ -24,19 +24,37 @@ interface ProjectOverviewPageProps {
   onEditProject: () => void;
 }
 
+type ScopeChartTone =
+  | "positive"
+  | "accent"
+  | "warning"
+  | "info"
+  | "neutral";
+
+interface ScopeChartSegment {
+  label: string;
+  value: number;
+  tone: ScopeChartTone;
+}
+
+interface ReadinessRowData {
+  label: string;
+  percent: number;
+  total: number;
+  remaining: number;
+  complete: number;
+}
+
 function formatProjectStatus(status: Project["status"]): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function formatStatus(status: string): string {
-  return status
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-CA");
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-CA");
 }
 
 function formatDateTime(value: string): string {
@@ -49,29 +67,6 @@ function formatAuditAction(action: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function formatAuditEntity(type: AuditEntityType): string {
-  switch (type) {
-    case "project":
-      return "Project";
-    case "system":
-      return "System";
-    case "subsystem":
-      return "Subsystem";
-    case "asset":
-      return "Asset";
-    case "issue":
-      return "Issue";
-    case "test_record":
-      return "Test record";
-    case "test_item":
-      return "Test item";
-    case "document":
-      return "Document";
-    case "turnover_package":
-      return "Turnover package";
-  }
 }
 
 function getAuditTarget(
@@ -97,54 +92,108 @@ function getAuditTarget(
 }
 
 function calculatePercent(completed: number, total: number): number {
-  if (total === 0) {
-    return 0;
-  }
-
-  return Math.round((completed / total) * 100);
+  return total === 0 ? 0 : Math.round((completed / total) * 100);
 }
 
-function getAttentionLabel(type: AttentionItemType): string {
-  switch (type) {
-    case "overdue_issue":
-      return "Overdue issue";
-    case "critical_issue":
-      return "Critical issue";
-    case "failed_test_item":
-      return "Failed test item";
-    case "pending_test_item":
-      return "Pending test item";
-    case "unsigned_test_record":
-      return "Unsigned test record";
-    case "blocked_asset":
-      return "Blocked asset";
-    case "incomplete_asset":
-      return "Incomplete asset";
-    case "required_document":
-      return "Required document";
-    case "system_readiness":
-      return "System readiness";
-  }
-}
+function ScopePieChart({
+  label,
+  stages,
+}: {
+  label: string;
+  stages: ProjectOverviewScopeStages;
+}) {
+  const segments: ScopeChartSegment[] = [
+    {
+      label: "Handed over",
+      value: stages.handedOver,
+      tone: "positive",
+    },
+    {
+      label: "Commissioned",
+      value: stages.commissioned,
+      tone: "info",
+    },
+    {
+      label: "Ready",
+      value: stages.ready,
+      tone: "warning",
+    },
+    {
+      label: "In progress",
+      value: stages.inProgress,
+      tone: "accent",
+    },
+    {
+      label: "Not started",
+      value: stages.notStarted,
+      tone: "neutral",
+    },
+  ];
+  const total = segments.reduce(
+    (sum, segment) => sum + segment.value,
+    0,
+  );
+  let offset = 0;
 
-function getAttentionTarget(
-  type: AttentionItemType,
-): AttentionDestinationPage {
-  switch (type) {
-    case "blocked_asset":
-    case "incomplete_asset":
-    case "system_readiness":
-      return "Assets";
-    case "failed_test_item":
-    case "pending_test_item":
-    case "unsigned_test_record":
-      return "Checklists & Tests";
-    case "required_document":
-      return "Documents";
-    case "overdue_issue":
-    case "critical_issue":
-      return "Issues";
-  }
+  return (
+    <section className="home-panel home-pie-card overview-scope-pie-card">
+      <div className="home-pie-card-heading">
+        <h5>{label}</h5>
+      </div>
+      <div className="home-pie-card-body">
+        <div className="home-pie-legend">
+          {segments.map((segment) => (
+            <div key={segment.label}>
+              <span className={`home-chart-key ${segment.tone}`} />
+              <span>
+                {segment.label} <strong>{segment.value}</strong>
+              </span>
+            </div>
+          ))}
+        </div>
+        <div
+          className="home-pie-visual"
+          role="img"
+          aria-label={`${label}: ${segments
+            .map((segment) => `${segment.value} ${segment.label}`)
+            .join(", ")}.`}
+        >
+          <svg
+            className="home-pie"
+            viewBox="0 0 120 120"
+            aria-hidden="true"
+          >
+            <circle
+              className="home-pie-track"
+              cx="60"
+              cy="60"
+              r="25"
+              pathLength="100"
+            />
+            {segments.map((segment) => {
+              const percentage =
+                total === 0 ? 0 : (segment.value / total) * 100;
+              const segmentOffset = offset;
+              offset += percentage;
+
+              return percentage > 0 ? (
+                <circle
+                  key={segment.label}
+                  className={`home-pie-segment ${segment.tone}`}
+                  cx="60"
+                  cy="60"
+                  r="25"
+                  pathLength="100"
+                  strokeDasharray={`${percentage} ${100 - percentage}`}
+                  strokeDashoffset={-segmentOffset}
+                />
+              ) : null;
+            })}
+          </svg>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function ProjectOverviewPage({
@@ -152,9 +201,7 @@ function ProjectOverviewPage({
   onNavigate,
   onEditProject,
 }: ProjectOverviewPageProps) {
-  const [overview, setOverview] = useState<ProjectOverview | null>(
-    null,
-  );
+  const [overview, setOverview] = useState<ProjectOverview | null>(null);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [selectedAuditEvent, setSelectedAuditEvent] =
     useState<AuditEvent | null>(null);
@@ -205,25 +252,6 @@ function ProjectOverviewPage({
     };
   }, [currentProject.id, reloadKey]);
 
-  const assetProgress = overview
-    ? calculatePercent(
-        overview.assets.completed,
-        overview.assets.total,
-      )
-    : 0;
-  const testRecordProgress = overview
-    ? calculatePercent(
-        overview.testRecords.completed,
-        overview.testRecords.total,
-      )
-    : 0;
-  const issueResolutionProgress = overview
-    ? calculatePercent(
-        overview.issues.resolved + overview.issues.closed,
-        overview.issues.total,
-      )
-    : 0;
-
   function handleOpenAuditRecord(event: AuditEvent) {
     const target = getAuditTarget(event.entityType);
 
@@ -241,361 +269,354 @@ function ProjectOverviewPage({
     });
   }
 
+  const assetCompletionPercent = overview
+    ? calculatePercent(overview.assets.completed, overview.assets.total)
+    : 0;
+  const assessedTestItems = overview
+    ? overview.testItems.passed + overview.testItems.failed
+    : 0;
+  const assessedPassRate = overview
+    ? calculatePercent(overview.testItems.passed, assessedTestItems)
+    : 0;
+  const subsystemHandoverPercent = overview
+    ? calculatePercent(
+        overview.scope.subsystems.handedOver,
+        overview.scope.subsystems.total,
+      )
+    : 0;
+  const readinessRows: ReadinessRowData[] = overview
+    ? [
+        {
+          label: "Required documents",
+          percent: calculatePercent(
+            overview.deliverables.requiredDocumentsApproved,
+            overview.deliverables.requiredDocumentsTotal,
+          ),
+          total: overview.deliverables.requiredDocumentsTotal,
+          remaining:
+            overview.deliverables.requiredDocumentsTotal -
+            overview.deliverables.requiredDocumentsApproved,
+          complete: overview.deliverables.requiredDocumentsApproved,
+        },
+        {
+          label: "Test records",
+          percent: calculatePercent(
+            overview.deliverables.testRecordsSigned,
+            overview.deliverables.testRecordsTotal,
+          ),
+          total: overview.deliverables.testRecordsTotal,
+          remaining:
+            overview.deliverables.testRecordsTotal -
+            overview.deliverables.testRecordsSigned,
+          complete: overview.deliverables.testRecordsSigned,
+        },
+        {
+          label: "Subsystem handover",
+          percent: calculatePercent(
+            overview.deliverables.subsystemsHandedOver,
+            overview.deliverables.subsystemsTotal,
+          ),
+          total: overview.deliverables.subsystemsTotal,
+          remaining:
+            overview.deliverables.subsystemsTotal -
+            overview.deliverables.subsystemsHandedOver,
+          complete: overview.deliverables.subsystemsHandedOver,
+        },
+      ]
+    : [];
+
   return (
     <>
       <section className="content-card section-card overview-page">
-      <div className="card-header overview-page-header">
-        <div>
-          <h3>Project overview</h3>
-          <p>Current project: {currentProject.name}</p>
+        <div className="card-header overview-page-header">
+          <h3>{currentProject.name}</h3>
+          <span className={`status-badge ${currentProject.status}`}>
+            {formatProjectStatus(currentProject.status)}
+          </span>
         </div>
-        <span
-          className={`status-badge ${currentProject.status}`}
-        >
-          {formatProjectStatus(currentProject.status)}
-        </span>
-      </div>
 
-      <div className="overview-scroll-container">
-        <div className="section-body overview-body">
-        {isLoading ? (
-          <div className="overview-state">
-            <h3>Loading project overview</h3>
-            <p>
-              Calculating commissioning progress and outstanding work.
-            </p>
-          </div>
-        ) : loadError ? (
-          <div className="overview-state">
-            <h3>Unable to load project overview</h3>
-            <p>{loadError}</p>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setReloadKey((current) => current + 1)}
-            >
-              Try again
-            </button>
-          </div>
-        ) : overview ? (
-          <>
-            <div className="overview-metrics-grid">
-              <button
-                type="button"
-                className="overview-metric-card"
-                onClick={() => onNavigate("Assets")}
-              >
-                <span className="overview-metric-label">Assets</span>
-                <strong>{overview.assets.total}</strong>
-                <span className="overview-metric-detail">
-                  {overview.assets.completed} completed ·{" "}
-                  {overview.assets.blocked} blocked
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="overview-metric-card"
-                onClick={() => onNavigate("Checklists & Tests")}
-              >
-                <span className="overview-metric-label">
-                  Test records
-                </span>
-                <strong>{overview.testRecords.total}</strong>
-                <span className="overview-metric-detail">
-                  {overview.testRecords.completed} completed ·{" "}
-                  {overview.testRecords.blocked} blocked
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="overview-metric-card"
-                onClick={() => onNavigate("Checklists & Tests")}
-              >
-                <span className="overview-metric-label">
-                  Test items
-                </span>
-                <strong>{overview.testItems.completionPercent}%</strong>
-                <span className="overview-metric-detail">
-                  {overview.testItems.passed} passed ·{" "}
-                  {overview.testItems.failed} failed
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="overview-metric-card"
-                onClick={() => onNavigate("Issues")}
-              >
-                <span className="overview-metric-label">
-                  Active issues
-                </span>
-                <strong>{overview.issues.active}</strong>
-                <span className="overview-metric-detail">
-                  {overview.issues.critical} critical ·{" "}
-                  {overview.issues.overdue} overdue
-                </span>
-              </button>
-            </div>
-
-            <div className="overview-content-grid">
-              <section className="overview-panel overview-progress-panel">
-                <div className="overview-panel-header">
-                  <div>
-                    <h4>Commissioning progress</h4>
-                    <p>Completion across the current project.</p>
-                  </div>
-                </div>
-
-                <div className="overview-progress-list">
-                  <div className="overview-progress-row">
-                    <div className="overview-progress-heading">
-                      <span>Assets</span>
-                      <strong>{assetProgress}%</strong>
-                    </div>
-                    <div
-                      className="overview-progress-track"
-                      role="progressbar"
-                      aria-label="Asset completion"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={assetProgress}
-                    >
-                      <span style={{ width: `${assetProgress}%` }} />
-                    </div>
-                    <p>
-                      {overview.assets.completed} of{" "}
-                      {overview.assets.total} completed
-                    </p>
-                  </div>
-
-                  <div className="overview-progress-row">
-                    <div className="overview-progress-heading">
-                      <span>Test records</span>
-                      <strong>{testRecordProgress}%</strong>
-                    </div>
-                    <div
-                      className="overview-progress-track"
-                      role="progressbar"
-                      aria-label="Test record completion"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={testRecordProgress}
-                    >
-                      <span
-                        style={{ width: `${testRecordProgress}%` }}
-                      />
-                    </div>
-                    <p>
-                      {overview.testRecords.completed} of{" "}
-                      {overview.testRecords.total} completed
-                    </p>
-                  </div>
-
-                  <div className="overview-progress-row">
-                    <div className="overview-progress-heading">
-                      <span>Test items assessed</span>
-                      <strong>
-                        {overview.testItems.completionPercent}%
-                      </strong>
-                    </div>
-                    <div
-                      className="overview-progress-track"
-                      role="progressbar"
-                      aria-label="Test item completion"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={
-                        overview.testItems.completionPercent
-                      }
-                    >
-                      <span
-                        style={{
-                          width: `${overview.testItems.completionPercent}%`,
-                        }}
-                      />
-                    </div>
-                    <p>
-                      {overview.testItems.completed} of{" "}
-                      {overview.testItems.total} assessed
-                    </p>
-                  </div>
-
-                  <div className="overview-progress-row">
-                    <div className="overview-progress-heading">
-                      <span>Issues resolved</span>
-                      <strong>{issueResolutionProgress}%</strong>
-                    </div>
-                    <div
-                      className="overview-progress-track"
-                      role="progressbar"
-                      aria-label="Issue resolution"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={issueResolutionProgress}
-                    >
-                      <span
-                        style={{ width: `${issueResolutionProgress}%` }}
-                      />
-                    </div>
-                    <p>
-                      {overview.issues.resolved + overview.issues.closed}{" "}
-                      of {overview.issues.total} resolved or closed
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="overview-panel overview-attention-panel">
-                <div className="overview-panel-header">
-                  <div>
-                    <h4>Attention required</h4>
-                    <p>
-                      Highest-priority items requiring follow-up.
-                    </p>
-                  </div>
-                </div>
-
-                {overview.attentionItems.length === 0 ? (
-                  <div className="overview-attention-empty">
-                    <strong>No urgent items</strong>
-                    <span>
-                      No blocked assets, failed tests, critical issues,
-                      overdue issues, or system readiness blockers were found.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="overview-attention-list">
-                    {overview.attentionItems.map((item) => (
-                      <button
-                        key={`${item.type}-${item.id}`}
-                        type="button"
-                        className="overview-attention-item"
-                        onClick={() =>
-                          onNavigate(
-                            getAttentionTarget(item.type),
-                            item,
-                          )
-                        }
-                      >
-                        <span className="overview-attention-copy">
-                          <span className="overview-attention-kind">
-                            {getAttentionLabel(item.type)}
-                          </span>
-                          <strong>{item.title}</strong>
-                          <span>{item.detail}</span>
-                        </span>
-                        <span
-                          className={`status-badge ${item.status}`}
-                        >
-                          {formatStatus(item.status)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
-
-            <section className="overview-panel overview-activity-panel">
-              <div className="overview-panel-header">
-                <div>
-                  <h4>Recent activity</h4>
-                  <p>Append-only project changes and controlled actions.</p>
-                </div>
-                {auditEvents.length > 0 && (
-                  <button
-                    type="button"
-                    className="secondary-button overview-activity-view-all"
-                    onClick={() => setIsActivityHistoryOpen(true)}
-                  >
-                    View all
-                  </button>
-                )}
+        <div className="overview-scroll-container">
+          <div className="section-body overview-body">
+            {isLoading ? (
+              <div className="overview-state">
+                <span className="home-analytics-loader" />
+                <h3>Preparing the project overview</h3>
+                <p>Calculating readiness, closeout, and outstanding work.</p>
               </div>
-
-              {auditEvents.length === 0 ? (
-                <div className="overview-activity-empty">
-                  <strong>No recorded activity yet</strong>
-                  <span>New changes will appear here automatically.</span>
-                </div>
-              ) : (
-                <div className="overview-activity-list">
-                  {auditEvents.map((event) => (
-                    <button
-                      key={event.id}
-                      type="button"
-                      className="overview-activity-item"
-                      onClick={() => setSelectedAuditEvent(event)}
-                    >
-                        <span className="overview-activity-marker" />
-                        <span className="overview-activity-copy">
-                          <span>
-                            {formatAuditEntity(event.entityType)}
-                            {" · "}
-                            {formatAuditAction(event.action)}
-                          </span>
-                          <strong>{event.entityLabel || "Untitled record"}</strong>
-                          <small>
-                            {event.actor}
-                            {event.reason ? ` · ${event.reason}` : ""}
-                          </small>
-                        </span>
-                        <time dateTime={event.createdAt}>
-                          {formatDateTime(event.createdAt)}
-                        </time>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="overview-panel overview-project-panel">
-              <div className="overview-panel-header">
-                <div>
-                  <h4>Project details</h4>
-                  <p>Reference information for the current project.</p>
-                </div>
+            ) : loadError ? (
+              <div className="overview-state">
+                <h3>Unable to load the project overview</h3>
+                <p>{loadError}</p>
                 <button
                   type="button"
-                  className="secondary-button overview-project-edit-button"
-                  onClick={onEditProject}
+                  className="secondary-button"
+                  onClick={() => setReloadKey((current) => current + 1)}
                 >
-                  Edit details
+                  Try again
                 </button>
               </div>
+            ) : overview ? (
+              <>
+                <div
+                  className="home-project-metrics"
+                  aria-label="Project commissioning summary"
+                >
+                  <div
+                    className={`home-project-metric ${
+                      overview.assets.total === 0
+                        ? "neutral"
+                        : assetCompletionPercent === 100
+                          ? "positive"
+                          : "accent"
+                    }`}
+                  >
+                    <span>Asset completion</span>
+                    <strong>
+                      {overview.assets.total === 0
+                        ? "-"
+                        : `${assetCompletionPercent}%`}
+                    </strong>
+                    <small>
+                      {overview.assets.total === 0
+                        ? "No assets recorded"
+                        : `${overview.assets.completed} of ${overview.assets.total} assets`}
+                    </small>
+                  </div>
+                  <div
+                    className={`home-project-metric ${
+                      assessedTestItems === 0
+                        ? "neutral"
+                        : assessedPassRate === 100
+                          ? "positive"
+                          : assessedPassRate >= 90
+                            ? "accent"
+                            : "negative"
+                    }`}
+                  >
+                    <span>Assessed test pass rate</span>
+                    <strong>
+                      {assessedTestItems === 0
+                        ? "-"
+                        : `${assessedPassRate}%`}
+                    </strong>
+                    <small>
+                      {assessedTestItems === 0
+                        ? "No assessed test items"
+                        : `${overview.testItems.passed} passed · ${overview.testItems.failed} failed`}
+                    </small>
+                  </div>
+                  <div
+                    className={`home-project-metric ${
+                      overview.issues.active > 0
+                        ? "negative"
+                        : "positive"
+                    }`}
+                  >
+                    <span>Active issues</span>
+                    <strong>{overview.issues.active}</strong>
+                    <small>
+                      {overview.issues.active === 0
+                        ? "No issues need attention"
+                        : `${overview.issues.critical} critical · ${overview.issues.overdue} overdue`}
+                    </small>
+                  </div>
+                  <div
+                    className={`home-project-metric ${
+                      overview.scope.subsystems.total === 0
+                        ? "neutral"
+                        : subsystemHandoverPercent === 100
+                          ? "positive"
+                          : "accent"
+                    }`}
+                  >
+                    <span>Subsystem handover</span>
+                    <strong>
+                      {overview.scope.subsystems.total === 0
+                        ? "-"
+                        : `${subsystemHandoverPercent}%`}
+                    </strong>
+                    <small>
+                      {overview.scope.subsystems.total === 0
+                        ? "No subsystems recorded"
+                        : `${overview.scope.subsystems.handedOver} of ${overview.scope.subsystems.total} handed over`}
+                    </small>
+                  </div>
+                </div>
 
-              <div className="overview-project-grid">
-                <div>
-                  <span>Client</span>
-                  <strong>{currentProject.client || "-"}</strong>
-                </div>
-                <div>
-                  <span>Location</span>
-                  <strong>{currentProject.location || "-"}</strong>
-                </div>
-                <div>
-                  <span>Created</span>
-                  <strong>{formatDate(currentProject.createdAt)}</strong>
-                </div>
-                <div>
-                  <span>Updated</span>
-                  <strong>{formatDate(currentProject.updatedAt)}</strong>
-                </div>
-              </div>
+                <div className="home-closeout-row overview-closeout-row">
+                  <section
+                    className="home-panel home-attention-panel"
+                    aria-label="Immediate attention"
+                    title="Critical active and overdue active issue counts may overlap."
+                  >
+                    <h4>Immediate attention</h4>
+                    <div className="home-attention-items">
+                      <div>
+                        <span>Critical active</span>
+                        <strong>{overview.issues.critical}</strong>
+                      </div>
+                      <div>
+                        <span>Overdue active</span>
+                        <strong>{overview.issues.overdue}</strong>
+                      </div>
+                      <div>
+                        <span>Failed test items</span>
+                        <strong>{overview.testItems.failed}</strong>
+                      </div>
+                      <div>
+                        <span>Blocked assets</span>
+                        <strong>{overview.assets.blocked}</strong>
+                      </div>
+                    </div>
+                  </section>
 
-              <div className="overview-project-description">
-                <span>Description</span>
-                <strong>
-                  {currentProject.description || "No description."}
-                </strong>
-              </div>
-            </section>
-          </>
-        ) : null}
+                  <section
+                    className="home-panel home-readiness-panel"
+                    aria-label="Deliverables readiness"
+                  >
+                    <div className="home-readiness-heading">
+                      <h4>Deliverables readiness</h4>
+                    </div>
+                    <div
+                      className="home-readiness-table-header"
+                      aria-hidden="true"
+                    >
+                      <span>Workstream</span>
+                      <span>Progress</span>
+                      <span>Total</span>
+                      <span>Outstanding</span>
+                      <span>Ready</span>
+                    </div>
+                    <div className="home-readiness-table-body">
+                      {readinessRows.map((row) => (
+                        <div className="home-readiness-row" key={row.label}>
+                          <strong>{row.label}</strong>
+                          <div className="home-readiness-progress-cell">
+                            <div
+                              className="home-readiness-progress"
+                              role="progressbar"
+                              aria-label={`${row.label} readiness`}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={row.percent}
+                            >
+                              <span style={{ width: `${row.percent}%` }} />
+                            </div>
+                            <small>{row.percent}%</small>
+                          </div>
+                          <span className="total">{row.total}</span>
+                          <span className="remaining">{row.remaining}</span>
+                          <span className="complete">{row.complete}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                <div className="overview-dashboard-main-row">
+                  <div className="overview-scope-pie-grid">
+                    <ScopePieChart
+                      label="Systems"
+                      stages={overview.scope.systems}
+                    />
+                    <ScopePieChart
+                      label="Subsystems"
+                      stages={overview.scope.subsystems}
+                    />
+                  </div>
+
+                  <section className="home-panel overview-dashboard-activity-panel">
+                    <div className="home-panel-header overview-centered-panel-heading">
+                      <h4>Recent activity</h4>
+                      {auditEvents.length > 0 && (
+                        <button
+                          type="button"
+                          className="secondary-button overview-activity-view-all"
+                          onClick={() => setIsActivityHistoryOpen(true)}
+                        >
+                          View all
+                        </button>
+                      )}
+                    </div>
+
+                    {auditEvents.length === 0 ? (
+                      <div className="overview-activity-empty">
+                        <strong>No recorded activity yet</strong>
+                        <span>New changes will appear here automatically.</span>
+                      </div>
+                    ) : (
+                      <div className="overview-activity-list overview-dashboard-activity-list">
+                        {auditEvents.map((event) => (
+                          <button
+                            key={event.id}
+                            type="button"
+                            className="overview-activity-item"
+                            onClick={() => setSelectedAuditEvent(event)}
+                          >
+                            <span className="overview-activity-marker" />
+                            <span className="overview-activity-copy">
+                              <strong>
+                                {event.entityLabel || "Untitled record"}
+                              </strong>
+                              <small>
+                                {event.actor}
+                                {" · "}
+                                {event.reason ||
+                                  formatAuditAction(event.action)}
+                              </small>
+                            </span>
+                            <time dateTime={event.createdAt}>
+                              {formatDateTime(event.createdAt)}
+                            </time>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </div>
+
+                <section className="home-panel overview-project-panel">
+                  <div className="home-panel-header overview-centered-panel-heading">
+                    <h4>Project details</h4>
+                    <button
+                      type="button"
+                      className="secondary-button overview-project-edit-button"
+                      onClick={onEditProject}
+                    >
+                      Edit details
+                    </button>
+                  </div>
+
+                  <div className="overview-project-grid">
+                    <div>
+                      <span>Client</span>
+                      <strong>{currentProject.client || "-"}</strong>
+                    </div>
+                    <div>
+                      <span>Location</span>
+                      <strong>{currentProject.location || "-"}</strong>
+                    </div>
+                    <div>
+                      <span>Created</span>
+                      <strong>{formatDate(currentProject.createdAt)}</strong>
+                    </div>
+                    <div>
+                      <span>Updated</span>
+                      <strong>{formatDate(currentProject.updatedAt)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="overview-project-description">
+                    <span>Description</span>
+                    <strong>
+                      {currentProject.description || "No description."}
+                    </strong>
+                  </div>
+                </section>
+              </>
+            ) : null}
+          </div>
         </div>
-      </div>
       </section>
 
       <ActivityHistoryModal

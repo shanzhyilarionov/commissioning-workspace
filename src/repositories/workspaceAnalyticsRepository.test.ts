@@ -52,6 +52,9 @@ describe("getWorkspaceAnalytics", () => {
           issue_active: 4,
           issue_critical: 1,
           issue_overdue: 2,
+          project_attention_total: 3,
+          project_attention_critical: 1,
+          project_attention_overdue: 2,
           required_document_total: 8,
           required_document_approved: 5,
           test_record_total: 7,
@@ -104,6 +107,11 @@ describe("getWorkspaceAnalytics", () => {
       resolved: 3,
       closed: 2,
       active: 4,
+      critical: 1,
+      overdue: 2,
+    });
+    expect(analytics.projectsRequiringAttention).toEqual({
+      total: 3,
       critical: 1,
       overdue: 2,
     });

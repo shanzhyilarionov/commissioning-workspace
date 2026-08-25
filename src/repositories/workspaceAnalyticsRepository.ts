@@ -24,6 +24,9 @@ interface WorkspaceSummaryRow {
   issue_closed: number;
   issue_critical: number;
   issue_overdue: number;
+  project_attention_total: number;
+  project_attention_critical: number;
+  project_attention_overdue: number;
   required_document_total: number;
   required_document_approved: number;
   test_record_total: number;
@@ -269,6 +272,67 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
               AND DATE(due_date) < DATE($1)
           ) AS issue_overdue,
           (
+            SELECT COUNT(*)
+            FROM projects
+            WHERE projects.status = 'active'
+              AND (
+                EXISTS (
+                  SELECT 1
+                  FROM assets
+                  WHERE assets.project_id = projects.id
+                    AND assets.status = 'blocked'
+                )
+                OR EXISTS (
+                  SELECT 1
+                  FROM test_items
+                  INNER JOIN test_records
+                    ON test_records.id = test_items.test_record_id
+                  WHERE test_records.project_id = projects.id
+                    AND test_items.result = 'fail'
+                )
+                OR EXISTS (
+                  SELECT 1
+                  FROM issues
+                  WHERE issues.project_id = projects.id
+                    AND issues.status IN ('open', 'in_progress')
+                    AND (
+                      issues.priority = 'critical'
+                      OR (
+                        issues.due_date IS NOT NULL
+                        AND TRIM(issues.due_date) <> ''
+                        AND DATE(issues.due_date) < DATE($1)
+                      )
+                    )
+                )
+              )
+          ) AS project_attention_total,
+          (
+            SELECT COUNT(*)
+            FROM projects
+            WHERE projects.status = 'active'
+              AND EXISTS (
+                SELECT 1
+                FROM issues
+                WHERE issues.project_id = projects.id
+                  AND issues.status IN ('open', 'in_progress')
+                  AND issues.priority = 'critical'
+              )
+          ) AS project_attention_critical,
+          (
+            SELECT COUNT(*)
+            FROM projects
+            WHERE projects.status = 'active'
+              AND EXISTS (
+                SELECT 1
+                FROM issues
+                WHERE issues.project_id = projects.id
+                  AND issues.status IN ('open', 'in_progress')
+                  AND issues.due_date IS NOT NULL
+                  AND TRIM(issues.due_date) <> ''
+                  AND DATE(issues.due_date) < DATE($1)
+              )
+          ) AS project_attention_overdue,
+          (
             SELECT COUNT(*) FROM project_documents
             WHERE required_for_readiness = 1
           ) AS required_document_total,
@@ -389,6 +453,11 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
       active: toNumber(summary?.issue_active),
       critical: toNumber(summary?.issue_critical),
       overdue: toNumber(summary?.issue_overdue),
+    },
+    projectsRequiringAttention: {
+      total: toNumber(summary?.project_attention_total),
+      critical: toNumber(summary?.project_attention_critical),
+      overdue: toNumber(summary?.project_attention_overdue),
     },
     deliverables: {
       requiredDocumentsTotal: toNumber(
