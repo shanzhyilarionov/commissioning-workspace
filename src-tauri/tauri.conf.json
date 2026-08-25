@@ -13,9 +13,9 @@
     "windows": [
       {
         "title": "Commissioning Workspace",
-        "width": 1220,
+        "width": 1300,
         "height": 800,
-        "minWidth": 800,
+        "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
         "decorations": true,

@@ -44,9 +44,20 @@ describe("getWorkspaceAnalytics", () => {
           test_item_passed: 6,
           test_item_failed: 2,
           test_item_not_applicable: 0,
+          issue_total: 9,
+          issue_open: 3,
+          issue_in_progress: 1,
+          issue_resolved: 3,
+          issue_closed: 2,
           issue_active: 4,
           issue_critical: 1,
           issue_overdue: 2,
+          required_document_total: 8,
+          required_document_approved: 5,
+          test_record_total: 7,
+          test_record_signed: 4,
+          handover_subsystem_total: 6,
+          handover_subsystem_complete: 2,
         },
       ])
       .mockResolvedValueOnce([
@@ -87,9 +98,22 @@ describe("getWorkspaceAnalytics", () => {
     });
     expect(analytics.tests.passRate).toBe(75);
     expect(analytics.issues).toEqual({
+      total: 9,
+      open: 3,
+      inProgress: 1,
+      resolved: 3,
+      closed: 2,
       active: 4,
       critical: 1,
       overdue: 2,
+    });
+    expect(analytics.deliverables).toEqual({
+      requiredDocumentsTotal: 8,
+      requiredDocumentsApproved: 5,
+      testRecordsTotal: 7,
+      testRecordsSigned: 4,
+      handoverSubsystemsTotal: 6,
+      handoverSubsystemsComplete: 2,
     });
     expect(analytics.recentActivity).toEqual({
       created: 1,
@@ -101,6 +125,14 @@ describe("getWorkspaceAnalytics", () => {
     ).toMatchObject({
       created: 1,
       closedOut: 2,
+    });
+    expect(
+      analytics.dailyActivity.find(
+        (activity) => activity.startDate === "2026-08-22",
+      ),
+    ).toMatchObject({
+      created: 1,
+      closedOut: 0,
     });
   });
 });

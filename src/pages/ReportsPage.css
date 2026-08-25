@@ -69,7 +69,7 @@
   flex: 0 0 auto;
   padding: 0 8px;
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .reports-date-filter input {
@@ -83,7 +83,7 @@
   border: 0;
   border-left: 1px solid var(--color-border-subtle);
   outline: none;
-  font-size: 12px;
+  font-size: var(--font-size-body);
 }
 
 .reports-toolbar .reports-result-count {
@@ -186,7 +186,7 @@
 }
 
 .reports-result {
-  font-weight: 650;
+  font-weight: var(--font-weight-medium);
 }
 
 .reports-result-complete {
@@ -219,8 +219,8 @@
   padding: 7px 14px;
   color: var(--color-status-positive);
   border-bottom: 1px solid var(--color-border-subtle);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
 }
 
 .turnover-load-error {
@@ -244,14 +244,14 @@
 
 .turnover-load-error strong {
   color: var(--color-status-negative);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .turnover-load-error span {
   overflow-wrap: anywhere;
   color: var(--color-text-muted);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-body);
 }
 
 @media (max-width: 1120px) {
@@ -313,10 +313,10 @@
   background: transparent;
   border: 0;
   border-radius: 5px;
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.25;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-compact);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -517,14 +517,14 @@
 .turnover-preflight-heading h3 {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
 }
 
 .turnover-preflight-heading p {
   margin: 3px 0 0;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
 }
 
 .turnover-preflight-grid {
@@ -551,17 +551,17 @@
   min-height: 22px;
   align-items: center;
   color: var(--color-text-muted);
-  font-size: 9px;
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-compact);
   overflow-wrap: normal;
   white-space: normal;
 }
 
 .turnover-preflight-grid strong {
   color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
 }
 
 .turnover-preflight-grid strong.blocked {
@@ -593,7 +593,7 @@
 
 .turnover-final-eligibility strong {
   color: var(--color-status-warning);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .turnover-final-eligibility.eligible strong {
@@ -602,8 +602,8 @@
 
 .turnover-final-eligibility span {
   color: var(--color-text-muted);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-body);
 }
 
 .turnover-preflight-state,
@@ -613,8 +613,8 @@
   background: var(--color-surface-subtle);
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
 }
 
 .turnover-notes-field textarea {

@@ -35,15 +35,15 @@
 }
 
 .test-record-signoff-panel span {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
 }
 
 .test-record-signoff-panel strong {
   overflow-wrap: anywhere;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
@@ -56,8 +56,8 @@
 .test-record-read-only-notice {
   margin: 0 20px 10px;
   padding: 9px 11px;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
   color: var(--color-status-positive);
   background: var(--color-feedback-success-highlight);
   border: 1px solid var(--color-feedback-success-highlight-border);
@@ -70,8 +70,8 @@
 
 .completion-modal-description {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-relaxed);
   color: var(--color-text-muted);
 }
 

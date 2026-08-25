@@ -1,8 +1,30 @@
 :root {
   color-scheme: light;
 
-  --color-accent: #d9a441;
-  --color-accent-hover: #c89537;
+  --font-family-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --font-size-caption: 9px;
+  --font-size-xs: 10px;
+  --font-size-sm: 11px;
+  --font-size-body: 12px;
+  --font-size-subtitle: 13px;
+  --font-size-heading: 16px;
+  --font-size-title: 18px;
+  --font-size-display: 24px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1;
+  --line-height-compact: 1.2;
+  --line-height-label: 1.4;
+  --line-height-body: 1.5;
+  --line-height-relaxed: 1.55;
+
+  --color-accent: #e0aa3e;
+  --color-accent-hover: #d39b30;
   --color-accent-foreground: #171717;
   --color-accent-highlight: rgb(218 160 50 / 24%);
   --shadow-focus-accent: 0 0 0 3px rgb(217 164 65 / 14%);
@@ -22,26 +44,9 @@
   --color-surface-badge: #e7e7e7;
 
   --color-text-primary: #1c1c1c;
-  --color-text-strong: #2f3336;
-  --color-text-control: #34373a;
-  --color-text-action: #333333;
-  --color-text-action-muted: #42464a;
-  --color-text-action-hover: #222528;
-  --color-text-body: #4d4d4d;
-  --color-text-dialog: #4f5357;
-  --color-text-dialog-strong: #25282b;
-  --color-text-label: #444444;
-  --color-text-badge: #555555;
-  --color-text-code: #555a5e;
-  --color-text-detail: #666b70;
-  --color-text-description: #707070;
-  --color-text-secondary: #737373;
-  --color-text-muted: #777777;
-  --color-text-tertiary: #747474;
-  --color-text-count: #777c81;
-  --color-text-subtle: #85898d;
+  --color-text-secondary: #5f6367;
+  --color-text-muted: #7b7f83;
   --color-text-disabled: #9a9da0;
-  --color-text-disabled-muted: #8a8d90;
   --color-text-on-strong: #ffffff;
 
   --color-border: #d4d4d4;
@@ -68,18 +73,18 @@
   --color-sidebar-text: #ffffff;
   --color-sidebar-text-muted: #9fa3a6;
 
-  --color-status-positive: #2f8f4e;
-  --color-status-info: #356c9a;
-  --color-status-warning: #a66f12;
-  --color-status-negative: #c44747;
-  --color-status-blocked: #a64040;
+  --color-status-positive: #43a160;
+  --color-status-info: #4f8ab5;
+  --color-status-warning: #c9902e;
+  --color-status-negative: #d25b5b;
+  --color-status-blocked: #c95050;
   --color-status-neutral: #6f6f6f;
 
-  --color-action-success: #357a45;
-  --color-action-success-hover: #2f6c3d;
+  --color-action-success: #43a160;
+  --color-action-success-hover: #378f52;
   --shadow-focus-success: 0 0 0 3px rgb(53 122 69 / 14%);
-  --color-action-danger: #aa4141;
-  --color-action-danger-hover: #933535;
+  --color-action-danger: #d25b5b;
+  --color-action-danger-hover: #c94d4d;
 
   --color-feedback-danger-background: #fff3f3;
   --color-feedback-danger-border: #e6c7c7;
@@ -91,12 +96,8 @@
   --color-feedback-success-border: #dbe9de;
   --color-feedback-success-highlight: rgb(76 175 80 / 8%);
   --color-feedback-success-highlight-border: rgb(76 175 80 / 22%);
-  --color-feedback-change-text: #5d491e;
   --color-feedback-change-background: #f7edcf;
   --color-feedback-change-border: #e6d49f;
-  --color-validation: #8a3f3f;
-  --color-menu-danger: #a33e3e;
-  --color-menu-danger-hover: #8c3030;
   --color-menu-danger-background: #fff1f1;
 
   --color-overlay: rgb(0 0 0 / 58%);
@@ -120,12 +121,6 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-accent: #d9a441;
-  --color-accent-hover: #e1ad4b;
-  --color-accent-foreground: #171717;
-  --color-accent-highlight: rgb(217 164 65 / 26%);
-  --shadow-focus-accent: 0 0 0 3px rgb(217 164 65 / 18%);
-
   --color-app-background: #111214;
   --color-surface: #1b1d1f;
   --color-surface-subtle: #202225;
@@ -141,26 +136,9 @@
   --color-surface-badge: #303337;
 
   --color-text-primary: #f1f2f3;
-  --color-text-strong: #e4e6e8;
-  --color-text-control: #e0e2e4;
-  --color-text-action: #e5e7e9;
-  --color-text-action-muted: #cdd0d3;
-  --color-text-action-hover: #ffffff;
-  --color-text-body: #c5c8cb;
-  --color-text-dialog: #c8cbce;
-  --color-text-dialog-strong: #eef0f1;
-  --color-text-label: #d4d6d8;
-  --color-text-badge: #c2c5c8;
-  --color-text-code: #bdc1c4;
-  --color-text-detail: #b7babd;
-  --color-text-description: #adb1b4;
-  --color-text-secondary: #a8acae;
-  --color-text-muted: #9fa3a6;
-  --color-text-tertiary: #a2a6a9;
-  --color-text-count: #9da2a5;
-  --color-text-subtle: #929699;
+  --color-text-secondary: #bdc1c4;
+  --color-text-muted: #929699;
   --color-text-disabled: #707477;
-  --color-text-disabled-muted: #777b7e;
   --color-text-on-strong: #ffffff;
 
   --color-border: #3a3d40;
@@ -175,18 +153,7 @@
   --color-border-interactive-hover: #666b70;
   --color-border-card-hover: #565b5f;
 
-  --color-status-positive: #62b87b;
-  --color-status-info: #70a8d2;
-  --color-status-warning: #d2a14c;
-  --color-status-negative: #df7676;
-  --color-status-blocked: #d56b6b;
   --color-status-neutral: #a4a7aa;
-
-  --color-action-success: #4f9c65;
-  --color-action-success-hover: #5eaa73;
-  --shadow-focus-success: 0 0 0 3px rgb(79 156 101 / 20%);
-  --color-action-danger: #c65c5c;
-  --color-action-danger-hover: #d66b6b;
 
   --color-feedback-danger-background: #2d2022;
   --color-feedback-danger-border: #5b363a;
@@ -198,12 +165,8 @@
   --color-feedback-success-border: #334b39;
   --color-feedback-success-highlight: rgb(98 184 123 / 10%);
   --color-feedback-success-highlight-border: rgb(98 184 123 / 26%);
-  --color-feedback-change-text: #e0c77e;
   --color-feedback-change-background: #332d1d;
   --color-feedback-change-border: #5b4d27;
-  --color-validation: #dc7a7a;
-  --color-menu-danger: #df7777;
-  --color-menu-danger-hover: #f08a8a;
   --color-menu-danger-background: #321f21;
 
   --color-overlay: rgb(0 0 0 / 72%);

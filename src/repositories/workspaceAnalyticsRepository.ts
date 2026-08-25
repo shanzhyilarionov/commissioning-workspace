@@ -1,6 +1,7 @@
 import { getDatabase } from "../services/database";
 import type {
   WorkspaceAnalytics,
+  WorkspaceDailyActivity,
   WorkspaceWeeklyActivity,
 } from "../types/workspaceAnalytics";
 
@@ -16,8 +17,19 @@ interface WorkspaceSummaryRow {
   test_item_failed: number;
   test_item_not_applicable: number;
   issue_active: number;
+  issue_total: number;
+  issue_open: number;
+  issue_in_progress: number;
+  issue_resolved: number;
+  issue_closed: number;
   issue_critical: number;
   issue_overdue: number;
+  required_document_total: number;
+  required_document_approved: number;
+  test_record_total: number;
+  test_record_signed: number;
+  handover_subsystem_total: number;
+  handover_subsystem_complete: number;
 }
 
 interface ActivityEventRow {
@@ -58,6 +70,34 @@ function createWeeklyActivity(now: Date): WorkspaceWeeklyActivity[] {
     return {
       startDate: toLocalDateString(startDate),
       label: startDate.toLocaleDateString("en-CA", {
+        month: "short",
+        day: "numeric",
+      }),
+      created: 0,
+      closedOut: 0,
+    };
+  });
+}
+
+function createDailyActivity(
+  firstWeekStart: Date,
+  now: Date,
+): WorkspaceDailyActivity[] {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const dayCount =
+    Math.round(
+      (today.getTime() - firstWeekStart.getTime()) /
+        (24 * 60 * 60 * 1000),
+    ) + 1;
+
+  return Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(firstWeekStart);
+    date.setDate(date.getDate() + index);
+
+    return {
+      startDate: toLocalDateString(date),
+      label: date.toLocaleDateString("en-CA", {
         month: "short",
         day: "numeric",
       }),
@@ -133,6 +173,16 @@ function getWeekIndex(
   return Math.round(elapsedMilliseconds / (7 * 24 * 60 * 60 * 1000));
 }
 
+function getDayIndex(eventDate: Date, firstWeekStart: Date): number {
+  const eventDay = new Date(eventDate);
+  eventDay.setHours(0, 0, 0, 0);
+
+  return Math.round(
+    (eventDay.getTime() - firstWeekStart.getTime()) /
+      (24 * 60 * 60 * 1000),
+  );
+}
+
 export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
   const database = await getDatabase();
   const now = new Date();
@@ -141,6 +191,7 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
   const firstWeekStart = startOfLocalWeek(
     new Date(`${weeklyActivity[0].startDate}T00:00:00`),
   );
+  const dailyActivity = createDailyActivity(firstWeekStart, now);
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -184,6 +235,25 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
           ) AS test_item_not_applicable,
           (
             SELECT COUNT(*) FROM issues
+          ) AS issue_total,
+          (
+            SELECT COUNT(*) FROM issues
+            WHERE status = 'open'
+          ) AS issue_open,
+          (
+            SELECT COUNT(*) FROM issues
+            WHERE status = 'in_progress'
+          ) AS issue_in_progress,
+          (
+            SELECT COUNT(*) FROM issues
+            WHERE status = 'resolved'
+          ) AS issue_resolved,
+          (
+            SELECT COUNT(*) FROM issues
+            WHERE status = 'closed'
+          ) AS issue_closed,
+          (
+            SELECT COUNT(*) FROM issues
             WHERE status IN ('open', 'in_progress')
           ) AS issue_active,
           (
@@ -197,7 +267,31 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
               AND due_date IS NOT NULL
               AND TRIM(due_date) <> ''
               AND DATE(due_date) < DATE($1)
-          ) AS issue_overdue
+          ) AS issue_overdue,
+          (
+            SELECT COUNT(*) FROM project_documents
+            WHERE required_for_readiness = 1
+          ) AS required_document_total,
+          (
+            SELECT COUNT(*) FROM project_documents
+            WHERE required_for_readiness = 1
+              AND status = 'approved'
+          ) AS required_document_approved,
+          (
+            SELECT COUNT(*) FROM test_records
+          ) AS test_record_total,
+          (
+            SELECT COUNT(*) FROM test_records
+            WHERE signed_off_at IS NOT NULL
+              AND TRIM(signed_off_at) <> ''
+          ) AS test_record_signed,
+          (
+            SELECT COUNT(*) FROM subsystems
+          ) AS handover_subsystem_total,
+          (
+            SELECT COUNT(*) FROM subsystems
+            WHERE commissioning_stage = 'handed_over'
+          ) AS handover_subsystem_complete
       `,
       [today],
     ),
@@ -230,6 +324,7 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
     }
 
     const weekIndex = getWeekIndex(eventDate, firstWeekStart);
+    const dayIndex = getDayIndex(eventDate, firstWeekStart);
     const isCreated = event.action === "created";
     const isClosedOut = isClosedOutEvent(event);
 
@@ -240,6 +335,16 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
 
       if (isClosedOut) {
         weeklyActivity[weekIndex].closedOut += 1;
+      }
+    }
+
+    if (dayIndex >= 0 && dayIndex < dailyActivity.length) {
+      if (isCreated) {
+        dailyActivity[dayIndex].created += 1;
+      }
+
+      if (isClosedOut) {
+        dailyActivity[dayIndex].closedOut += 1;
       }
     }
 
@@ -276,11 +381,33 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
       passRate: assessed === 0 ? 0 : Math.round((passed / assessed) * 100),
     },
     issues: {
+      total: toNumber(summary?.issue_total),
+      open: toNumber(summary?.issue_open),
+      inProgress: toNumber(summary?.issue_in_progress),
+      resolved: toNumber(summary?.issue_resolved),
+      closed: toNumber(summary?.issue_closed),
       active: toNumber(summary?.issue_active),
       critical: toNumber(summary?.issue_critical),
       overdue: toNumber(summary?.issue_overdue),
     },
+    deliverables: {
+      requiredDocumentsTotal: toNumber(
+        summary?.required_document_total,
+      ),
+      requiredDocumentsApproved: toNumber(
+        summary?.required_document_approved,
+      ),
+      testRecordsTotal: toNumber(summary?.test_record_total),
+      testRecordsSigned: toNumber(summary?.test_record_signed),
+      handoverSubsystemsTotal: toNumber(
+        summary?.handover_subsystem_total,
+      ),
+      handoverSubsystemsComplete: toNumber(
+        summary?.handover_subsystem_complete,
+      ),
+    },
     recentActivity,
     weeklyActivity,
+    dailyActivity,
   };
 }

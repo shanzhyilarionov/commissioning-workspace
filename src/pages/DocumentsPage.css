@@ -27,11 +27,11 @@
 .document-filter {
   height: 34px;
   box-sizing: border-box;
-  color: var(--color-text-control);
+  color: var(--color-text-primary);
   background: var(--color-surface);
   border: 1px solid var(--color-border-control);
   border-radius: 7px;
-  font-size: 12px;
+  font-size: var(--font-size-body);
   outline: none;
   transition:
     border-color 120ms ease,
@@ -74,8 +74,8 @@
 
 .document-result-count {
   margin-left: auto;
-  color: var(--color-text-count);
-  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
   white-space: nowrap;
 }
 
@@ -162,7 +162,7 @@
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
-  line-height: 1.35;
+  line-height: var(--line-height-label);
 }
 
 .document-title-cell {
@@ -180,14 +180,14 @@
 }
 
 .document-title-cell strong {
-  color: var(--color-text-strong);
-  font-weight: 600;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
   white-space: normal;
 }
 
 .document-title-cell span {
-  color: var(--color-text-subtle);
-  font-size: 10px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
   white-space: nowrap;
 }
 
@@ -205,7 +205,7 @@
 
 .document-required-cell {
   justify-content: center;
-  font-weight: 600;
+  font-weight: var(--font-weight-medium);
   text-align: center;
 }
 
@@ -244,14 +244,14 @@
 
 .document-readiness-option strong {
   color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
 }
 
 .document-readiness-option small {
   color: var(--color-text-muted);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-body);
 }
 
 .document-file-summary {
@@ -266,15 +266,15 @@
 }
 
 .document-file-summary span {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
 }
 
 .document-file-summary strong {
   overflow: hidden;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;

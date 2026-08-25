@@ -43,7 +43,7 @@
 
 .settings-group-heading h4 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-size-subtitle);
   color: var(--color-text-primary);
 }
 
@@ -62,8 +62,8 @@
 .settings-appearance-card p {
   min-width: 0;
   margin: 0;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
   color: var(--color-text-secondary);
 }
 
@@ -87,9 +87,9 @@
   background: transparent;
   border: 0;
   border-radius: 5px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   transition:
     color 120ms ease,
     background-color 120ms ease,
@@ -151,8 +151,8 @@
 .settings-action-card p,
 .settings-recovery-action p {
   margin: 0;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
   color: var(--color-text-secondary);
 }
 
@@ -181,8 +181,8 @@
 
 .settings-identity-card p {
   margin: 0;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
   color: var(--color-text-secondary);
 }
 
@@ -192,11 +192,11 @@
   height: 34px;
   box-sizing: border-box;
   padding: 0 11px;
-  color: var(--color-text-control);
+  color: var(--color-text-primary);
   background: var(--color-surface);
   border: 1px solid var(--color-border-control);
   border-radius: 7px;
-  font-size: 12px;
+  font-size: var(--font-size-body);
   outline: none;
   transition:
     border-color 120ms ease,
@@ -221,8 +221,8 @@
   margin: 0;
   padding: 9px 11px;
   border-radius: 7px;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
 }
 
 .settings-message-error {
@@ -251,13 +251,13 @@
 }
 
 .settings-result strong {
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   color: var(--color-status-positive);
 }
 
 .settings-result span {
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -336,8 +336,8 @@
 .restore-backup-details dt,
 .restore-backup-details dd {
   margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-label);
 }
 
 .restore-backup-details dt {
@@ -367,7 +367,7 @@
 
 .project-export-modal-header p {
   margin: 5px 0 0;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 
@@ -418,8 +418,8 @@
 
 .project-export-option strong {
   overflow: hidden;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -427,7 +427,7 @@
 
 .project-export-option small {
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -437,7 +437,7 @@
   align-self: center;
   justify-self: center;
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 

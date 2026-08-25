@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getWorkspaceAnalytics } from "../repositories/workspaceAnalyticsRepository";
 import type {
   WorkspaceAnalytics,
-  WorkspaceWeeklyActivity,
+  WorkspaceDailyActivity,
 } from "../types/workspaceAnalytics";
 
 interface HomePageProps {
@@ -122,34 +122,66 @@ function PieChart({
 function WeeklyActivityChart({
   activity,
 }: {
-  activity: WorkspaceWeeklyActivity[];
+  activity: WorkspaceDailyActivity[];
 }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(660);
+  const tickCount =
+    containerWidth >= 1200
+      ? 9
+      : containerWidth >= 850
+        ? 7
+        : containerWidth >= 560
+          ? 5
+          : 3;
+  const displayedActivity = activity;
+  const showDataPoints = containerWidth >= 560;
+  const labelCount = Math.min(
+    displayedActivity.length,
+    Math.max(2, Math.floor((containerWidth - 96) / 82)),
+  );
+  const labelIndexes = new Set(
+    Array.from({ length: labelCount }, (_, index) =>
+      labelCount <= 1
+        ? 0
+        : Math.round(
+            (index * (displayedActivity.length - 1)) /
+              (labelCount - 1),
+          ),
+    ),
+  );
+  const plotPixelHeight = Math.round(
+    Math.min(165, Math.max(115, containerWidth * 0.27)),
+  );
   const width = 660;
   const height = 170;
   const chartLeft = 4;
-  const chartRight = 4;
+  const chartRight = 38;
   const chartTop = 6;
   const chartBottom = 4;
   const chartWidth = width - chartLeft - chartRight;
   const chartHeight = height - chartTop - chartBottom;
   const maximumValue = Math.max(
     1,
-    ...activity.flatMap((week) => [week.created, week.closedOut]),
+    ...displayedActivity.flatMap((point) => [
+      point.created,
+      point.closedOut,
+    ]),
   );
   const xForIndex = (index: number) =>
     chartLeft +
-    (activity.length <= 1
+    (displayedActivity.length <= 1
       ? chartWidth / 2
-      : (index / (activity.length - 1)) * chartWidth);
+      : (index / (displayedActivity.length - 1)) * chartWidth);
   const yForValue = (value: number) =>
     chartTop + chartHeight - (value / maximumValue) * chartHeight;
-  const createdPoints = activity.map(
-    (week, index) =>
-      `${xForIndex(index)},${yForValue(week.created)}`,
+  const createdPoints = displayedActivity.map(
+    (point, index) =>
+      `${xForIndex(index)},${yForValue(point.created)}`,
   );
-  const closedOutPoints = activity.map(
-    (week, index) =>
-      `${xForIndex(index)},${yForValue(week.closedOut)}`,
+  const closedOutPoints = displayedActivity.map(
+    (point, index) =>
+      `${xForIndex(index)},${yForValue(point.closedOut)}`,
   );
   const createdArea = [
     `${chartLeft},${chartTop + chartHeight}`,
@@ -161,10 +193,31 @@ function WeeklyActivityChart({
     ...closedOutPoints,
     `${chartLeft + chartWidth},${chartTop + chartHeight}`,
   ].join(" ");
-  const tickValues = [maximumValue, Math.ceil(maximumValue / 2), 0];
+  const tickValues = Array.from({ length: tickCount }, (_, index) =>
+    Math.round(
+      maximumValue * (1 - index / Math.max(1, tickCount - 1)),
+    ),
+  );
+
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      setContainerWidth(entry.contentRect.width);
+    });
+
+    observer.observe(container);
+    setContainerWidth(container.getBoundingClientRect().width);
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="home-weekly-chart">
+    <div className="home-weekly-chart" ref={containerRef}>
       <div className="home-chart-legend-inline" aria-hidden="true">
         <span>
           <i className="created" /> Created
@@ -176,13 +229,17 @@ function WeeklyActivityChart({
       <div className="home-chart-plot">
         <div className="home-chart-y-labels" aria-hidden="true">
           {tickValues.map((tickValue, index) => (
-            <span key={`${tickValue}-${index}`}>{tickValue}</span>
+            <span key={`${tickValue}-${index}`}>
+              {tickValue}
+            </span>
           ))}
         </div>
         <svg
           viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          style={{ height: `${plotPixelHeight}px` }}
           role="img"
-          aria-label={`Eight-week activity chart. ${activity
+          aria-label={`Daily workspace activity chart. ${displayedActivity
             .map(
               (week) =>
                 `${week.label}: ${week.created} created and ${week.closedOut} closed out`,
@@ -223,33 +280,59 @@ function WeeklyActivityChart({
             points={closedOutPoints.join(" ")}
           />
 
-          {activity.map((week, index) => (
-            <g key={week.startDate}>
-              <circle
-                className="home-chart-point created"
-                cx={xForIndex(index)}
-                cy={yForValue(week.created)}
-                r="3"
-              />
-              <circle
-                className="home-chart-point closed-out"
-                cx={xForIndex(index)}
-                cy={yForValue(week.closedOut)}
-                r="3"
-              />
-            </g>
-          ))}
+          {showDataPoints
+            ? displayedActivity.map((point, index) =>
+                point.created > 0 || point.closedOut > 0 ? (
+                  <g key={point.startDate}>
+                    {point.created > 0 ? (
+                      <>
+                        <circle
+                          className="home-chart-point-halo"
+                          cx={xForIndex(index)}
+                          cy={yForValue(point.created)}
+                          r="0.01"
+                        />
+                        <circle
+                          className="home-chart-point created"
+                          cx={xForIndex(index)}
+                          cy={yForValue(point.created)}
+                          r="0.01"
+                        />
+                      </>
+                    ) : null}
+                    {point.closedOut > 0 ? (
+                      <>
+                        <circle
+                          className="home-chart-point-halo"
+                          cx={xForIndex(index)}
+                          cy={yForValue(point.closedOut)}
+                          r="0.01"
+                        />
+                        <circle
+                          className="home-chart-point closed-out"
+                          cx={xForIndex(index)}
+                          cy={yForValue(point.closedOut)}
+                          r="0.01"
+                        />
+                      </>
+                    ) : null}
+                  </g>
+                ) : null,
+              )
+            : null}
         </svg>
       </div>
       <div
         className="home-chart-x-labels"
         style={{
-          gridTemplateColumns: `repeat(${activity.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${displayedActivity.length}, minmax(0, 1fr))`,
         }}
         aria-hidden="true"
       >
-        {activity.map((week) => (
-          <span key={week.startDate}>{week.label}</span>
+        {displayedActivity.map((point, index) => (
+          <span key={point.startDate}>
+            {labelIndexes.has(index) ? point.label : ""}
+          </span>
         ))}
       </div>
     </div>
@@ -266,6 +349,59 @@ function AnalyticsContent({
       : Math.round(
           (analytics.assets.completed / analytics.assets.total) * 100,
         );
+  const requiredDocumentPercent =
+    analytics.deliverables.requiredDocumentsTotal === 0
+      ? 0
+      : Math.round(
+          (analytics.deliverables.requiredDocumentsApproved /
+            analytics.deliverables.requiredDocumentsTotal) *
+            100,
+        );
+  const signedRecordPercent =
+    analytics.deliverables.testRecordsTotal === 0
+      ? 0
+      : Math.round(
+          (analytics.deliverables.testRecordsSigned /
+            analytics.deliverables.testRecordsTotal) *
+            100,
+        );
+  const handoverScopePercent =
+    analytics.deliverables.handoverSubsystemsTotal === 0
+      ? 0
+      : Math.round(
+          (analytics.deliverables.handoverSubsystemsComplete /
+            analytics.deliverables.handoverSubsystemsTotal) *
+            100,
+        );
+  const readinessRows = [
+    {
+      label: "Required documents",
+      percent: requiredDocumentPercent,
+      total: analytics.deliverables.requiredDocumentsTotal,
+      remaining:
+        analytics.deliverables.requiredDocumentsTotal -
+        analytics.deliverables.requiredDocumentsApproved,
+      complete: analytics.deliverables.requiredDocumentsApproved,
+    },
+    {
+      label: "Test records",
+      percent: signedRecordPercent,
+      total: analytics.deliverables.testRecordsTotal,
+      remaining:
+        analytics.deliverables.testRecordsTotal -
+        analytics.deliverables.testRecordsSigned,
+      complete: analytics.deliverables.testRecordsSigned,
+    },
+    {
+      label: "Subsystem handover",
+      percent: handoverScopePercent,
+      total: analytics.deliverables.handoverSubsystemsTotal,
+      remaining:
+        analytics.deliverables.handoverSubsystemsTotal -
+        analytics.deliverables.handoverSubsystemsComplete,
+      complete: analytics.deliverables.handoverSubsystemsComplete,
+    },
+  ];
   const assetSegments: StatusSegment[] = [
     {
       label: "Completed",
@@ -310,6 +446,28 @@ function AnalyticsContent({
       tone: "neutral",
     },
   ];
+  const issueSegments: StatusSegment[] = [
+    {
+      label: "Open",
+      value: analytics.issues.open,
+      tone: "negative",
+    },
+    {
+      label: "In progress",
+      value: analytics.issues.inProgress,
+      tone: "accent",
+    },
+    {
+      label: "Resolved",
+      value: analytics.issues.resolved,
+      tone: "positive",
+    },
+    {
+      label: "Closed",
+      value: analytics.issues.closed,
+      tone: "neutral",
+    },
+  ];
   return (
     <>
       <div
@@ -330,7 +488,7 @@ function AnalyticsContent({
           </small>
         </div>
         <div className="home-project-metric accent">
-          <span>Test pass rate</span>
+          <span>Assessed test pass rate</span>
           <strong>
             {analytics.tests.assessed === 0
               ? "-"
@@ -339,7 +497,7 @@ function AnalyticsContent({
           <small>
             {analytics.tests.assessed === 0
               ? "No assessed test items"
-              : `${analytics.tests.failed} failed of ${analytics.tests.assessed} assessed`}
+              : `${analytics.tests.passed} passed · ${analytics.tests.failed} failed`}
           </small>
         </div>
         <div
@@ -355,8 +513,17 @@ function AnalyticsContent({
               : `${analytics.issues.critical} critical · ${analytics.issues.overdue} overdue`}
           </small>
         </div>
-        <div className="home-project-metric positive">
-          <span>Closed out in 7 days</span>
+        <div
+          className={`home-project-metric ${
+            analytics.recentActivity.closedOut === 0
+              ? "neutral"
+              : analytics.recentActivity.created >
+                  analytics.recentActivity.closedOut
+                ? "accent"
+                : "positive"
+          }`}
+        >
+          <span>7-day closeout</span>
           <strong>{analytics.recentActivity.closedOut}</strong>
           <small>
             {analytics.recentActivity.created} created ·{" "}
@@ -369,13 +536,81 @@ function AnalyticsContent({
         <div className="home-status-card-grid">
           <PieChart label="Assets" segments={assetSegments} />
           <PieChart label="Test items" segments={testSegments} />
+          <PieChart label="Issues" segments={issueSegments} />
         </div>
 
         <section className="home-panel home-weekly-activity-panel">
           <div className="home-panel-header home-chart-panel-header">
-            <h4>Weekly activity</h4>
+            <h4>Workspace activity</h4>
           </div>
-          <WeeklyActivityChart activity={analytics.weeklyActivity} />
+          <WeeklyActivityChart activity={analytics.dailyActivity} />
+        </section>
+      </div>
+
+      <div className="home-closeout-row">
+        <section
+          className="home-panel home-attention-panel"
+          aria-label="Immediate attention"
+          title="Critical active and overdue active issue counts may overlap."
+        >
+          <h4>Immediate attention</h4>
+          <div className="home-attention-items">
+            <div>
+              <span>Critical active</span>
+              <strong>{analytics.issues.critical}</strong>
+            </div>
+            <div>
+              <span>Overdue active</span>
+              <strong>{analytics.issues.overdue}</strong>
+            </div>
+            <div>
+              <span>Failed test items</span>
+              <strong>{analytics.tests.failed}</strong>
+            </div>
+            <div>
+              <span>Blocked assets</span>
+              <strong>{analytics.assets.blocked}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="home-panel home-readiness-panel"
+          aria-label="Deliverables readiness"
+        >
+          <div className="home-readiness-heading">
+            <h4>Deliverables readiness</h4>
+          </div>
+          <div className="home-readiness-table-header" aria-hidden="true">
+            <span>Workstream</span>
+            <span>Progress</span>
+            <span>Total</span>
+            <span>Outstanding</span>
+            <span>Ready</span>
+          </div>
+          <div className="home-readiness-table-body">
+            {readinessRows.map((row) => (
+              <div className="home-readiness-row" key={row.label}>
+                <strong>{row.label}</strong>
+                <div className="home-readiness-progress-cell">
+                  <div
+                    className="home-readiness-progress"
+                    role="progressbar"
+                    aria-label={`${row.label} readiness`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={row.percent}
+                  >
+                    <span style={{ width: `${row.percent}%` }} />
+                  </div>
+                  <small>{row.percent}%</small>
+                </div>
+                <span className="total">{row.total}</span>
+                <span className="remaining">{row.remaining}</span>
+                <span className="complete">{row.complete}</span>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
     </>
