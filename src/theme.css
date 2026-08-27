@@ -77,13 +77,13 @@
   --color-status-info: #4f8ab5;
   --color-status-warning: #c9902e;
   --color-status-negative: #d25b5b;
-  --color-status-blocked: #c95050;
+  --color-status-blocked: var(--color-status-negative);
   --color-status-neutral: #6f6f6f;
 
-  --color-action-success: #43a160;
+  --color-action-success: var(--color-status-positive);
   --color-action-success-hover: #378f52;
   --shadow-focus-success: 0 0 0 3px rgb(53 122 69 / 14%);
-  --color-action-danger: #d25b5b;
+  --color-action-danger: var(--color-status-negative);
   --color-action-danger-hover: #c94d4d;
 
   --color-feedback-danger-background: #fff3f3;
@@ -152,8 +152,6 @@
   --color-border-popover: #414448;
   --color-border-interactive-hover: #666b70;
   --color-border-card-hover: #565b5f;
-
-  --color-status-neutral: #a4a7aa;
 
   --color-feedback-danger-background: #2d2022;
   --color-feedback-danger-border: #5b363a;

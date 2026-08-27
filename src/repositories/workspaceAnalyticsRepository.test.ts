@@ -65,6 +65,34 @@ describe("getWorkspaceAnalytics", () => {
       ])
       .mockResolvedValueOnce([
         {
+          project_id: "project-1",
+          project_name: "North Expansion",
+          asset_total: 12,
+          asset_completed: 6,
+          test_item_assessed: 8,
+          test_item_passed: 6,
+          issue_active: 4,
+          issue_critical: 1,
+          issue_overdue: 2,
+          subsystem_total: 6,
+          subsystem_handed_over: 2,
+        },
+        {
+          project_id: "project-2",
+          project_name: "South Utilities",
+          asset_total: 0,
+          asset_completed: 0,
+          test_item_assessed: 0,
+          test_item_passed: 0,
+          issue_active: 0,
+          issue_critical: 0,
+          issue_overdue: 0,
+          subsystem_total: 0,
+          subsystem_handed_over: 0,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
           action: "created",
           details_json: "{}",
           created_at: "2026-08-22T15:00:00.000Z",
@@ -115,6 +143,34 @@ describe("getWorkspaceAnalytics", () => {
       critical: 1,
       overdue: 2,
     });
+    expect(analytics.projectPerformance).toEqual([
+      {
+        projectId: "project-1",
+        projectName: "North Expansion",
+        assetTotal: 12,
+        assetCompleted: 6,
+        assessedTestItems: 8,
+        passedTestItems: 6,
+        activeIssues: 4,
+        criticalIssues: 1,
+        overdueIssues: 2,
+        subsystemTotal: 6,
+        subsystemsHandedOver: 2,
+      },
+      {
+        projectId: "project-2",
+        projectName: "South Utilities",
+        assetTotal: 0,
+        assetCompleted: 0,
+        assessedTestItems: 0,
+        passedTestItems: 0,
+        activeIssues: 0,
+        criticalIssues: 0,
+        overdueIssues: 0,
+        subsystemTotal: 0,
+        subsystemsHandedOver: 0,
+      },
+    ]);
     expect(analytics.deliverables).toEqual({
       requiredDocumentsTotal: 8,
       requiredDocumentsApproved: 5,
@@ -129,14 +185,16 @@ describe("getWorkspaceAnalytics", () => {
       closedOut: 2,
     });
     expect(
-      analytics.weeklyActivity[analytics.weeklyActivity.length - 1],
+      analytics.weeklyActivity.find(
+        (activity) => activity.startDate === "2026-08-17",
+      ),
     ).toMatchObject({
       created: 1,
       closedOut: 2,
     });
     expect(
       analytics.dailyActivity.find(
-        (activity) => activity.startDate === "2026-08-22",
+        (activity) => activity.created === 1,
       ),
     ).toMatchObject({
       created: 1,

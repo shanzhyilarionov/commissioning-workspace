@@ -39,6 +39,20 @@ export interface WorkspaceProjectAttentionAnalytics {
   overdue: number;
 }
 
+export interface WorkspaceProjectPerformance {
+  projectId: string;
+  projectName: string;
+  assetTotal: number;
+  assetCompleted: number;
+  assessedTestItems: number;
+  passedTestItems: number;
+  activeIssues: number;
+  criticalIssues: number;
+  overdueIssues: number;
+  subsystemTotal: number;
+  subsystemsHandedOver: number;
+}
+
 export interface WorkspaceDeliverableAnalytics {
   requiredDocumentsTotal: number;
   requiredDocumentsApproved: number;
@@ -67,6 +81,7 @@ export interface WorkspaceAnalytics {
   tests: WorkspaceTestAnalytics;
   issues: WorkspaceIssueAnalytics;
   projectsRequiringAttention: WorkspaceProjectAttentionAnalytics;
+  projectPerformance: WorkspaceProjectPerformance[];
   deliverables: WorkspaceDeliverableAnalytics;
   recentActivity: WorkspaceRecentActivity;
   weeklyActivity: WorkspaceWeeklyActivity[];

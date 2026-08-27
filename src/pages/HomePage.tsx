@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import FixedHeaderTable from "../components/FixedHeaderTable";
 import { getWorkspaceAnalytics } from "../repositories/workspaceAnalyticsRepository";
+import type { ContinueWorkingItem } from "../services/continueWorkingService";
 import type {
   WorkspaceAnalytics,
   WorkspaceDailyActivity,
+  WorkspaceProjectPerformance,
 } from "../types/workspaceAnalytics";
 
 interface HomePageProps {
   currentOperatorName: string;
+  continueWorkingItem: ContinueWorkingItem | null;
+  onContinueWorking: () => void;
 }
 
 type DashboardTone = "positive" | "accent" | "negative" | "neutral";
@@ -15,6 +20,223 @@ interface StatusSegment {
   label: string;
   value: number;
   tone: DashboardTone;
+}
+
+function formatRelativeTime(value: string, currentTime: Date): string {
+  const timestamp = new Date(value);
+
+  if (Number.isNaN(timestamp.getTime())) {
+    return "Recently";
+  }
+
+  const elapsedMinutes = Math.max(
+    0,
+    Math.floor((currentTime.getTime() - timestamp.getTime()) / 60_000),
+  );
+
+  if (elapsedMinutes < 1) {
+    return "Just now";
+  }
+
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} min ago`;
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+
+  if (elapsedHours < 24) {
+    return `${elapsedHours} ${elapsedHours === 1 ? "hour" : "hours"} ago`;
+  }
+
+  const elapsedDays = Math.floor(elapsedHours / 24);
+
+  if (elapsedDays < 7) {
+    return `${elapsedDays} ${elapsedDays === 1 ? "day" : "days"} ago`;
+  }
+
+  return timestamp.toLocaleDateString("en-CA");
+}
+
+function formatPerformanceFraction(
+  complete: number,
+  total: number,
+): string {
+  return total === 0 ? "-" : `${complete}/${total}`;
+}
+
+function ContinueWorkingPanel({
+  item,
+  currentTime,
+  onContinue,
+}: {
+  item: ContinueWorkingItem | null;
+  currentTime: Date;
+  onContinue: () => void;
+}) {
+  return (
+    <section
+      className="home-panel home-continue-working-panel"
+      aria-label="Continue working"
+    >
+      <div className="home-compact-panel-heading">
+        <h4>Continue working</h4>
+      </div>
+
+      {item ? (
+        <div className="home-continue-working-body">
+          <div className="home-continue-working-copy">
+            <span>
+              {item.isFallback
+                ? "Most recently updated project"
+                : "Last opened"}
+            </span>
+            <strong title={item.projectName}>{item.projectName}</strong>
+            <small>
+              {item.page} · {formatRelativeTime(item.visitedAt, currentTime)}
+            </small>
+          </div>
+
+          <button
+            className="secondary-button home-continue-working-button"
+            type="button"
+            onClick={onContinue}
+          >
+            {item.isFallback ? "Open project" : "Resume"}
+          </button>
+        </div>
+      ) : (
+        <div className="home-continue-working-empty">
+          <strong>Nothing to resume yet</strong>
+          <span>Open a project to begin working.</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProjectPerformanceValue({
+  complete,
+  total,
+  tone,
+}: {
+  complete: number;
+  total: number;
+  tone: DashboardTone;
+}) {
+  return (
+    <span className={`home-performance-fraction ${tone}`}>
+      {formatPerformanceFraction(complete, total)}
+    </span>
+  );
+}
+
+function ProjectPerformancePanel({
+  projects,
+}: {
+  projects: WorkspaceProjectPerformance[];
+}) {
+  return (
+    <section
+      className="home-panel home-project-performance-panel"
+      aria-label="Project performance"
+    >
+      <div className="home-compact-panel-heading">
+        <h4>Project performance</h4>
+      </div>
+
+      {projects.length === 0 ? (
+        <div className="home-project-performance-empty">
+          <strong>No active projects</strong>
+          <span>Restore or create a project to compare performance.</span>
+        </div>
+      ) : (
+        <FixedHeaderTable
+          className="projects-table home-project-performance-table"
+          wrapperClassName="home-project-performance-table-wrapper"
+          ariaLabel="Active project performance"
+          header={
+            <tr>
+              <th>Project</th>
+              <th>Assets</th>
+              <th>Tests</th>
+              <th>Active issues</th>
+              <th>Subsystem handover</th>
+            </tr>
+          }
+          body={
+            <>
+              {projects.map((project) => (
+                <tr key={project.projectId}>
+                  <td className="home-performance-project-cell">
+                    <strong>{project.projectName}</strong>
+                  </td>
+                  <td>
+                    <ProjectPerformanceValue
+                      complete={project.assetCompleted}
+                      total={project.assetTotal}
+                      tone={
+                        project.assetTotal === 0
+                          ? "neutral"
+                          : project.assetCompleted === project.assetTotal
+                            ? "positive"
+                            : "accent"
+                      }
+                    />
+                  </td>
+                  <td>
+                    <ProjectPerformanceValue
+                      complete={project.passedTestItems}
+                      total={project.assessedTestItems}
+                      tone={
+                        project.assessedTestItems === 0
+                          ? "neutral"
+                          : project.passedTestItems ===
+                              project.assessedTestItems
+                            ? "positive"
+                            : project.passedTestItems /
+                                  project.assessedTestItems >=
+                                0.9
+                              ? "accent"
+                              : "negative"
+                      }
+                    />
+                  </td>
+                  <td
+                    className={
+                      project.activeIssues > 0
+                        ? "home-performance-issues attention"
+                        : "home-performance-issues clear"
+                    }
+                    title={
+                      project.activeIssues > 0
+                        ? `${project.criticalIssues} critical · ${project.overdueIssues} overdue`
+                        : "No active issues"
+                    }
+                  >
+                    {project.activeIssues}
+                  </td>
+                  <td>
+                    <ProjectPerformanceValue
+                      complete={project.subsystemsHandedOver}
+                      total={project.subsystemTotal}
+                      tone={
+                        project.subsystemTotal === 0
+                          ? "neutral"
+                          : project.subsystemsHandedOver ===
+                              project.subsystemTotal
+                            ? "positive"
+                            : "accent"
+                      }
+                    />
+                  </td>
+                </tr>
+              ))}
+            </>
+          }
+        />
+      )}
+    </section>
+  );
 }
 
 function getGreetingContent(date: Date, operatorName: string) {
@@ -340,8 +562,14 @@ function WeeklyActivityChart({
 }
 function AnalyticsContent({
   analytics,
+  continueWorkingItem,
+  currentTime,
+  onContinueWorking,
 }: {
   analytics: WorkspaceAnalytics;
+  continueWorkingItem: ContinueWorkingItem | null;
+  currentTime: Date;
+  onContinueWorking: () => void;
 }) {
   const assetCompletionPercent =
     analytics.assets.total === 0
@@ -615,7 +843,7 @@ function AnalyticsContent({
         </section>
       </div>
 
-      <div className="home-analytics-grid">
+      <div className="home-lower-dashboard">
         <div className="home-status-card-grid">
           <PieChart label="Assets" segments={assetSegments} />
           <PieChart label="Test items" segments={testSegments} />
@@ -628,6 +856,14 @@ function AnalyticsContent({
           </div>
           <WeeklyActivityChart activity={analytics.dailyActivity} />
         </section>
+        <ContinueWorkingPanel
+          item={continueWorkingItem}
+          currentTime={currentTime}
+          onContinue={onContinueWorking}
+        />
+        <ProjectPerformancePanel
+          projects={analytics.projectPerformance}
+        />
       </div>
     </>
   );
@@ -635,6 +871,8 @@ function AnalyticsContent({
 
 export default function HomePage({
   currentOperatorName,
+  continueWorkingItem,
+  onContinueWorking,
 }: HomePageProps) {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [analytics, setAnalytics] = useState<WorkspaceAnalytics | null>(
@@ -698,7 +936,12 @@ export default function HomePage({
       <div className="home-scroll-container">
         <div className="section-body home-body">
           {analytics ? (
-            <AnalyticsContent analytics={analytics} />
+            <AnalyticsContent
+              analytics={analytics}
+              continueWorkingItem={continueWorkingItem}
+              currentTime={currentTime}
+              onContinueWorking={onContinueWorking}
+            />
           ) : (
             <section className="home-panel home-analytics-state">
               {analyticsError ? (

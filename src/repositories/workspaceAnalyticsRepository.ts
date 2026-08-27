@@ -35,6 +35,20 @@ interface WorkspaceSummaryRow {
   handover_subsystem_complete: number;
 }
 
+interface ProjectPerformanceRow {
+  project_id: string;
+  project_name: string;
+  asset_total: number;
+  asset_completed: number;
+  test_item_assessed: number;
+  test_item_passed: number;
+  issue_active: number;
+  issue_critical: number;
+  issue_overdue: number;
+  subsystem_total: number;
+  subsystem_handed_over: number;
+}
+
 interface ActivityEventRow {
   action: string;
   details_json: string;
@@ -198,7 +212,8 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const [summaryRows, activityRows] = await Promise.all([
+  const [summaryRows, projectPerformanceRows, activityRows] =
+    await Promise.all([
     database.select<WorkspaceSummaryRow[]>(
       `
         SELECT
@@ -359,6 +374,151 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
       `,
       [today],
     ),
+    database.select<ProjectPerformanceRow[]>(
+      `
+        WITH
+          asset_metrics AS (
+            SELECT
+              project_id,
+              COUNT(*) AS asset_total,
+              SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)
+                AS asset_completed,
+              SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END)
+                AS asset_blocked
+            FROM assets
+            GROUP BY project_id
+          ),
+          test_metrics AS (
+            SELECT
+              test_records.project_id,
+              SUM(
+                CASE
+                  WHEN test_items.result IN ('pass', 'fail') THEN 1
+                  ELSE 0
+                END
+              ) AS test_item_assessed,
+              SUM(CASE WHEN test_items.result = 'pass' THEN 1 ELSE 0 END)
+                AS test_item_passed,
+              SUM(CASE WHEN test_items.result = 'fail' THEN 1 ELSE 0 END)
+                AS test_item_failed
+            FROM test_records
+            INNER JOIN test_items
+              ON test_items.test_record_id = test_records.id
+            GROUP BY test_records.project_id
+          ),
+          issue_metrics AS (
+            SELECT
+              project_id,
+              SUM(
+                CASE
+                  WHEN status IN ('open', 'in_progress') THEN 1
+                  ELSE 0
+                END
+              ) AS issue_active,
+              SUM(
+                CASE
+                  WHEN status IN ('open', 'in_progress')
+                    AND priority = 'critical'
+                  THEN 1
+                  ELSE 0
+                END
+              ) AS issue_critical,
+              SUM(
+                CASE
+                  WHEN status IN ('open', 'in_progress')
+                    AND due_date IS NOT NULL
+                    AND TRIM(due_date) <> ''
+                    AND DATE(due_date) < DATE($1)
+                  THEN 1
+                  ELSE 0
+                END
+              ) AS issue_overdue
+            FROM issues
+            GROUP BY project_id
+          ),
+          subsystem_metrics AS (
+            SELECT
+              systems.project_id,
+              COUNT(*) AS subsystem_total,
+              SUM(
+                CASE
+                  WHEN subsystems.commissioning_stage = 'handed_over'
+                  THEN 1
+                  ELSE 0
+                END
+              ) AS subsystem_handed_over
+            FROM subsystems
+            INNER JOIN systems
+              ON systems.id = subsystems.system_id
+            GROUP BY systems.project_id
+          )
+        SELECT
+          projects.id AS project_id,
+          projects.name AS project_name,
+          COALESCE(asset_metrics.asset_total, 0) AS asset_total,
+          COALESCE(asset_metrics.asset_completed, 0) AS asset_completed,
+          COALESCE(test_metrics.test_item_assessed, 0)
+            AS test_item_assessed,
+          COALESCE(test_metrics.test_item_passed, 0) AS test_item_passed,
+          COALESCE(issue_metrics.issue_active, 0) AS issue_active,
+          COALESCE(issue_metrics.issue_critical, 0) AS issue_critical,
+          COALESCE(issue_metrics.issue_overdue, 0) AS issue_overdue,
+          COALESCE(subsystem_metrics.subsystem_total, 0)
+            AS subsystem_total,
+          COALESCE(subsystem_metrics.subsystem_handed_over, 0)
+            AS subsystem_handed_over
+        FROM projects
+        LEFT JOIN asset_metrics
+          ON asset_metrics.project_id = projects.id
+        LEFT JOIN test_metrics
+          ON test_metrics.project_id = projects.id
+        LEFT JOIN issue_metrics
+          ON issue_metrics.project_id = projects.id
+        LEFT JOIN subsystem_metrics
+          ON subsystem_metrics.project_id = projects.id
+        WHERE projects.status = 'active'
+        ORDER BY
+          CASE
+            WHEN COALESCE(asset_metrics.asset_blocked, 0) > 0
+              OR COALESCE(test_metrics.test_item_failed, 0) > 0
+              OR COALESCE(issue_metrics.issue_critical, 0) > 0
+              OR COALESCE(issue_metrics.issue_overdue, 0) > 0
+            THEN 0
+            ELSE 1
+          END,
+          COALESCE(issue_metrics.issue_critical, 0) DESC,
+          COALESCE(issue_metrics.issue_overdue, 0) DESC,
+          COALESCE(test_metrics.test_item_failed, 0) DESC,
+          COALESCE(asset_metrics.asset_blocked, 0) DESC,
+          COALESCE(issue_metrics.issue_active, 0) DESC,
+          CASE
+            WHEN COALESCE(test_metrics.test_item_assessed, 0) > 0
+            THEN
+              1.0 * COALESCE(test_metrics.test_item_passed, 0) /
+              test_metrics.test_item_assessed
+            ELSE 1
+          END ASC,
+          CASE
+            WHEN COALESCE(asset_metrics.asset_total, 0) > 0
+            THEN
+              1.0 * COALESCE(asset_metrics.asset_completed, 0) /
+              asset_metrics.asset_total
+            ELSE 1
+          END ASC,
+          CASE
+            WHEN COALESCE(subsystem_metrics.subsystem_total, 0) > 0
+            THEN
+              1.0 * COALESCE(
+                subsystem_metrics.subsystem_handed_over,
+                0
+              ) / subsystem_metrics.subsystem_total
+            ELSE 1
+          END ASC,
+          projects.updated_at DESC,
+          projects.name COLLATE NOCASE ASC
+      `,
+      [today],
+    ),
     database.select<ActivityEventRow[]>(
       `
         SELECT action, details_json, created_at
@@ -459,6 +619,33 @@ export async function getWorkspaceAnalytics(): Promise<WorkspaceAnalytics> {
       critical: toNumber(summary?.project_attention_critical),
       overdue: toNumber(summary?.project_attention_overdue),
     },
+    projectPerformance: projectPerformanceRows.map((row) => {
+      const assetTotal = toNumber(row.asset_total);
+      const assetCompleted = toNumber(row.asset_completed);
+      const assessedTestItems = toNumber(row.test_item_assessed);
+      const passedTestItems = toNumber(row.test_item_passed);
+      const activeIssues = toNumber(row.issue_active);
+      const criticalIssues = toNumber(row.issue_critical);
+      const overdueIssues = toNumber(row.issue_overdue);
+      const subsystemTotal = toNumber(row.subsystem_total);
+      const subsystemsHandedOver = toNumber(
+        row.subsystem_handed_over,
+      );
+
+      return {
+        projectId: row.project_id,
+        projectName: row.project_name,
+        assetTotal,
+        assetCompleted,
+        assessedTestItems,
+        passedTestItems,
+        activeIssues,
+        criticalIssues,
+        overdueIssues,
+        subsystemTotal,
+        subsystemsHandedOver,
+      };
+    }),
     deliverables: {
       requiredDocumentsTotal: toNumber(
         summary?.required_document_total,

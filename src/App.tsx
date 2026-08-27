@@ -42,19 +42,19 @@ import {
   type AppTheme,
   watchSystemTheme,
 } from "./theme";
+import {
+  clearContinueWorkingLocation,
+  continueWorkingPages,
+  loadContinueWorkingLocation,
+  saveContinueWorkingLocation,
+  type ContinueWorkingItem,
+} from "./services/continueWorkingService";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 import "./theme.css";
 import "./App.css";
 
 const globalPages = ["Home", "Projects"] as const;
-const projectPages = [
-  "Overview",
-  "Assets",
-  "Checklists & Tests",
-  "Issues",
-  "Documents",
-  "Reports",
-] as const;
+const projectPages = continueWorkingPages;
 const utilityPages = ["Settings"] as const;
 
 type ProjectPage = (typeof projectPages)[number];
@@ -73,6 +73,8 @@ function App() {
   const [activePage, setActivePage] = useState<Page>("Home");
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentOperatorName, setCurrentOperatorName] = useState("");
+  const [continueWorkingLocation, setContinueWorkingLocation] =
+    useState(loadContinueWorkingLocation);
   const [currentProjectId, setCurrentProjectId] =
     useState<string | null>(null);
   const [isCreateProjectOpen, setIsCreateProjectOpen] =
@@ -160,6 +162,67 @@ function App() {
       (project) => project.id === currentProjectId,
     ) ?? null;
   const hasProjects = projects.length > 0;
+  const continueWorkingProject = continueWorkingLocation
+    ? projects.find(
+        (project) => project.id === continueWorkingLocation.projectId,
+      ) ?? null
+    : null;
+  const fallbackContinueWorkingProject =
+    projects.find((project) => project.status === "active") ??
+    projects[0] ??
+    null;
+  const continueWorkingItem: ContinueWorkingItem | null =
+    continueWorkingLocation && continueWorkingProject
+      ? {
+          ...continueWorkingLocation,
+          projectName: continueWorkingProject.name,
+          isFallback: false,
+        }
+      : fallbackContinueWorkingProject
+        ? {
+            projectId: fallbackContinueWorkingProject.id,
+            projectName: fallbackContinueWorkingProject.name,
+            page: "Overview",
+            visitedAt: fallbackContinueWorkingProject.updatedAt,
+            isFallback: true,
+          }
+        : null;
+
+  useEffect(() => {
+    if (
+      !currentProject ||
+      !currentProjectId ||
+      !isProjectPage(activePage)
+    ) {
+      return;
+    }
+
+    const location = {
+      projectId: currentProjectId,
+      page: activePage,
+      visitedAt: new Date().toISOString(),
+    };
+
+    saveContinueWorkingLocation(location);
+    setContinueWorkingLocation(location);
+  }, [activePage, currentProject?.id, currentProjectId]);
+
+  useEffect(() => {
+    if (
+      isLoadingProjects ||
+      !continueWorkingLocation ||
+      continueWorkingProject
+    ) {
+      return;
+    }
+
+    clearContinueWorkingLocation();
+    setContinueWorkingLocation(null);
+  }, [
+    continueWorkingLocation,
+    continueWorkingProject,
+    isLoadingProjects,
+  ]);
 
   useEffect(() => {
     if (
@@ -246,6 +309,26 @@ function App() {
     setActivePage("Overview");
   }
 
+  function handleContinueWorking() {
+    if (!continueWorkingItem) {
+      return;
+    }
+
+    const projectExists = projects.some(
+      (project) => project.id === continueWorkingItem.projectId,
+    );
+
+    if (!projectExists) {
+      clearContinueWorkingLocation();
+      setContinueWorkingLocation(null);
+      return;
+    }
+
+    setAttentionNavigation(null);
+    setCurrentProjectId(continueWorkingItem.projectId);
+    setActivePage(continueWorkingItem.page);
+  }
+
   async function handleProjectStatusAction(
     project: Project,
     action: ProjectStatusAction,
@@ -315,6 +398,11 @@ function App() {
       );
 
       setProjects(remainingProjects);
+
+      if (continueWorkingLocation?.projectId === project.id) {
+        clearContinueWorkingLocation();
+        setContinueWorkingLocation(null);
+      }
 
       setEditingProject((current) =>
         current?.id === project.id ? null : current,
@@ -432,6 +520,8 @@ function App() {
         return (
           <HomePage
             currentOperatorName={currentOperatorName}
+            continueWorkingItem={continueWorkingItem}
+            onContinueWorking={handleContinueWorking}
           />
         );
       case "Projects":
