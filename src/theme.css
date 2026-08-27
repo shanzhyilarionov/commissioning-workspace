@@ -29,19 +29,11 @@
   --color-accent-highlight: rgb(218 160 50 / 24%);
   --shadow-focus-accent: 0 0 0 3px rgb(217 164 65 / 14%);
 
-  --color-app-background: #eeeeee;
+  --color-app-background: #f2f3f4;
   --color-surface: #ffffff;
-  --color-surface-subtle: #f7f7f7;
-  --color-surface-hover: #fafafa;
-  --color-surface-hover-strong: #f0f0f0;
-  --color-surface-interactive-hover: #f2f3f4;
-  --color-surface-card-hover: #f2f2f2;
-  --color-surface-menu-hover: #f1f2f3;
-  --color-surface-selected: #f5f5f5;
-  --color-surface-disabled: #f3f3f3;
-  --color-surface-progress-track: #dedede;
-  --color-surface-placeholder: #e6e6e6;
-  --color-surface-badge: #e7e7e7;
+  --color-surface-subtle: #f6f7f8;
+  --color-surface-hover: #eceff1;
+  --color-surface-strong: #e1e5e8;
 
   --color-text-primary: #1c1c1c;
   --color-text-secondary: #5f6367;
@@ -49,29 +41,19 @@
   --color-text-disabled: #9a9da0;
   --color-text-on-strong: #ffffff;
 
-  --color-border: #d4d4d4;
-  --color-border-subtle: #e5e5e5;
-  --color-border-card: #d5d5d5;
-  --color-border-control: #c8cbce;
-  --color-border-input: #cccccc;
-  --color-border-disabled: #d7d9db;
-  --color-border-header: #d7d7d7;
-  --color-border-modal: #dddddd;
-  --color-border-popover: #d6d8da;
-  --color-border-interactive-hover: #aeb2b5;
-  --color-border-card-hover: #bfc1c3;
+  --color-border: #d7dbdf;
+  --color-border-subtle: #e6e9eb;
+  --color-border-strong: #bfc5ca;
+  --color-border-hover: #9ea6ad;
 
-  --color-sidebar-background: #15171a;
-  --color-sidebar-surface: #202225;
-  --color-sidebar-surface-hover: #292c2f;
-  --color-sidebar-navigation-hover: #202225;
-  --color-sidebar-navigation-active: #34373a;
-  --color-sidebar-border: #303337;
-  --color-sidebar-divider: #303337;
-  --color-sidebar-control-border: #4a4e52;
-  --color-sidebar-control-border-hover: #666b70;
-  --color-sidebar-text: #ffffff;
-  --color-sidebar-text-muted: #9fa3a6;
+  --color-sidebar-background: #1b1e22;
+  --color-sidebar-surface: #22262b;
+  --color-sidebar-active: #2b3036;
+  --color-sidebar-border: #30353b;
+  --color-sidebar-control-border: #424950;
+  --color-sidebar-control-border-hover: #5b646c;
+  --color-sidebar-text: #f1f2f3;
+  --color-sidebar-text-muted: #929699;
 
   --color-status-positive: #43a160;
   --color-status-info: #4f8ab5;
@@ -92,13 +74,10 @@
   --color-feedback-warning-border: #ead3a8;
   --color-feedback-positive-background: #f1f8f2;
   --color-feedback-positive-border: #c9ddcc;
-  --color-feedback-success-background: #f5faf6;
-  --color-feedback-success-border: #dbe9de;
   --color-feedback-success-highlight: rgb(76 175 80 / 8%);
   --color-feedback-success-highlight-border: rgb(76 175 80 / 22%);
   --color-feedback-change-background: #f7edcf;
   --color-feedback-change-border: #e6d49f;
-  --color-menu-danger-background: #fff1f1;
 
   --color-overlay: rgb(0 0 0 / 58%);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 5%);
@@ -113,27 +92,18 @@
   --icon-chevron-disabled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9da0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
   --icon-chevron-sidebar: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
 
-  --color-scrollbar-track: #f2f3f4;
-  --color-scrollbar-thumb: #b8bcc0;
-  --color-scrollbar-thumb-hover: #9fa4a8;
+  --color-scrollbar-thumb: #b6bcc1;
+  --color-scrollbar-thumb-hover: #98a0a7;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-app-background: #111214;
-  --color-surface: #1b1d1f;
-  --color-surface-subtle: #202225;
-  --color-surface-hover: #25282b;
-  --color-surface-hover-strong: #2a2d30;
-  --color-surface-interactive-hover: #292c2f;
-  --color-surface-card-hover: #272a2d;
-  --color-surface-menu-hover: #292c2f;
-  --color-surface-selected: #26292c;
-  --color-surface-disabled: #242628;
-  --color-surface-progress-track: #303337;
-  --color-surface-placeholder: #2d3033;
-  --color-surface-badge: #303337;
+  --color-app-background: #15171a;
+  --color-surface: #1d2024;
+  --color-surface-subtle: #23272c;
+  --color-surface-hover: #2a2f35;
+  --color-surface-strong: #343a41;
 
   --color-text-primary: #f1f2f3;
   --color-text-secondary: #bdc1c4;
@@ -141,17 +111,10 @@
   --color-text-disabled: #707477;
   --color-text-on-strong: #ffffff;
 
-  --color-border: #3a3d40;
-  --color-border-subtle: #303337;
-  --color-border-card: #373a3d;
-  --color-border-control: #4a4e52;
-  --color-border-input: #45494c;
-  --color-border-disabled: #34373a;
-  --color-border-header: #373a3d;
-  --color-border-modal: #3b3e42;
-  --color-border-popover: #414448;
-  --color-border-interactive-hover: #666b70;
-  --color-border-card-hover: #565b5f;
+  --color-border: #383e44;
+  --color-border-subtle: #2f343a;
+  --color-border-strong: #4a5259;
+  --color-border-hover: #667078;
 
   --color-feedback-danger-background: #2d2022;
   --color-feedback-danger-border: #5b363a;
@@ -159,13 +122,10 @@
   --color-feedback-warning-border: #5b4a2c;
   --color-feedback-positive-background: #1f2b23;
   --color-feedback-positive-border: #355640;
-  --color-feedback-success-background: #1f2922;
-  --color-feedback-success-border: #334b39;
   --color-feedback-success-highlight: rgb(98 184 123 / 10%);
   --color-feedback-success-highlight-border: rgb(98 184 123 / 26%);
   --color-feedback-change-background: #332d1d;
   --color-feedback-change-border: #5b4d27;
-  --color-menu-danger-background: #321f21;
 
   --color-overlay: rgb(0 0 0 / 72%);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 24%);
@@ -178,7 +138,6 @@
   --icon-chevron-control: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23e0e2e4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
   --icon-chevron-control-small: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23e0e2e4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
   --icon-chevron-disabled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23707477' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
-  --color-scrollbar-track: #202225;
-  --color-scrollbar-thumb: #4e5256;
-  --color-scrollbar-thumb-hover: #656a6e;
+  --color-scrollbar-thumb: #505860;
+  --color-scrollbar-thumb-hover: #68727b;
 }

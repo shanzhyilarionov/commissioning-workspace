@@ -66,13 +66,13 @@
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
   -webkit-appearance: none;
-  background: var(--color-scrollbar-track);
+  background: var(--color-surface-subtle);
 }
 
 *::-webkit-scrollbar-track,
 *::-webkit-scrollbar-track-piece {
   -webkit-appearance: none;
-  background: var(--color-scrollbar-track);
+  background: var(--color-surface-subtle);
 }
 
 *::-webkit-scrollbar-thumb {
@@ -81,7 +81,7 @@
   -webkit-appearance: none;
   background-color: var(--color-scrollbar-thumb);
   background-clip: padding-box;
-  border: 2px solid var(--color-scrollbar-track);
+  border: 2px solid var(--color-surface-subtle);
   border-radius: 999px;
 }
 
@@ -96,13 +96,13 @@
 }
 
 *::-webkit-scrollbar-corner {
-  background: var(--color-scrollbar-track);
+  background: var(--color-surface-subtle);
 }
 
 @supports not selector(::-webkit-scrollbar) {
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-surface-subtle);
   }
 }
 
@@ -260,7 +260,7 @@ pre,
 }
 
 .nav-item:hover {
-  background: var(--color-sidebar-navigation-hover);
+  background: var(--color-sidebar-surface);
 }
 
 .nav-item:focus-visible {
@@ -269,13 +269,13 @@ pre,
 }
 
 .nav-item.active {
-  background: var(--color-sidebar-navigation-active);
+  background: var(--color-sidebar-active);
 }
 
 .project-navigation-section {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-sidebar-divider);
+  border-top: 1px solid var(--color-sidebar-border);
 }
 
 .navigation-label {
@@ -313,7 +313,7 @@ pre,
 }
 
 .project-switcher:hover {
-  background-color: var(--color-sidebar-surface-hover);
+  background-color: var(--color-sidebar-active);
   border-color: var(--color-sidebar-control-border-hover);
 }
 
@@ -338,7 +338,7 @@ pre,
 
 .utility-navigation {
   padding-top: 10px;
-  border-top: 1px solid var(--color-sidebar-divider);
+  border-top: 1px solid var(--color-sidebar-border);
 }
 
 .main-content {
@@ -359,7 +359,7 @@ pre,
   gap: 20px;
   padding: 20px 30px 18px;
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border-header);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .page-header h2 {
@@ -612,7 +612,7 @@ pre,
   padding: 8px 13px;
   color: var(--color-text-primary);
   background: var(--color-surface);
-  border: 1px solid var(--color-border-input);
+  border: 1px solid var(--color-border-strong);
 }
 
 .secondary-button:hover:not(:disabled) {
@@ -688,7 +688,7 @@ pre,
   min-width: 0;
   padding: 14px;
   background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-card);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -774,7 +774,7 @@ pre,
   gap: 8px;
   padding: 13px 16px;
   background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-card);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -1235,7 +1235,7 @@ pre,
   min-width: 110px;
   flex: 1 1 auto;
   overflow: hidden;
-  background: var(--color-surface-progress-track);
+  background: var(--color-surface-strong);
   border-radius: 999px;
 }
 
@@ -1383,7 +1383,7 @@ pre,
 }
 
 .home-pie-track {
-  stroke: var(--color-surface-progress-track);
+  stroke: var(--color-surface-strong);
 }
 
 .home-pie-segment {
@@ -1637,7 +1637,7 @@ pre,
   width: 22px;
   height: 22px;
   margin-bottom: 4px;
-  border: 2px solid var(--color-surface-progress-track);
+  border: 2px solid var(--color-surface-strong);
   border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: home-analytics-spin 800ms linear infinite;
@@ -1653,7 +1653,7 @@ pre,
   min-width: 0;
   overflow: hidden;
   background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-card);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -1936,7 +1936,7 @@ body:has(.modal-backdrop) .window-drag-region {
   width: min(500px, 100%);
   overflow: hidden;
   background: var(--color-surface);
-  border: 1px solid var(--color-border-modal);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: var(--shadow-modal);
 }
@@ -2041,7 +2041,7 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .activity-history-search-input:disabled {
   color: var(--color-text-disabled);
-  background: var(--color-surface-hover-strong);
+  background: var(--color-surface-hover);
   cursor: not-allowed;
 }
 
@@ -2378,7 +2378,7 @@ body:has(.modal-backdrop) .window-drag-region {
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
   background: var(--color-surface);
-  border: 1px solid var(--color-border-input);
+  border: 1px solid var(--color-border-strong);
   border-radius: 7px;
   outline: none;
   transition:
@@ -2531,7 +2531,7 @@ body:has(.modal-backdrop) .window-drag-region {
 }
 
 .current-project-row {
-  background: var(--color-surface-selected);
+  background: var(--color-surface-hover);
 }
 
 .current-label {
@@ -2541,7 +2541,7 @@ body:has(.modal-backdrop) .window-drag-region {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
-  background: var(--color-surface-badge);
+  background: var(--color-surface-strong);
   border-radius: 4px;
 }
 
@@ -2575,7 +2575,7 @@ body:has(.modal-backdrop) .window-drag-region {
   color: var(--color-text-primary);
   cursor: pointer;
   background: var(--color-surface);
-  border: 1px solid var(--color-border-input);
+  border: 1px solid var(--color-border-strong);
   border-radius: 6px;
 }
 
@@ -2605,7 +2605,7 @@ body:has(.modal-backdrop) .window-drag-region {
   padding: 0;
   color: var(--color-text-secondary);
   background: transparent;
-  border: 1px solid var(--color-border-control);
+  border: 1px solid var(--color-border-strong);
   border-radius: 7px;
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-medium);
@@ -2616,8 +2616,8 @@ body:has(.modal-backdrop) .window-drag-region {
 .more-actions-button:hover:not(:disabled),
 .more-actions-button[aria-expanded="true"] {
   color: var(--color-text-primary);
-  background: var(--color-surface-interactive-hover);
-  border-color: var(--color-border-interactive-hover);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
 }
 
 .more-actions-button:focus-visible {
@@ -2631,7 +2631,7 @@ body:has(.modal-backdrop) .window-drag-region {
   min-width: 168px;
   padding: 5px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border-popover);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   box-shadow: var(--shadow-popover);
 }
@@ -2652,7 +2652,7 @@ body:has(.modal-backdrop) .window-drag-region {
 }
 
 .project-menu-item:hover {
-  background: var(--color-surface-menu-hover);
+  background: var(--color-surface-hover);
 }
 
 .project-menu-item.danger {
@@ -2661,7 +2661,7 @@ body:has(.modal-backdrop) .window-drag-region {
 
 .project-menu-item.danger:hover {
   color: var(--color-status-negative);
-  background: var(--color-menu-danger-background);
+  background: var(--color-feedback-danger-background);
 }
 
 .projects-table,
@@ -2687,7 +2687,7 @@ body:has(.modal-backdrop) .window-drag-region {
   box-sizing: border-box;
   color: var(--color-text-primary);
   background: var(--color-surface);
-  border: 1px solid var(--color-border-control);
+  border: 1px solid var(--color-border-strong);
   border-radius: 7px;
   font-size: var(--font-size-body);
   outline: none;
@@ -3687,14 +3687,14 @@ body:has(.modal-backdrop) .window-drag-region {
   color: var(--color-text-primary);
   text-align: left;
   background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-card);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
 }
 
 .overview-metric-card:hover {
-  background: var(--color-surface-card-hover);
-  border-color: var(--color-border-card-hover);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
 }
 
 .overview-metric-card:focus-visible,
@@ -3737,7 +3737,7 @@ body:has(.modal-backdrop) .window-drag-region {
   min-width: 0;
   overflow: hidden;
   background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-card);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -3800,7 +3800,7 @@ body:has(.modal-backdrop) .window-drag-region {
   width: 100%;
   height: 6px;
   overflow: hidden;
-  background: var(--color-surface-progress-track);
+  background: var(--color-surface-strong);
   border-radius: 999px;
 }
 
@@ -3847,7 +3847,7 @@ body:has(.modal-backdrop) .window-drag-region {
 }
 
 .overview-attention-item:hover {
-  background: var(--color-surface-hover-strong);
+  background: var(--color-surface-hover);
 }
 
 .overview-attention-copy {
@@ -3939,7 +3939,7 @@ button.overview-activity-item {
 }
 
 button.overview-activity-item:hover {
-  background: var(--color-surface-hover-strong);
+  background: var(--color-surface-hover);
 }
 
 .overview-activity-item:last-child {
@@ -4444,7 +4444,7 @@ button.overview-activity-item:hover {
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   text-align: center;
-  background: var(--color-surface-placeholder);
+  background: var(--color-surface-strong);
   border-radius: 999px;
 }
 

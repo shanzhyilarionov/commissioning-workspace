@@ -74,7 +74,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 3px;
   padding: 3px;
-  background: var(--color-surface-progress-track);
+  background: var(--color-surface-strong);
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
 }
@@ -194,7 +194,7 @@
   padding: 0 11px;
   color: var(--color-text-primary);
   background: var(--color-surface);
-  border: 1px solid var(--color-border-control);
+  border: 1px solid var(--color-border-strong);
   border-radius: 7px;
   font-size: var(--font-size-body);
   outline: none;
@@ -213,8 +213,8 @@
 .settings-identity-input:disabled {
   cursor: not-allowed;
   color: var(--color-text-disabled);
-  background: var(--color-surface-disabled);
-  border-color: var(--color-border-disabled);
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border);
 }
 
 .settings-message {
@@ -238,8 +238,8 @@
   justify-content: space-between;
   gap: 16px;
   padding: 10px 13px;
-  background: var(--color-feedback-success-background);
-  border: 1px solid var(--color-feedback-success-border);
+  background: var(--color-feedback-positive-background);
+  border: 1px solid var(--color-feedback-positive-border);
   border-radius: 8px;
 }
 
