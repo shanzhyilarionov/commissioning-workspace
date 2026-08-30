@@ -4,6 +4,7 @@ import {
   useState,
 } from "react";
 
+import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ReopenTestRecordModal from "../components/ReopenTestRecordModal";
@@ -268,7 +269,7 @@ function TestRecordDetailPage({
 
       if (
         target instanceof Element &&
-        !target.closest(".project-action-menu")
+        !target.closest("[data-project-action-menu]")
       ) {
         setOpenMenuTestItemId(null);
       }
@@ -907,47 +908,27 @@ function TestRecordDetailPage({
                             Edit
                           </button>
 
-                          <div className="project-action-menu">
+                          <ActionMenu
+                            ariaLabel={`More actions for ${testItem.description}`}
+                            disabled={isSignedOff}
+                            isOpen={openMenuTestItemId === testItem.id}
+                            onOpenChange={(isOpen) =>
+                              setOpenMenuTestItemId(
+                                isOpen ? testItem.id : null,
+                              )
+                            }
+                          >
                             <button
-                              className="more-actions-button"
+                              className="project-menu-item danger"
                               type="button"
-                              aria-label={`More actions for ${testItem.description}`}
-                              aria-haspopup="menu"
-                              aria-expanded={
-                                openMenuTestItemId === testItem.id
-                              }
-                              disabled={isSignedOff}
+                              role="menuitem"
                               onClick={() =>
-                                setOpenMenuTestItemId((current) =>
-                                  current === testItem.id
-                                    ? null
-                                    : testItem.id,
-                                )
+                                handleRequestDeleteTestItem(testItem)
                               }
                             >
-                              ⋯
+                              Delete item
                             </button>
-
-                            {openMenuTestItemId === testItem.id && (
-                              <div
-                                className="project-action-menu-panel"
-                                role="menu"
-                              >
-                                <button
-                                  className="project-menu-item danger"
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() =>
-                                    handleRequestDeleteTestItem(
-                                      testItem,
-                                    )
-                                  }
-                                >
-                                  Delete item
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          </ActionMenu>
                         </div>
                       </td>
                     </tr>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ReadinessReviewModal from "../components/ReadinessReviewModal";
@@ -249,7 +250,7 @@ function SystemManagementPage({
 
       if (
         target instanceof Element &&
-        !target.closest(".project-action-menu")
+        !target.closest("[data-project-action-menu]")
       ) {
         setOpenMenuId(null);
       }
@@ -802,56 +803,41 @@ function SystemManagementPage({
                           >
                             Edit
                           </button>
-                          <div className="project-action-menu">
+                          <ActionMenu
+                            ariaLabel={`More actions for ${subsystem.name}`}
+                            isOpen={openMenuId === subsystem.id}
+                            onOpenChange={(isOpen) =>
+                              setOpenMenuId(isOpen ? subsystem.id : null)
+                            }
+                          >
                             <button
-                              className="more-actions-button"
+                              className="project-menu-item"
                               type="button"
-                              aria-label={`More actions for ${subsystem.name}`}
-                              aria-haspopup="menu"
-                              aria-expanded={openMenuId === subsystem.id}
+                              role="menuitem"
                               onClick={() =>
-                                setOpenMenuId((current) =>
-                                  current === subsystem.id ? null : subsystem.id,
+                                onViewAssets(
+                                  selectedSystem.id,
+                                  subsystem.id,
+                                  selectedSystem.id,
                                 )
                               }
                             >
-                              ⋯
+                              View assets
                             </button>
-                            {openMenuId === subsystem.id && (
-                              <div
-                                className="project-action-menu-panel"
-                                role="menu"
-                              >
-                                <button
-                                  className="project-menu-item"
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() =>
-                                    onViewAssets(
-                                      selectedSystem.id,
-                                      subsystem.id,
-                                      selectedSystem.id,
-                                    )
-                                  }
-                                >
-                                  View assets
-                                </button>
-                                <button
-                                  className="project-menu-item danger"
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() =>
-                                    handleRequestDelete({
-                                      kind: "subsystem",
-                                      record: subsystem,
-                                    })
-                                  }
-                                >
-                                  Delete subsystem
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                            <button
+                              className="project-menu-item danger"
+                              type="button"
+                              role="menuitem"
+                              onClick={() =>
+                                handleRequestDelete({
+                                  kind: "subsystem",
+                                  record: subsystem,
+                                })
+                              }
+                            >
+                              Delete subsystem
+                            </button>
+                          </ActionMenu>
                         </div>
                       </td>
                     </tr>
@@ -1059,50 +1045,35 @@ function SystemManagementPage({
                         >
                           Edit
                         </button>
-                        <div className="project-action-menu">
+                        <ActionMenu
+                          ariaLabel={`More actions for ${system.name}`}
+                          isOpen={openMenuId === system.id}
+                          onOpenChange={(isOpen) =>
+                            setOpenMenuId(isOpen ? system.id : null)
+                          }
+                        >
                           <button
-                            className="more-actions-button"
+                            className="project-menu-item"
                             type="button"
-                            aria-label={`More actions for ${system.name}`}
-                            aria-haspopup="menu"
-                            aria-expanded={openMenuId === system.id}
+                            role="menuitem"
+                            onClick={() => onViewAssets(system.id)}
+                          >
+                            View assets
+                          </button>
+                          <button
+                            className="project-menu-item danger"
+                            type="button"
+                            role="menuitem"
                             onClick={() =>
-                              setOpenMenuId((current) =>
-                                current === system.id ? null : system.id,
-                              )
+                              handleRequestDelete({
+                                kind: "system",
+                                record: system,
+                              })
                             }
                           >
-                            ⋯
+                            Delete system
                           </button>
-                          {openMenuId === system.id && (
-                            <div
-                              className="project-action-menu-panel"
-                              role="menu"
-                            >
-                              <button
-                                className="project-menu-item"
-                                type="button"
-                                role="menuitem"
-                                onClick={() => onViewAssets(system.id)}
-                              >
-                                View assets
-                              </button>
-                              <button
-                                className="project-menu-item danger"
-                                type="button"
-                                role="menuitem"
-                                onClick={() =>
-                                  handleRequestDelete({
-                                    kind: "system",
-                                    record: system,
-                                  })
-                                }
-                              >
-                                Delete system
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        </ActionMenu>
                       </div>
                     </td>
                   </tr>

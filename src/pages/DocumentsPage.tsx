@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useEffect, useMemo, useState } from "react";
 
+import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import DocumentModal from "../components/DocumentModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
@@ -133,7 +134,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
 
       if (
         target instanceof Element &&
-        !target.closest(".project-action-menu")
+        !target.closest("[data-project-action-menu]")
       ) {
         setOpenMenuDocumentId(null);
       }
@@ -675,67 +676,46 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                           >
                             Edit
                           </button>
-                          <div className="project-action-menu">
+                          <ActionMenu
+                            ariaLabel={`More actions for ${document.title}`}
+                            isOpen={openMenuDocumentId === document.id}
+                            onOpenChange={(isOpen) =>
+                              setOpenMenuDocumentId(
+                                isOpen ? document.id : null,
+                              )
+                            }
+                          >
                             <button
-                              className="more-actions-button"
+                              className="project-menu-item"
                               type="button"
-                              aria-label={`More actions for ${document.title}`}
-                              aria-haspopup="menu"
-                              aria-expanded={
-                                openMenuDocumentId === document.id
+                              role="menuitem"
+                              onClick={() => {
+                                void handleRevealDocument(document);
+                              }}
+                            >
+                              Show in folder
+                            </button>
+                            <button
+                              className="project-menu-item danger"
+                              type="button"
+                              role="menuitem"
+                              disabled={
+                                document.status === "approved" ||
+                                document.status === "superseded"
+                              }
+                              title={
+                                document.status === "approved" ||
+                                document.status === "superseded"
+                                  ? "Approved or superseded documents cannot be deleted."
+                                  : undefined
                               }
                               onClick={() =>
-                                setOpenMenuDocumentId((current) =>
-                                  current === document.id
-                                    ? null
-                                    : document.id,
-                                )
+                                handleRequestDeleteDocument(document)
                               }
                             >
-                              ⋯
+                              Delete document
                             </button>
-                            {openMenuDocumentId === document.id && (
-                              <div
-                                className="project-action-menu-panel"
-                                role="menu"
-                              >
-                                <button
-                                  className="project-menu-item"
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    void handleRevealDocument(
-                                      document,
-                                    );
-                                  }}
-                                >
-                                  Show in folder
-                                </button>
-                                <button
-                                  className="project-menu-item danger"
-                                  type="button"
-                                  role="menuitem"
-                                  disabled={
-                                    document.status === "approved" ||
-                                    document.status === "superseded"
-                                  }
-                                  title={
-                                    document.status === "approved" ||
-                                    document.status === "superseded"
-                                      ? "Approved or superseded documents cannot be deleted."
-                                      : undefined
-                                  }
-                                  onClick={() =>
-                                    handleRequestDeleteDocument(
-                                      document,
-                                    )
-                                  }
-                                >
-                                  Delete document
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          </ActionMenu>
                         </div>
                       </td>
                     </tr>

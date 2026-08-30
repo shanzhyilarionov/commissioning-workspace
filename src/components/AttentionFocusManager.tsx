@@ -9,7 +9,7 @@ export type AttentionDestinationPage =
   | "Checklists & Tests"
   | "Issues"
   | "Documents"
-  | "Reports";
+  | "Turnover packages";
 
 export interface AttentionNavigationRequest {
   requestId: number;

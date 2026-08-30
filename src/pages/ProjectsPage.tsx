@@ -1,12 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
+import ActionMenu from "../components/ActionMenu";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 
 import type {
@@ -29,11 +22,6 @@ interface ProjectsPageProps {
 
 type ProjectStatusFilter = "all" | ProjectStatus;
 
-interface ProjectMenuPosition {
-  left: number;
-  top: number;
-}
-
 function formatProjectStatus(status: ProjectStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
@@ -55,116 +43,6 @@ function ProjectsPage({
     useState<ProjectStatusFilter>("active");
   const [openMenuProjectId, setOpenMenuProjectId] =
     useState<string | null>(null);
-  const [menuPosition, setMenuPosition] =
-    useState<ProjectMenuPosition | null>(null);
-  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const menuPanelRef = useRef<HTMLDivElement | null>(null);
-
-  const closeProjectMenu = useCallback(() => {
-    setOpenMenuProjectId(null);
-    setMenuPosition(null);
-    menuButtonRef.current = null;
-  }, []);
-
-  const updateProjectMenuPosition = useCallback(() => {
-    const button = menuButtonRef.current;
-    const panel = menuPanelRef.current;
-
-    if (!button || !panel) {
-      return;
-    }
-
-    const buttonRect = button.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    const viewportPadding = 8;
-    const menuGap = 6;
-    const availableBelow = window.innerHeight - buttonRect.bottom;
-    const openAbove =
-      availableBelow < panelRect.height + menuGap + viewportPadding &&
-      buttonRect.top > availableBelow;
-    const unclampedTop = openAbove
-      ? buttonRect.top - panelRect.height - menuGap
-      : buttonRect.bottom + menuGap;
-    const maxLeft = Math.max(
-      viewportPadding,
-      window.innerWidth - panelRect.width - viewportPadding,
-    );
-    const maxTop = Math.max(
-      viewportPadding,
-      window.innerHeight - panelRect.height - viewportPadding,
-    );
-
-    setMenuPosition({
-      left: Math.min(
-        Math.max(
-          viewportPadding,
-          buttonRect.right - panelRect.width,
-        ),
-        maxLeft,
-      ),
-      top: Math.min(
-        Math.max(viewportPadding, unclampedTop),
-        maxTop,
-      ),
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (openMenuProjectId) {
-      updateProjectMenuPosition();
-    }
-  }, [openMenuProjectId, updateProjectMenuPosition]);
-
-  useEffect(() => {
-    function handleDocumentMouseDown(event: MouseEvent) {
-      const target = event.target;
-
-      if (
-        target instanceof Element &&
-        !target.closest("[data-project-action-menu]")
-      ) {
-        closeProjectMenu();
-      }
-    }
-
-    function handleDocumentKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        closeProjectMenu();
-      }
-    }
-
-    function handleViewportChange() {
-      closeProjectMenu();
-    }
-
-    document.addEventListener(
-      "mousedown",
-      handleDocumentMouseDown,
-    );
-    document.addEventListener(
-      "keydown",
-      handleDocumentKeyDown,
-    );
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", handleViewportChange, true);
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleDocumentMouseDown,
-      );
-      document.removeEventListener(
-        "keydown",
-        handleDocumentKeyDown,
-      );
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener(
-        "scroll",
-        handleViewportChange,
-        true,
-      );
-    };
-  }, [closeProjectMenu]);
 
   const filteredProjects = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -403,98 +281,51 @@ function ProjectsPage({
                                         Edit
                                       </button>
 
-                                      <div
-                                        className="project-action-menu"
-                                        data-project-action-menu
+                                      <ActionMenu
+                                        ariaLabel={`More actions for ${project.name}`}
+                                        disabled={isChangingStatus}
+                                        isOpen={isMenuOpen}
+                                        onOpenChange={(isOpen) =>
+                                          setOpenMenuProjectId(
+                                            isOpen ? project.id : null,
+                                          )
+                                        }
                                       >
-                                        <button
-                                          className="more-actions-button"
-                                          type="button"
-                                          aria-label={`More actions for ${project.name}`}
-                                          aria-haspopup="menu"
-                                          aria-expanded={isMenuOpen}
-                                          disabled={isChangingStatus}
-                                          onClick={(event) => {
-                                            if (isMenuOpen) {
-                                              closeProjectMenu();
-                                              return;
+                                        {isArchived ? (
+                                          <button
+                                            className="project-menu-item"
+                                            type="button"
+                                            role="menuitem"
+                                            onClick={() =>
+                                              onRestoreProject(project)
                                             }
+                                          >
+                                            Restore project
+                                          </button>
+                                        ) : (
+                                          <button
+                                            className="project-menu-item"
+                                            type="button"
+                                            role="menuitem"
+                                            onClick={() =>
+                                              onArchiveProject(project)
+                                            }
+                                          >
+                                            Archive project
+                                          </button>
+                                        )}
 
-                                            menuButtonRef.current =
-                                              event.currentTarget;
-                                            setMenuPosition(null);
-                                            setOpenMenuProjectId(
-                                              project.id,
-                                            );
-                                          }}
+                                        <button
+                                          className="project-menu-item danger"
+                                          type="button"
+                                          role="menuitem"
+                                          onClick={() =>
+                                            onDeleteProject(project)
+                                          }
                                         >
-                                          ⋯
+                                          Delete project
                                         </button>
-
-                                        {isMenuOpen &&
-                                          createPortal(
-                                            <div
-                                              ref={menuPanelRef}
-                                              className="project-action-menu-panel"
-                                              data-project-action-menu
-                                              role="menu"
-                                              style={
-                                                menuPosition
-                                                  ? menuPosition
-                                                  : {
-                                                      left: 0,
-                                                      top: 0,
-                                                      visibility: "hidden",
-                                                    }
-                                              }
-                                            >
-                                              {isArchived ? (
-                                                <button
-                                                  className="project-menu-item"
-                                                  type="button"
-                                                  role="menuitem"
-                                                  onClick={() => {
-                                                    closeProjectMenu();
-                                                    onRestoreProject(
-                                                      project,
-                                                    );
-                                                  }}
-                                                >
-                                                  Restore project
-                                                </button>
-                                              ) : (
-                                                <button
-                                                  className="project-menu-item"
-                                                  type="button"
-                                                  role="menuitem"
-                                                  onClick={() => {
-                                                    closeProjectMenu();
-                                                    onArchiveProject(
-                                                      project,
-                                                    );
-                                                  }}
-                                                >
-                                                  Archive project
-                                                </button>
-                                              )}
-
-                                              <button
-                                                className="project-menu-item danger"
-                                                type="button"
-                                                role="menuitem"
-                                                onClick={() => {
-                                                  closeProjectMenu();
-                                                  onDeleteProject(
-                                                    project,
-                                                  );
-                                                }}
-                                              >
-                                                Delete project
-                                              </button>
-                                            </div>,
-                                            document.body,
-                                          )}
-                                      </div>
+                                      </ActionMenu>
                                     </div>
                                   </td>
                                 </tr>

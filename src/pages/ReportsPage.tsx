@@ -5,6 +5,7 @@ import {
   type ChangeEvent,
 } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import TurnoverPackageModal from "../components/TurnoverPackageModal";
@@ -46,6 +47,7 @@ import "./ReportsPage.css";
 
 interface ReportsPageProps {
   currentProject: Project;
+  view: ReportsView;
   navigationItem?: ProjectNavigationItem | null;
 }
 
@@ -124,9 +126,9 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 function ReportsPage({
   currentProject,
+  view,
   navigationItem = null,
 }: ReportsPageProps) {
-  const [activeView, setActiveView] = useState<ReportsView>("records");
   const [records, setRecords] = useState<ReportRecordSummary[]>([]);
   const [turnoverPackages, setTurnoverPackages] = useState<
     TurnoverPackageSummary[]
@@ -170,15 +172,15 @@ function ReportsPage({
 
   useEffect(() => {
     if (
+      view === "turnover" &&
       navigationItem &&
       isAuditNavigationItem(navigationItem) &&
       navigationItem.entityType === "turnover_package"
     ) {
-      setActiveView("turnover");
       setSearchQuery("");
       setTurnoverStatusFilter("all");
     }
-  }, [navigationItem]);
+  }, [navigationItem, view]);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -186,7 +188,7 @@ function ReportsPage({
 
       if (
         target instanceof Element &&
-        !target.closest(".project-action-menu")
+        !target.closest("[data-project-action-menu]")
       ) {
         setOpenMenuPackageId(null);
       }
@@ -215,9 +217,32 @@ function ReportsPage({
       setLoadError(null);
       setTurnoverLoadError(null);
 
-      const [recordsResult, packagesResult, systemsResult, subsystemsResult] =
-        await Promise.allSettled([
+      if (view === "records") {
+        const [recordsResult] = await Promise.allSettled([
           listCompletedReportRecords(currentProject.id),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (recordsResult.status === "fulfilled") {
+          setRecords(recordsResult.value);
+        } else {
+          setLoadError(
+            getErrorMessage(
+              recordsResult.reason,
+              "Failed to load completed report records.",
+            ),
+          );
+        }
+
+        setIsLoading(false);
+        return;
+      }
+
+      const [packagesResult, systemsResult, subsystemsResult] =
+        await Promise.allSettled([
           listTurnoverPackages(currentProject.id),
           listSystemsByProject(currentProject.id),
           listSubsystemsByProject(currentProject.id),
@@ -225,17 +250,6 @@ function ReportsPage({
 
       if (cancelled) {
         return;
-      }
-
-      if (recordsResult.status === "fulfilled") {
-        setRecords(recordsResult.value);
-      } else {
-        setLoadError(
-          getErrorMessage(
-            recordsResult.reason,
-            "Failed to load completed report records.",
-          ),
-        );
       }
 
       const turnoverErrors: string[] = [];
@@ -274,7 +288,6 @@ function ReportsPage({
       setIsLoading(false);
     }
 
-    setActiveView("records");
     setSearchQuery("");
     setTypeFilter("all");
     setTurnoverStatusFilter("all");
@@ -298,7 +311,7 @@ function ReportsPage({
     return () => {
       cancelled = true;
     };
-  }, [currentProject.id]);
+  }, [currentProject.id, view]);
 
   const filteredRecords = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -353,14 +366,6 @@ function ReportsPage({
       return matchesStatus && matchesSearch;
     });
   }, [searchQuery, turnoverPackages, turnoverStatusFilter]);
-
-  function handleViewChange(view: ReportsView) {
-    setActiveView(view);
-    setSearchQuery("");
-    setOpenMenuPackageId(null);
-    setExportError(null);
-    setSavedReportPath(null);
-  }
 
   async function handleRetryTurnoverData() {
     if (isRetryingTurnover) {
@@ -610,8 +615,16 @@ function ReportsPage({
   if (isLoading) {
     return (
       <section className="content-card placeholder">
-        <h3>Loading reports</h3>
-        <p>Reading report records for {currentProject.name}.</p>
+        <h3>
+          {view === "records"
+            ? "Loading record reports"
+            : "Loading turnover packages"}
+        </h3>
+        <p>
+          {view === "records"
+            ? `Reading completed records for ${currentProject.name}.`
+            : `Reading turnover package history for ${currentProject.name}.`}
+        </p>
       </section>
     );
   }
@@ -619,7 +632,7 @@ function ReportsPage({
   if (loadError) {
     return (
       <section className="content-card placeholder">
-        <h3>Unable to load reports</h3>
+        <h3>Unable to load record reports</h3>
         <p>{loadError}</p>
       </section>
     );
@@ -629,34 +642,19 @@ function ReportsPage({
     <>
       <section className="content-card section-card assets-card issues-card reports-card">
         <div className="projects-header reports-header">
-          <div className="reports-heading">
-            <div className="reports-view-switch" aria-label="Report view">
-              <button
-                className={activeView === "records" ? "active" : ""}
-                type="button"
-                aria-pressed={activeView === "records"}
-                onClick={() => handleViewChange("records")}
-              >
-                Record reports
-              </button>
-              <button
-                className={activeView === "turnover" ? "active" : ""}
-                type="button"
-                aria-pressed={activeView === "turnover"}
-                onClick={() => handleViewChange("turnover")}
-              >
-                Turnover packages
-              </button>
-            </div>
+          <div>
+            <h3>
+              {view === "records" ? "Record reports" : "Turnover packages"}
+            </h3>
             <p>
-              {activeView === "records"
+              {view === "records"
                 ? `Generate signed PDFs from completed checklists and functional tests for ${currentProject.name}.`
                 : `Create controlled handover packages from commissioned system and subsystem snapshots for ${currentProject.name}.`}
             </p>
           </div>
         </div>
 
-        {activeView === "records" ? (
+        {view === "records" ? (
           <div className="assets-toolbar reports-toolbar reports-record-toolbar">
             <input
               className="asset-search-input reports-search-input"
@@ -768,7 +766,7 @@ function ReportsPage({
           </div>
         )}
 
-        {activeView === "turnover" && turnoverLoadError && (
+        {view === "turnover" && turnoverLoadError && (
           <div className="turnover-load-error" role="alert">
             <div>
               <strong>Unable to load turnover packages</strong>
@@ -787,7 +785,7 @@ function ReportsPage({
           </div>
         )}
 
-        {activeView === "records" ? (
+        {view === "records" ? (
           records.length === 0 ? (
             <div className="empty-state reports-empty-state">
               <h3>No completed records</h3>
@@ -1021,63 +1019,46 @@ function ReportsPage({
                             {isExporting ? "Preparing..." : "Save PDF"}
                           </button>
                           {turnoverPackage.status !== "void" && (
-                            <div className="project-action-menu">
-                              <button
-                                className="more-actions-button"
-                                type="button"
-                                aria-label={`More actions for ${turnoverPackage.packageNumber}`}
-                                aria-haspopup="menu"
-                                aria-expanded={
-                                  openMenuPackageId === turnoverPackage.id
-                                }
-                                disabled={
-                                  isDeletingPackage || isVoidingPackage
-                                }
-                                onClick={() =>
-                                  setOpenMenuPackageId((current) =>
-                                    current === turnoverPackage.id
-                                      ? null
-                                      : turnoverPackage.id,
-                                  )
-                                }
-                              >
-                                ⋯
-                              </button>
-                              {openMenuPackageId === turnoverPackage.id && (
-                                <div
-                                  className="project-action-menu-panel"
-                                  role="menu"
+                            <ActionMenu
+                              ariaLabel={`More actions for ${turnoverPackage.packageNumber}`}
+                              disabled={isDeletingPackage || isVoidingPackage}
+                              isOpen={
+                                openMenuPackageId === turnoverPackage.id
+                              }
+                              onOpenChange={(isOpen) =>
+                                setOpenMenuPackageId(
+                                  isOpen ? turnoverPackage.id : null,
+                                )
+                              }
+                            >
+                              {turnoverPackage.status === "draft" ? (
+                                <button
+                                  className="project-menu-item danger"
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() =>
+                                    handleRequestDeletePackage(
+                                      turnoverPackage,
+                                    )
+                                  }
                                 >
-                                  {turnoverPackage.status === "draft" ? (
-                                    <button
-                                      className="project-menu-item danger"
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() =>
-                                        handleRequestDeletePackage(
-                                          turnoverPackage,
-                                        )
-                                      }
-                                    >
-                                      Delete draft
-                                    </button>
-                                  ) : (
-                                    <button
-                                      className="project-menu-item danger"
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() =>
-                                        handleRequestVoidPackage(
-                                          turnoverPackage,
-                                        )
-                                      }
-                                    >
-                                      Void package
-                                    </button>
-                                  )}
-                                </div>
+                                  Delete draft
+                                </button>
+                              ) : (
+                                <button
+                                  className="project-menu-item danger"
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() =>
+                                    handleRequestVoidPackage(
+                                      turnoverPackage,
+                                    )
+                                  }
+                                >
+                                  Void package
+                                </button>
                               )}
-                            </div>
+                            </ActionMenu>
                           )}
                         </div>
                       </td>

@@ -355,7 +355,6 @@ function SettingsPage({
         <div className="projects-header settings-header">
           <div>
             <h3>Settings</h3>
-            <p>Configure application preferences and manage workspace data.</p>
           </div>
         </div>
 
@@ -477,7 +476,7 @@ function SettingsPage({
                 <h4>Project data</h4>
               </div>
 
-              <div className="settings-transfer-grid">
+              <div className="settings-transfer-panel">
                 <section className="settings-action-card">
                   <div>
                     <p>

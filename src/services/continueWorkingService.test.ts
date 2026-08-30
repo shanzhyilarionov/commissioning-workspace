@@ -56,4 +56,21 @@ describe("continueWorkingService", () => {
 
     expect(loadContinueWorkingLocation()).toBeNull();
   });
+
+  it("migrates the legacy Reports page to Record reports", () => {
+    window.localStorage.setItem(
+      "commissioning-workspace.continue-working.v1",
+      JSON.stringify({
+        projectId: "project-1",
+        page: "Reports",
+        visitedAt: "2026-08-27T12:00:00.000Z",
+      }),
+    );
+
+    expect(loadContinueWorkingLocation()).toEqual({
+      projectId: "project-1",
+      page: "Record reports",
+      visitedAt: "2026-08-27T12:00:00.000Z",
+    });
+  });
 });

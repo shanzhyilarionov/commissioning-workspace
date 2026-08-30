@@ -85,7 +85,7 @@ function getAuditTarget(
     case "document":
       return "Documents";
     case "turnover_package":
-      return "Reports";
+      return "Turnover packages";
     case "project":
       return null;
   }

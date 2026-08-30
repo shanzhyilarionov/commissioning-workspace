@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ActionMenu from "../components/ActionMenu";
 import AssetModal from "../components/AssetModal";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
@@ -178,7 +179,7 @@ function AssetsPage({
 
       if (
         target instanceof Element &&
-        !target.closest(".project-action-menu")
+        !target.closest("[data-project-action-menu]")
       ) {
         setOpenMenuAssetId(null);
       }
@@ -688,39 +689,22 @@ function AssetsPage({
                         >
                           Edit
                         </button>
-                        <div className="project-action-menu">
+                        <ActionMenu
+                          ariaLabel={`More actions for ${asset.tag}`}
+                          isOpen={openMenuAssetId === asset.id}
+                          onOpenChange={(isOpen) =>
+                            setOpenMenuAssetId(isOpen ? asset.id : null)
+                          }
+                        >
                           <button
-                            className="more-actions-button"
+                            className="project-menu-item danger"
                             type="button"
-                            aria-label={`More actions for ${asset.tag}`}
-                            aria-haspopup="menu"
-                            aria-expanded={openMenuAssetId === asset.id}
-                            onClick={() =>
-                              setOpenMenuAssetId((current) =>
-                                current === asset.id ? null : asset.id,
-                              )
-                            }
+                            role="menuitem"
+                            onClick={() => handleRequestDeleteAsset(asset)}
                           >
-                            ⋯
+                            Delete asset
                           </button>
-                          {openMenuAssetId === asset.id && (
-                            <div
-                              className="project-action-menu-panel"
-                              role="menu"
-                            >
-                              <button
-                                className="project-menu-item danger"
-                                type="button"
-                                role="menuitem"
-                                onClick={() =>
-                                  handleRequestDeleteAsset(asset)
-                                }
-                              >
-                                Delete asset
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        </ActionMenu>
                       </div>
                     </td>
                   </tr>

@@ -4,7 +4,8 @@ export const continueWorkingPages = [
   "Checklists & Tests",
   "Issues",
   "Documents",
-  "Reports",
+  "Record reports",
+  "Turnover packages",
 ] as const;
 
 export type ContinueWorkingPage =
@@ -23,31 +24,46 @@ export interface ContinueWorkingItem extends ContinueWorkingLocation {
 
 const storageKey = "commissioning-workspace.continue-working.v1";
 
-function isContinueWorkingPage(
+function parseContinueWorkingPage(
   value: unknown,
-): value is ContinueWorkingPage {
+): ContinueWorkingPage | null {
+  if (value === "Reports") {
+    return "Record reports";
+  }
+
   return (
     typeof value === "string" &&
     continueWorkingPages.includes(value as ContinueWorkingPage)
+      ? (value as ContinueWorkingPage)
+      : null
   );
 }
 
-function isContinueWorkingLocation(
+function parseContinueWorkingLocation(
   value: unknown,
-): value is ContinueWorkingLocation {
+): ContinueWorkingLocation | null {
   if (!value || typeof value !== "object") {
-    return false;
+    return null;
   }
 
   const location = value as Record<string, unknown>;
+  const page = parseContinueWorkingPage(location.page);
 
-  return (
+  if (
     typeof location.projectId === "string" &&
     location.projectId.trim().length > 0 &&
-    isContinueWorkingPage(location.page) &&
+    page !== null &&
     typeof location.visitedAt === "string" &&
     !Number.isNaN(new Date(location.visitedAt).getTime())
-  );
+  ) {
+    return {
+      projectId: location.projectId,
+      page,
+      visitedAt: location.visitedAt,
+    };
+  }
+
+  return null;
 }
 
 export function loadContinueWorkingLocation(): ContinueWorkingLocation | null {
@@ -59,9 +75,10 @@ export function loadContinueWorkingLocation(): ContinueWorkingLocation | null {
     }
 
     const parsedValue = JSON.parse(storedValue) as unknown;
+    const location = parseContinueWorkingLocation(parsedValue);
 
-    if (isContinueWorkingLocation(parsedValue)) {
-      return parsedValue;
+    if (location) {
+      return location;
     }
 
     window.localStorage.removeItem(storageKey);

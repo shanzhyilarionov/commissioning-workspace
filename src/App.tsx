@@ -608,7 +608,7 @@ function App() {
         }
 
         return <DocumentsPage currentProject={currentProject} />;
-      case "Reports":
+      case "Record reports":
         if (!currentProject) {
           return renderNoProjectSelected(
             "Open or create a project before generating reports.",
@@ -617,9 +617,26 @@ function App() {
 
         return (
           <ReportsPage
+            key="record-reports"
             currentProject={currentProject}
+            view="records"
+          />
+        );
+
+      case "Turnover packages":
+        if (!currentProject) {
+          return renderNoProjectSelected(
+            "Open or create a project before managing turnover packages.",
+          );
+        }
+
+        return (
+          <ReportsPage
+            key="turnover-packages"
+            currentProject={currentProject}
+            view="turnover"
             navigationItem={
-              attentionNavigation?.page === "Reports"
+              attentionNavigation?.page === "Turnover packages"
                 ? attentionNavigation.item
                 : null
             }

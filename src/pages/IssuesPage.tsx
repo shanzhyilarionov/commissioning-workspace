@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import IssueModal from "../components/IssueModal";
@@ -110,7 +111,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
 
       if (
         target instanceof Element &&
-        !target.closest(".project-action-menu")
+        !target.closest("[data-project-action-menu]")
       ) {
         setOpenMenuIssueId(null);
       }
@@ -519,62 +520,48 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
                                             Edit
                                           </button>
 
-                                          <div className="project-action-menu">
+                                          <ActionMenu
+                                            ariaLabel={`More actions for ${issue.title}`}
+                                            isOpen={openMenuIssueId === issue.id}
+                                            onOpenChange={(isOpen) =>
+                                              setOpenMenuIssueId(
+                                                isOpen ? issue.id : null,
+                                              )
+                                            }
+                                          >
                                             <button
-                                              className="more-actions-button"
+                                              className="project-menu-item"
                                               type="button"
-                                              aria-label={`More actions for ${issue.title}`}
-                                              aria-haspopup="menu"
-                                              aria-expanded={openMenuIssueId === issue.id}
-                                              onClick={() =>
-                                                setOpenMenuIssueId((current) =>
-                                                  current === issue.id ? null : issue.id,
-                                                )
-                                              }
+                                              role="menuitem"
+                                              disabled={isChangingStatus}
+                                              onClick={() => {
+                                                void handleToggleIssueResolved(issue);
+                                              }}
                                             >
-                                              ⋯
+                                              {isChangingStatus
+                                                ? "Updating..."
+                                                : isClosed
+                                                  ? "Reopen issue"
+                                                  : "Mark resolved"}
                                             </button>
 
-                                            {openMenuIssueId === issue.id && (
-                                              <div
-                                                className="project-action-menu-panel"
-                                                role="menu"
-                                              >
-                                                <button
-                                                  className="project-menu-item"
-                                                  type="button"
-                                                  role="menuitem"
-                                                  disabled={isChangingStatus}
-                                                  onClick={() => {
-                                                    void handleToggleIssueResolved(issue);
-                                                  }}
-                                                >
-                                                  {isChangingStatus
-                                                    ? "Updating..."
-                                                    : isClosed
-                                                      ? "Reopen issue"
-                                                      : "Mark resolved"}
-                                                </button>
-
-                                                <button
-                                                  className="project-menu-item danger"
-                                                  type="button"
-                                                  role="menuitem"
-                                                  disabled={isClosed}
-                                                  title={
-                                                    isClosed
-                                                      ? "Reopen the issue before deleting it."
-                                                      : undefined
-                                                  }
-                                                  onClick={() =>
-                                                    handleRequestDeleteIssue(issue)
-                                                  }
-                                                >
-                                                  Delete issue
-                                                </button>
-                                              </div>
-                                            )}
-                                          </div>
+                                            <button
+                                              className="project-menu-item danger"
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={isClosed}
+                                              title={
+                                                isClosed
+                                                  ? "Reopen the issue before deleting it."
+                                                  : undefined
+                                              }
+                                              onClick={() =>
+                                                handleRequestDeleteIssue(issue)
+                                              }
+                                            >
+                                              Delete issue
+                                            </button>
+                                          </ActionMenu>
                                         </div>
                                       </td>
                                     </tr>

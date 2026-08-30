@@ -3239,11 +3239,6 @@ body:has(.modal-backdrop) .window-drag-region {
   align-items: center;
 }
 
-.assets-table tbody tr:last-child .project-action-menu-panel {
-  top: auto;
-  bottom: calc(100% + 6px);
-}
-
 .project-open-placeholder {
   visibility: hidden;
   pointer-events: none;

@@ -4,6 +4,7 @@ import {
   useState,
 } from "react";
 
+import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import TestRecordModal from "../components/TestRecordModal";
@@ -179,7 +180,7 @@ function ChecklistsTestsPage({
 
       if (
         !target.closest(
-          ".project-action-menu",
+          "[data-project-action-menu]",
         )
       ) {
         setOpenMenuTestRecordId(null);
@@ -796,73 +797,52 @@ function ChecklistsTestsPage({
                                             Edit
                                           </button>
 
-                                          <div className="project-action-menu">
+                                          <ActionMenu
+                                            ariaLabel={`More actions for ${testRecord.title}`}
+                                            isOpen={
+                                              openMenuTestRecordId ===
+                                              testRecord.id
+                                            }
+                                            onOpenChange={(isOpen) =>
+                                              setOpenMenuTestRecordId(
+                                                isOpen ? testRecord.id : null,
+                                              )
+                                            }
+                                          >
                                             <button
-                                              className="more-actions-button"
+                                              className="project-menu-item"
                                               type="button"
-                                              aria-label={`More actions for ${testRecord.title}`}
-                                              aria-haspopup="menu"
-                                              aria-expanded={
-                                                openMenuTestRecordId ===
-                                                testRecord.id
+                                              role="menuitem"
+                                              onClick={() =>
+                                                handleOpenTestRecord(testRecord)
+                                              }
+                                            >
+                                              Open record
+                                            </button>
+
+                                            <button
+                                              className="project-menu-item danger"
+                                              type="button"
+                                              role="menuitem"
+                                              disabled={
+                                                testRecord.signedOffAt !== null ||
+                                                testRecord.revisionCount > 0
+                                              }
+                                              title={
+                                                testRecord.signedOffAt !== null ||
+                                                testRecord.revisionCount > 0
+                                                  ? "Signed or revised records cannot be deleted."
+                                                  : undefined
                                               }
                                               onClick={() =>
-                                                setOpenMenuTestRecordId(
-                                                  (current) =>
-                                                    current ===
-                                                    testRecord.id
-                                                      ? null
-                                                      : testRecord.id,
+                                                handleRequestDeleteTestRecord(
+                                                  testRecord,
                                                 )
                                               }
                                             >
-                                              ⋯
+                                              Delete record
                                             </button>
-
-                                            {openMenuTestRecordId ===
-                                              testRecord.id && (
-                                              <div
-                                                className="project-action-menu-panel"
-                                                role="menu"
-                                              >
-                                                <button
-                                                  className="project-menu-item"
-                                                  type="button"
-                                                  role="menuitem"
-                                                  onClick={() =>
-                                                    handleOpenTestRecord(
-                                                      testRecord,
-                                                    )
-                                                  }
-                                                >
-                                                  Open record
-                                                </button>
-
-                                                <button
-                                                  className="project-menu-item danger"
-                                                  type="button"
-                                                  role="menuitem"
-                                                  disabled={
-                                                    testRecord.signedOffAt !== null ||
-                                                    testRecord.revisionCount > 0
-                                                  }
-                                                  title={
-                                                    testRecord.signedOffAt !== null ||
-                                                    testRecord.revisionCount > 0
-                                                      ? "Signed or revised records cannot be deleted."
-                                                      : undefined
-                                                  }
-                                                  onClick={() =>
-                                                    handleRequestDeleteTestRecord(
-                                                      testRecord,
-                                                    )
-                                                  }
-                                                >
-                                                  Delete record
-                                                </button>
-                                              </div>
-                                            )}
-                                          </div>
+                                          </ActionMenu>
                                         </div>
                                       </td>
                                     </tr>
