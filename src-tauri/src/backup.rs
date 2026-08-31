@@ -5,6 +5,7 @@ use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter, Read, Seek, Write};
 use std::path::{Component, Path, PathBuf};
+use std::time::{Duration, SystemTime};
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 use tempfile::TempDir;
@@ -61,6 +62,13 @@ pub struct WorkspaceBackupSummary {
     schema_version: u32,
     file_count: usize,
     total_bytes: u64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutomaticBackupStatus {
+    last_backup: Option<WorkspaceBackupSummary>,
+    created: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -644,6 +652,120 @@ fn safety_backup_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     )))
 }
 
+fn automatic_backup_directory(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let directory = backup_storage_root(app)?.join("automatic");
+    fs::create_dir_all(&directory)
+        .map_err(|error| format!("Failed to create the automatic backup directory: {error}"))?;
+    Ok(directory)
+}
+
+fn automatic_backup_files(directory: &Path) -> Result<Vec<(PathBuf, SystemTime)>, String> {
+    let mut backups = Vec::new();
+    for entry in fs::read_dir(directory)
+        .map_err(|error| format!("Failed to inspect automatic backups: {error}"))?
+    {
+        let entry = entry
+            .map_err(|error| format!("Failed to inspect an automatic backup: {error}"))?;
+        let path = entry.path();
+        if !entry
+            .file_type()
+            .map_err(|error| format!("Failed to inspect an automatic backup: {error}"))?
+            .is_file()
+            || !path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("cwb"))
+        {
+            continue;
+        }
+
+        let modified = entry
+            .metadata()
+            .and_then(|metadata| metadata.modified())
+            .map_err(|error| format!("Failed to read automatic backup metadata: {error}"))?;
+        backups.push((path, modified));
+    }
+    backups.sort_by(|left, right| right.1.cmp(&left.1));
+    Ok(backups)
+}
+
+fn backup_summary(path: &Path) -> Result<WorkspaceBackupSummary, String> {
+    let file = File::open(path)
+        .map_err(|error| format!("Failed to open the automatic backup: {error}"))?;
+    let mut archive = ZipArchive::new(file)
+        .map_err(|error| format!("Failed to read the automatic backup: {error}"))?;
+    let manifest = read_manifest(&mut archive)?;
+    validate_manifest(&manifest)?;
+    let total_bytes = manifest.files.iter().try_fold(0_u64, |total, file| {
+        total
+            .checked_add(file.size)
+            .ok_or_else(|| "The automatic backup size is invalid.".to_string())
+    })?;
+
+    Ok(WorkspaceBackupSummary {
+        path: path.to_string_lossy().into_owned(),
+        created_at: manifest.created_at,
+        application_version: manifest.application_version,
+        schema_version: manifest.schema_version,
+        file_count: manifest.files.len(),
+        total_bytes,
+    })
+}
+
+fn latest_automatic_backup(
+    directory: &Path,
+) -> Result<Option<(WorkspaceBackupSummary, SystemTime)>, String> {
+    for (path, modified) in automatic_backup_files(directory)? {
+        if let Ok(summary) = backup_summary(&path) {
+            return Ok(Some((summary, modified)));
+        }
+    }
+    Ok(None)
+}
+
+fn latest_workspace_change(app: &tauri::AppHandle) -> Result<Option<SystemTime>, String> {
+    let database = database_path(app)?;
+    let mut latest = None;
+    let mut consider = |path: &Path| -> Result<(), String> {
+        if !path.exists() {
+            return Ok(());
+        }
+        let modified = fs::metadata(path)
+            .and_then(|metadata| metadata.modified())
+            .map_err(|error| format!("Failed to inspect workspace changes: {error}"))?;
+        if latest.map_or(true, |current| modified > current) {
+            latest = Some(modified);
+        }
+        Ok(())
+    };
+
+    consider(&database)?;
+    consider(&path_with_suffix(&database, "-wal"))?;
+
+    let projects = project_storage_root(app)?;
+    if projects.exists() {
+        for entry in WalkDir::new(projects).follow_links(false) {
+            let entry = entry
+                .map_err(|error| format!("Failed to inspect managed documents: {error}"))?;
+            if entry.file_type().is_file() {
+                consider(entry.path())?;
+            }
+        }
+    }
+
+    Ok(latest)
+}
+
+fn prune_automatic_backups(directory: &Path, retention_count: usize) -> Result<(), String> {
+    let backups = automatic_backup_files(directory)?;
+    for (path, _) in backups.into_iter().skip(retention_count) {
+        fs::remove_file(&path).map_err(|error| {
+            format!("Failed to remove old automatic backup {}: {error}", path.display())
+        })?;
+    }
+    Ok(())
+}
+
 fn remove_path_if_exists(path: &Path) -> Result<(), String> {
     if !path.exists() {
         return Ok(());
@@ -785,6 +907,67 @@ pub fn create_workspace_backup(
     }
 
     create_backup_at(&app, &path)
+}
+
+#[tauri::command]
+pub fn get_automatic_workspace_backup_status(
+    app: tauri::AppHandle,
+) -> Result<AutomaticBackupStatus, String> {
+    let directory = automatic_backup_directory(&app)?;
+    Ok(AutomaticBackupStatus {
+        last_backup: latest_automatic_backup(&directory)?
+            .map(|(summary, _)| summary),
+        created: false,
+    })
+}
+
+#[tauri::command]
+pub fn run_automatic_workspace_backup(
+    app: tauri::AppHandle,
+    frequency_days: u64,
+    retention_count: usize,
+) -> Result<AutomaticBackupStatus, String> {
+    if !(1..=30).contains(&frequency_days) {
+        return Err("The automatic backup frequency is invalid.".to_string());
+    }
+    if !(1..=100).contains(&retention_count) {
+        return Err("The automatic backup retention count is invalid.".to_string());
+    }
+
+    let directory = automatic_backup_directory(&app)?;
+    prune_automatic_backups(&directory, retention_count)?;
+    let latest_backup = latest_automatic_backup(&directory)?;
+    let workspace_change = latest_workspace_change(&app)?;
+    let now = SystemTime::now();
+    let interval = Duration::from_secs(frequency_days * 24 * 60 * 60);
+    let is_due = latest_backup.as_ref().map_or(true, |(_, modified)| {
+        now.duration_since(*modified)
+            .map_or(false, |elapsed| elapsed >= interval)
+    });
+    let has_changes = match (workspace_change, latest_backup.as_ref()) {
+        (Some(_), None) => true,
+        (Some(changed), Some((_, backed_up))) => changed > *backed_up,
+        _ => false,
+    };
+
+    if !is_due || !has_changes {
+        return Ok(AutomaticBackupStatus {
+            last_backup: latest_backup.map(|(summary, _)| summary),
+            created: false,
+        });
+    }
+
+    let path = directory.join(format!(
+        "Commissioning Workspace - Automatic - {}.cwb",
+        Utc::now().format("%Y-%m-%d %H%M%S%.3f")
+    ));
+    let summary = create_backup_at(&app, &path)?;
+    prune_automatic_backups(&directory, retention_count)?;
+
+    Ok(AutomaticBackupStatus {
+        last_backup: Some(summary),
+        created: true,
+    })
 }
 
 #[tauri::command]

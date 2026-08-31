@@ -134,7 +134,7 @@
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 14px 20px;
   padding: 16px;
 }
@@ -157,8 +157,7 @@
 }
 
 .settings-action-card > div {
-  min-width: min(150px, 100%);
-  flex: 1 1 220px;
+  flex: 1 1 0;
 }
 
 .settings-action-card p,
@@ -290,6 +289,108 @@
   border-radius: 9px;
 }
 
+.settings-automatic-backup {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  padding: 14px;
+}
+
+.settings-automatic-backup::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 1px;
+  content: "";
+  background: var(--color-border-subtle);
+}
+
+.settings-automatic-backup-copy {
+  display: flex;
+  min-width: 180px;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-automatic-backup-copy p,
+.settings-automatic-backup-copy span {
+  margin: 0;
+  line-height: var(--line-height-body);
+}
+
+.settings-automatic-backup-copy p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.settings-automatic-backup-copy span {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.settings-automatic-backup-controls {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.settings-binary-selector {
+  display: grid;
+  width: 128px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+}
+
+.settings-backup-field {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-backup-field > span {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.settings-backup-field select {
+  width: 126px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 28px 0 10px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-body);
+  outline: none;
+}
+
+.settings-backup-field select:focus {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus-accent);
+}
+
+.settings-backup-field select:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-disabled);
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border);
+}
+
 .settings-recovery-action {
   position: relative;
   display: flex;
@@ -306,7 +407,7 @@
   flex: 1 1 auto;
 }
 
-.settings-recovery-action:not(:nth-child(3))::after {
+.settings-recovery-action:not(:nth-of-type(4))::after {
   position: absolute;
   top: 12px;
   right: 0;
@@ -494,6 +595,36 @@
 }
 
 @container (max-width: 860px) {
+  .settings-automatic-backup {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-automatic-backup-copy {
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .settings-automatic-backup-controls {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 24px;
+  }
+
+  .settings-backup-field {
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+  }
+
+  .settings-binary-selector,
+  .settings-backup-field select {
+    width: 100%;
+  }
+
   .settings-recovery-action {
     align-items: stretch;
     flex-direction: column;
@@ -510,7 +641,54 @@
   }
 }
 
+@container (max-width: 680px) {
+  .settings-automatic-backup-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 14px;
+  }
+
+  .settings-backup-field {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .settings-binary-selector,
+  .settings-backup-field select {
+    width: 100%;
+  }
+}
+
+@container (max-width: 460px) {
+  .settings-action-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-action-card .settings-card-button {
+    align-self: center;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 680px) {
+  .settings-automatic-backup-controls {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .settings-backup-field {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+  }
+
+  .settings-binary-selector,
+  .settings-backup-field select {
+    width: 100%;
+  }
+
   .settings-appearance-card {
     align-items: stretch;
     flex-direction: column;
@@ -536,5 +714,13 @@
 
   .project-export-select-all {
     align-self: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .settings-backup-field {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 4px;
   }
 }

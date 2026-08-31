@@ -1536,8 +1536,10 @@ pub fn run() {
             project_transfer::inspect_project_package,
             project_transfer::import_project_package,
             backup::create_workspace_backup,
+            backup::get_automatic_workspace_backup_status,
             backup::inspect_workspace_backup,
             backup::restore_workspace_backup,
+            backup::run_automatic_workspace_backup,
             backup::open_workspace_backup_directory,
             backup::restart_application
         ])

@@ -49,6 +49,10 @@ import {
   saveContinueWorkingLocation,
   type ContinueWorkingItem,
 } from "./services/continueWorkingService";
+import {
+  getAutomaticBackupPreferences,
+  runAutomaticWorkspaceBackup,
+} from "./services/workspaceBackupService";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 import "./theme.css";
 import "./App.css";
@@ -100,6 +104,19 @@ function App() {
   const [attentionNavigation, setAttentionNavigation] =
     useState<AttentionNavigationRequest | null>(null);
   const attentionRequestSequence = useRef(0);
+  const automaticBackupStarted = useRef(false);
+
+  useEffect(() => {
+    if (automaticBackupStarted.current) {
+      return;
+    }
+    automaticBackupStarted.current = true;
+
+    const preferences = getAutomaticBackupPreferences();
+    if (preferences.enabled) {
+      void runAutomaticWorkspaceBackup(preferences).catch(() => undefined);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

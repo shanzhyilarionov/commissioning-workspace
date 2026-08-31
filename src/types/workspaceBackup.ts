@@ -7,6 +7,19 @@ export interface WorkspaceBackupSummary {
   totalBytes: number;
 }
 
+export type AutomaticBackupFrequency = "daily" | "weekly";
+
+export interface AutomaticBackupPreferences {
+  enabled: boolean;
+  frequency: AutomaticBackupFrequency;
+  retentionCount: number;
+}
+
+export interface AutomaticBackupStatus {
+  lastBackup: WorkspaceBackupSummary | null;
+  created: boolean;
+}
+
 export interface WorkspaceBackupInspection {
   path: string;
   createdAt: string;

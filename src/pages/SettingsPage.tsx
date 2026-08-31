@@ -14,10 +14,14 @@ import {
 import {
   chooseAndCreateWorkspaceBackup,
   chooseAndInspectWorkspaceBackup,
+  getAutomaticBackupPreferences,
+  getAutomaticWorkspaceBackupStatus,
   openWorkspaceBackupDirectory,
   restartApplication,
   restoreWorkspaceBackup,
   revealBackup,
+  runAutomaticWorkspaceBackup,
+  saveAutomaticBackupPreferences,
 } from "../services/workspaceBackupService";
 import {
   getCurrentOperator,
@@ -30,6 +34,8 @@ import type {
   ProjectPackageSummary,
 } from "../types/projectTransfer";
 import type {
+  AutomaticBackupPreferences,
+  AutomaticBackupStatus,
   WorkspaceBackupInspection,
   WorkspaceBackupSummary,
 } from "../types/workspaceBackup";
@@ -107,6 +113,14 @@ function SettingsPage({
     useState<WorkspaceBackupSummary | null>(null);
   const [selectedBackup, setSelectedBackup] =
     useState<WorkspaceBackupInspection | null>(null);
+  const [automaticBackupPreferences, setAutomaticBackupPreferences] =
+    useState<AutomaticBackupPreferences>(getAutomaticBackupPreferences);
+  const [automaticBackupStatus, setAutomaticBackupStatus] =
+    useState<AutomaticBackupStatus | null>(null);
+  const [isUpdatingAutomaticBackups, setIsUpdatingAutomaticBackups] =
+    useState(false);
+  const [automaticBackupError, setAutomaticBackupError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,6 +147,53 @@ function SettingsPage({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAutomaticBackupStatus() {
+      try {
+        const status = await getAutomaticWorkspaceBackupStatus();
+        if (!cancelled) {
+          setAutomaticBackupStatus(status);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAutomaticBackupError(
+            errorMessage(error, "Failed to load automatic backup status."),
+          );
+        }
+      }
+    }
+
+    void loadAutomaticBackupStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function updateAutomaticBackupPreferences(
+    next: AutomaticBackupPreferences,
+  ) {
+    setAutomaticBackupPreferences(next);
+    saveAutomaticBackupPreferences(next);
+    setAutomaticBackupError(null);
+
+    if (!next.enabled) {
+      return;
+    }
+
+    setIsUpdatingAutomaticBackups(true);
+    try {
+      setAutomaticBackupStatus(await runAutomaticWorkspaceBackup(next));
+    } catch (error) {
+      setAutomaticBackupError(
+        errorMessage(error, "Failed to update automatic backups."),
+      );
+    } finally {
+      setIsUpdatingAutomaticBackups(false);
+    }
+  }
 
   async function handleSaveOperator(
     event: FormEvent<HTMLFormElement>,
@@ -561,6 +622,112 @@ function SettingsPage({
               </div>
 
               <section className="settings-recovery-panel">
+                <div className="settings-automatic-backup">
+                  <div className="settings-automatic-backup-copy">
+                    <p>
+                      Create a backup after the selected interval when the
+                      workspace has changed.
+                    </p>
+                    <span>
+                      {automaticBackupStatus?.lastBackup
+                        ? `Last automatic backup: ${formatDateTime(
+                            automaticBackupStatus.lastBackup.createdAt,
+                          )}`
+                        : "No automatic backup has been created yet."}
+                    </span>
+                  </div>
+
+                  <div className="settings-automatic-backup-controls">
+                    <div className="settings-backup-field settings-backup-toggle-field">
+                      <span>Auto backup</span>
+                      <div
+                        className="settings-binary-selector"
+                        role="group"
+                        aria-label="Automatic backups"
+                      >
+                        <button
+                          type="button"
+                          className={
+                            automaticBackupPreferences.enabled
+                              ? "settings-theme-option active"
+                              : "settings-theme-option"
+                          }
+                          aria-pressed={automaticBackupPreferences.enabled}
+                          disabled={isUpdatingAutomaticBackups}
+                          onClick={() =>
+                            void updateAutomaticBackupPreferences({
+                              ...automaticBackupPreferences,
+                              enabled: true,
+                            })
+                          }
+                        >
+                          On
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            !automaticBackupPreferences.enabled
+                              ? "settings-theme-option active"
+                              : "settings-theme-option"
+                          }
+                          aria-pressed={!automaticBackupPreferences.enabled}
+                          disabled={isUpdatingAutomaticBackups}
+                          onClick={() =>
+                            void updateAutomaticBackupPreferences({
+                              ...automaticBackupPreferences,
+                              enabled: false,
+                            })
+                          }
+                        >
+                          Off
+                        </button>
+                      </div>
+                    </div>
+
+                    <label className="settings-backup-field">
+                      <span>Frequency</span>
+                      <select
+                        value={automaticBackupPreferences.frequency}
+                        disabled={
+                          !automaticBackupPreferences.enabled ||
+                          isUpdatingAutomaticBackups
+                        }
+                        onChange={(event) =>
+                          void updateAutomaticBackupPreferences({
+                            ...automaticBackupPreferences,
+                            frequency: event.target.value as
+                              AutomaticBackupPreferences["frequency"],
+                          })
+                        }
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                    </label>
+
+                    <label className="settings-backup-field">
+                      <span>Keep</span>
+                      <select
+                        value={automaticBackupPreferences.retentionCount}
+                        disabled={
+                          !automaticBackupPreferences.enabled ||
+                          isUpdatingAutomaticBackups
+                        }
+                        onChange={(event) =>
+                          void updateAutomaticBackupPreferences({
+                            ...automaticBackupPreferences,
+                            retentionCount: Number(event.target.value),
+                          })
+                        }
+                      >
+                        <option value={5}>5 backups</option>
+                        <option value={10}>10 backups</option>
+                        <option value={20}>20 backups</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="settings-recovery-action">
                   <div>
                     <p>Save the complete database and every managed document.</p>
@@ -603,9 +770,11 @@ function SettingsPage({
                   </button>
                 </div>
 
-                {(backupError || (restoreError && !selectedBackup)) && (
+                {(automaticBackupError ||
+                  backupError ||
+                  (restoreError && !selectedBackup)) && (
                   <p className="settings-message settings-message-error" role="alert">
-                    {backupError || restoreError}
+                    {automaticBackupError || backupError || restoreError}
                   </p>
                 )}
 
