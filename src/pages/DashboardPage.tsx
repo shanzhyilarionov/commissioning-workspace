@@ -553,7 +553,6 @@ function ProjectOverviewPage({
                             className="overview-activity-item"
                             onClick={() => setSelectedAuditEvent(event)}
                           >
-                            <span className="overview-activity-marker" />
                             <span className="overview-activity-copy">
                               <strong>
                                 {event.entityLabel || "Untitled record"}

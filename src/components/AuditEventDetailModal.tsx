@@ -12,13 +12,6 @@ interface AuditEventDetailModalProps {
   onOpenRecord: (event: AuditEvent) => void;
 }
 
-function formatAction(action: string): string {
-  return action
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function formatEntity(type: AuditEntityType): string {
   switch (type) {
     case "project":
@@ -49,6 +42,23 @@ function formatDateTime(value: string): string {
 
 function canOpenRecord(event: AuditEvent): boolean {
   return event.entityType !== "project" && event.action !== "deleted";
+}
+
+function getStatusValueClassName(
+  event: AuditEvent,
+  field: string,
+  value: unknown,
+): string | undefined {
+  if (
+    formatAuditFieldName(field) !== "Status" ||
+    typeof value !== "string"
+  ) {
+    return undefined;
+  }
+
+  const normalizedStatus = value.trim().toLowerCase().replace(/\s+/g, "_");
+
+  return `audit-event-status-value ${event.entityType} ${normalizedStatus}`;
 }
 
 function AuditEventDetailModal({
@@ -97,12 +107,9 @@ function AuditEventDetailModal({
                 </h2>
                 <p>{event.entityLabel || "Untitled record"}</p>
               </div>
-              <span className="audit-event-action">
-                {formatAction(event.action)}
-              </span>
             </div>
 
-            <dl className="audit-event-metadata">
+            <dl className="audit-event-card audit-event-metadata">
               <div>
                 <dt>Record type</dt>
                 <dd>{formatEntity(event.entityType)}</dd>
@@ -120,35 +127,50 @@ function AuditEventDetailModal({
             {event.reason && (
               <section className="audit-event-section">
                 <h3>Reason</h3>
-                <p>{event.reason}</p>
+                <p className="audit-event-card audit-event-reason">
+                  {event.reason}
+                </p>
               </section>
             )}
 
             {details.changes.length > 0 && (
               <section className="audit-event-section">
                 <h3>Changes</h3>
-                <div className="audit-change-table" role="table">
-                  <div className="audit-change-row audit-change-header" role="row">
-                    <span role="columnheader">Field</span>
-                    <span role="columnheader">Before</span>
-                    <span role="columnheader">After</span>
-                  </div>
+                <div className="audit-event-card audit-change-table">
                   {details.changes.map((change) => (
-                    <div
+                    <dl
                       key={change.field}
                       className="audit-change-row"
-                      role="row"
                     >
-                      <strong role="cell">
-                        {formatAuditFieldName(change.field)}
-                      </strong>
-                      <span role="cell">
-                        {formatAuditDetailValue(change.before)}
-                      </span>
-                      <span role="cell">
-                        {formatAuditDetailValue(change.after)}
-                      </span>
-                    </div>
+                      <div>
+                        <dt>Field</dt>
+                        <dd>{formatAuditFieldName(change.field)}</dd>
+                      </div>
+                      <div>
+                        <dt>Before</dt>
+                        <dd
+                          className={getStatusValueClassName(
+                            event,
+                            change.field,
+                            change.before,
+                          )}
+                        >
+                          {formatAuditDetailValue(change.before)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>After</dt>
+                        <dd
+                          className={getStatusValueClassName(
+                            event,
+                            change.field,
+                            change.after,
+                          )}
+                        >
+                          {formatAuditDetailValue(change.after)}
+                        </dd>
+                      </div>
+                    </dl>
                   ))}
                 </div>
               </section>
@@ -157,11 +179,19 @@ function AuditEventDetailModal({
             {details.values.length > 0 && (
               <section className="audit-event-section">
                 <h3>Recorded values</h3>
-                <dl className="audit-event-values">
+                <dl className="audit-event-card audit-event-values">
                   {details.values.map((detail) => (
                     <div key={detail.field}>
                       <dt>{formatAuditFieldName(detail.field)}</dt>
-                      <dd>{formatAuditDetailValue(detail.value)}</dd>
+                      <dd
+                        className={getStatusValueClassName(
+                          event,
+                          detail.field,
+                          detail.value,
+                        )}
+                      >
+                        {formatAuditDetailValue(detail.value)}
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -169,7 +199,7 @@ function AuditEventDetailModal({
             )}
 
             {details.changes.length === 0 && details.values.length === 0 && (
-              <div className="audit-event-empty">
+              <div className="audit-event-card audit-event-empty">
                 No additional field details were recorded for this event.
               </div>
             )}

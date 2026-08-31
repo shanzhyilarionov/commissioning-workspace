@@ -12,6 +12,8 @@ interface ActivityHistoryModalProps {
   onOpenRecord: (event: AuditEvent) => void;
 }
 
+type ActivityEntityFilter = "all" | AuditEntityType;
+
 function formatAction(action: string): string {
   return action
     .split("_")
@@ -57,6 +59,9 @@ function ActivityHistoryModal({
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [entityTypeFilter, setEntityTypeFilter] =
+    useState<ActivityEntityFilter>("all");
+  const [actionFilter, setActionFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -99,6 +104,8 @@ function ActivityHistoryModal({
 
     setSelectedEvent(null);
     setSearchQuery("");
+    setEntityTypeFilter("all");
+    setActionFilter("all");
     setExportError(null);
     setExportedCount(null);
     void loadActivityHistory();
@@ -126,23 +133,46 @@ function ActivityHistoryModal({
   const filteredEvents = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return events;
-    }
+    return events.filter((event) => {
+      const matchesSearch =
+        !normalizedQuery ||
+        [
+          event.entityLabel,
+          event.actor,
+          event.reason,
+          formatEntity(event.entityType),
+          formatAction(event.action),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      const matchesEntityType =
+        entityTypeFilter === "all" ||
+        event.entityType === entityTypeFilter;
+      const matchesAction =
+        actionFilter === "all" || event.action === actionFilter;
 
-    return events.filter((event) =>
-      [
-        event.entityLabel,
-        event.actor,
-        event.reason,
-        formatEntity(event.entityType),
-        formatAction(event.action),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedQuery),
-    );
-  }, [events, searchQuery]);
+      return matchesSearch && matchesEntityType && matchesAction;
+    });
+  }, [actionFilter, entityTypeFilter, events, searchQuery]);
+
+  const entityTypeOptions = useMemo(
+    () =>
+      Array.from(new Set(events.map((event) => event.entityType))).sort(
+        (left, right) =>
+          formatEntity(left).localeCompare(formatEntity(right)),
+      ),
+    [events],
+  );
+
+  const actionOptions = useMemo(
+    () =>
+      Array.from(new Set(events.map((event) => event.action))).sort(
+        (left, right) =>
+          formatAction(left).localeCompare(formatAction(right)),
+      ),
+    [events],
+  );
 
   function handleOpenRecord(event: AuditEvent) {
     setSelectedEvent(null);
@@ -202,34 +232,76 @@ function ActivityHistoryModal({
         aria-modal="true"
         aria-labelledby="activity-history-title"
       >
-        <div className="activity-history-heading">
-          <div>
-            <h2 id="activity-history-title" className="modal-form-title">
-              Activity history
-            </h2>
-            <p>{projectName}</p>
+        <div className="activity-history-header">
+          <div className="activity-history-heading">
+            <div>
+              <h2 id="activity-history-title" className="modal-form-title">
+                Activity history
+              </h2>
+              <p>{projectName}</p>
+            </div>
+            {!isLoading && !loadError && (
+              <span className="activity-history-count">
+                {filteredEvents.length} of {events.length}
+              </span>
+            )}
           </div>
-          {!isLoading && !loadError && (
-            <span className="activity-history-count">
-              {filteredEvents.length} of {events.length}
-            </span>
-          )}
-        </div>
 
-        <div className="activity-history-toolbar">
-          <input
-            className="project-search-input activity-history-search-input"
-            type="search"
-            value={searchQuery}
-            placeholder="Search record, operator, or reason"
-            aria-label="Search activity history"
-            disabled={isLoading || events.length === 0}
-            onChange={(event) => {
-              setSearchQuery(event.target.value);
-              setExportError(null);
-              setExportedCount(null);
-            }}
-          />
+          <div className="activity-history-toolbar">
+            <input
+              className="project-search-input activity-history-search-input"
+              type="search"
+              value={searchQuery}
+              placeholder="Search record, operator, or reason"
+              aria-label="Search activity history"
+              disabled={isLoading || events.length === 0}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setExportError(null);
+                setExportedCount(null);
+              }}
+            />
+
+            <select
+              className="asset-status-filter activity-history-filter"
+              value={entityTypeFilter}
+              aria-label="Filter activity by record type"
+              disabled={isLoading || events.length === 0}
+              onChange={(event) => {
+                setEntityTypeFilter(
+                  event.target.value as ActivityEntityFilter,
+                );
+                setExportError(null);
+                setExportedCount(null);
+              }}
+            >
+              <option value="all">All record types</option>
+              {entityTypeOptions.map((entityType) => (
+                <option key={entityType} value={entityType}>
+                  {formatEntity(entityType)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="asset-status-filter activity-history-filter"
+              value={actionFilter}
+              aria-label="Filter activity by action"
+              disabled={isLoading || events.length === 0}
+              onChange={(event) => {
+                setActionFilter(event.target.value);
+                setExportError(null);
+                setExportedCount(null);
+              }}
+            >
+              <option value="all">All actions</option>
+              {actionOptions.map((action) => (
+                <option key={action} value={action}>
+                  {formatAction(action)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="activity-history-content">
@@ -258,7 +330,7 @@ function ActivityHistoryModal({
           ) : filteredEvents.length === 0 ? (
             <div className="activity-history-state">
               <strong>No matching activity</strong>
-              <span>Change the search text to view other records.</span>
+              <span>Change the search text or filters to view other records.</span>
             </div>
           ) : (
             <div className="activity-history-list">
@@ -269,17 +341,12 @@ function ActivityHistoryModal({
                   className="overview-activity-item"
                   onClick={() => setSelectedEvent(event)}
                 >
-                  <span className="overview-activity-marker" />
                   <span className="overview-activity-copy">
-                    <span>
-                      {formatEntity(event.entityType)}
-                      {" · "}
-                      {formatAction(event.action)}
-                    </span>
                     <strong>{event.entityLabel || "Untitled record"}</strong>
                     <small>
                       {event.actor || "Unknown operator"}
-                      {event.reason ? ` · ${event.reason}` : ""}
+                      {" · "}
+                      {event.reason || formatAction(event.action)}
                     </small>
                   </span>
                   <time dateTime={event.createdAt}>
