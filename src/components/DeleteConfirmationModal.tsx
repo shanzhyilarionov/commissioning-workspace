@@ -9,6 +9,7 @@ interface DeleteConfirmationModalProps {
   isSubmitting: boolean;
   error: string | null;
   confirmTone?: "danger" | "primary";
+  confirmDisabled?: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -22,6 +23,7 @@ function DeleteConfirmationModal({
   isSubmitting,
   error,
   confirmTone = "danger",
+  confirmDisabled = false,
   onClose,
   onConfirm,
 }: DeleteConfirmationModalProps) {
@@ -81,7 +83,7 @@ function DeleteConfirmationModal({
             className={
               confirmTone === "primary" ? "primary-button" : "danger-button"
             }
-            disabled={isSubmitting}
+            disabled={isSubmitting || confirmDisabled}
             onClick={onConfirm}
           >
             {isSubmitting ? submittingLabel : confirmLabel}

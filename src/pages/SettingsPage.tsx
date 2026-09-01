@@ -14,10 +14,10 @@ import {
 import {
   chooseAndCreateWorkspaceBackup,
   chooseAndInspectWorkspaceBackup,
+  clearWorkspace,
   getAutomaticBackupPreferences,
   getAutomaticWorkspaceBackupStatus,
   openWorkspaceBackupDirectory,
-  restartApplication,
   restoreWorkspaceBackup,
   revealBackup,
   runAutomaticWorkspaceBackup,
@@ -48,6 +48,8 @@ interface SettingsPageProps {
   onOperatorNameChange: (operatorName: string) => void;
   onProjectsImported: () => Promise<void>;
   onThemeChange: (theme: AppTheme) => void;
+  onWorkspaceCleared: () => void;
+  onWorkspaceRestored: () => Promise<void>;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -85,6 +87,8 @@ function SettingsPage({
   onOperatorNameChange,
   onProjectsImported,
   onThemeChange,
+  onWorkspaceCleared,
+  onWorkspaceRestored,
 }: SettingsPageProps) {
   const [operatorName, setOperatorName] = useState("");
   const [savedOperatorName, setSavedOperatorName] = useState("");
@@ -120,6 +124,13 @@ function SettingsPage({
   const [isUpdatingAutomaticBackups, setIsUpdatingAutomaticBackups] =
     useState(false);
   const [automaticBackupError, setAutomaticBackupError] =
+    useState<string | null>(null);
+  const [isClearWorkspaceModalOpen, setIsClearWorkspaceModalOpen] =
+    useState(false);
+  const [clearWorkspaceConfirmation, setClearWorkspaceConfirmation] =
+    useState("");
+  const [isClearingWorkspace, setIsClearingWorkspace] = useState(false);
+  const [clearWorkspaceError, setClearWorkspaceError] =
     useState<string | null>(null);
 
   useEffect(() => {
@@ -400,15 +411,72 @@ function SettingsPage({
 
     try {
       await restoreWorkspaceBackup(selectedBackup);
-      await restartApplication();
     } catch (error) {
       setRestoreError(errorMessage(error, "Failed to restore the workspace backup."));
+      setIsRestoringBackup(false);
+      return;
+    }
+
+    try {
+      await onWorkspaceRestored();
+    } catch (error) {
+      setRestoreError(
+        errorMessage(
+          error,
+          "The workspace was restored, but the interface could not reload it. Close and reopen the application to continue.",
+        ),
+      );
       setIsRestoringBackup(false);
     }
   }
 
+  function handleCloseClearWorkspaceConfirmation() {
+    if (!isClearingWorkspace) {
+      setIsClearWorkspaceModalOpen(false);
+      setClearWorkspaceConfirmation("");
+      setClearWorkspaceError(null);
+    }
+  }
+
+  async function handleConfirmClearWorkspace() {
+    if (
+      isClearingWorkspace ||
+      clearWorkspaceConfirmation !== "CLEAR WORKSPACE"
+    ) {
+      return;
+    }
+
+    setIsClearingWorkspace(true);
+    setClearWorkspaceError(null);
+
+    try {
+      await clearWorkspace();
+    } catch (error) {
+      setClearWorkspaceError(
+        errorMessage(error, "Failed to clear the workspace."),
+      );
+      setIsClearingWorkspace(false);
+      return;
+    }
+
+    try {
+      onWorkspaceCleared();
+    } catch (error) {
+      setClearWorkspaceError(
+        errorMessage(
+          error,
+          "The workspace was cleared, but the interface could not refresh. Close and reopen the application to continue.",
+        ),
+      );
+      setIsClearingWorkspace(false);
+    }
+  }
+
   const recoveryBusy =
-    isCreatingBackup || isInspectingBackup || isRestoringBackup;
+    isCreatingBackup ||
+    isInspectingBackup ||
+    isRestoringBackup ||
+    isClearingWorkspace;
 
   return (
     <>
@@ -758,7 +826,7 @@ function SettingsPage({
 
                 <div className="settings-recovery-action">
                   <div>
-                    <p>Open the automatic pre-restore backup directory.</p>
+                    <p>Open the automatic and safety backup directory.</p>
                   </div>
                   <button
                     type="button"
@@ -797,6 +865,40 @@ function SettingsPage({
                     </button>
                   </div>
                 )}
+              </section>
+            </section>
+
+            <section className="settings-group">
+              <div className="settings-group-heading">
+                <h4>Danger zone</h4>
+              </div>
+
+              <section className="settings-danger-panel">
+                <div>
+                  <p>
+                    Remove every project, record, audit event, revision, and
+                    managed document. A verified safety backup is created first.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button settings-card-button"
+                  disabled={
+                    recoveryBusy ||
+                    isInspectingImport ||
+                    isImporting ||
+                    isExporting ||
+                    isSavingOperator ||
+                    isUpdatingAutomaticBackups
+                  }
+                  onClick={() => {
+                    setClearWorkspaceConfirmation("");
+                    setClearWorkspaceError(null);
+                    setIsClearWorkspaceModalOpen(true);
+                  }}
+                >
+                  Clear workspace
+                </button>
               </section>
             </section>
           </div>
@@ -870,8 +972,8 @@ function SettingsPage({
             <div className="restore-confirmation-content">
               <p>
                 This will replace all current projects, records, settings, and
-                managed documents. The application will restart when the restore
-                is complete.
+                managed documents. The restored workspace will open when the
+                restore is complete.
               </p>
               <dl className="restore-backup-details">
                 <div>
@@ -897,12 +999,54 @@ function SettingsPage({
             </div>
           ) : null
         }
-        confirmLabel="Restore & restart"
+        confirmLabel="Restore workspace"
         submittingLabel="Restoring..."
         isSubmitting={isRestoringBackup}
         error={restoreError}
         onClose={handleCloseRestoreConfirmation}
         onConfirm={() => void handleConfirmRestore()}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={isClearWorkspaceModalOpen}
+        title="Clear the entire workspace?"
+        message={
+          <div className="clear-workspace-confirmation-content">
+            <p>
+              This permanently removes all projects, records, audit history,
+              revisions, the current operator, and managed documents from this
+              device. Theme and automatic backup preferences remain unchanged.
+            </p>
+            <p>
+              A verified safety backup will be created before anything is
+              removed.
+            </p>
+            <label className="clear-workspace-confirmation-field">
+              <span>
+                Type <strong>CLEAR WORKSPACE</strong> to confirm
+              </span>
+              <input
+                type="text"
+                value={clearWorkspaceConfirmation}
+                disabled={isClearingWorkspace}
+                autoFocus
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => {
+                  setClearWorkspaceConfirmation(event.target.value);
+                  setClearWorkspaceError(null);
+                }}
+              />
+            </label>
+          </div>
+        }
+        confirmLabel="Clear workspace"
+        submittingLabel="Creating backup & clearing..."
+        isSubmitting={isClearingWorkspace}
+        error={clearWorkspaceError}
+        confirmDisabled={clearWorkspaceConfirmation !== "CLEAR WORKSPACE"}
+        onClose={handleCloseClearWorkspaceConfirmation}
+        onConfirm={() => void handleConfirmClearWorkspace()}
       />
     </>
   );

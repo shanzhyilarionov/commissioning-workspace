@@ -99,6 +99,39 @@ struct ValidatedBackup {
     total_bytes: u64,
 }
 
+struct StagedWorkspaceDocuments {
+    temporary_directory: TempDir,
+    staged_path: PathBuf,
+    original_path: PathBuf,
+}
+
+impl StagedWorkspaceDocuments {
+    fn restore(self) -> Result<(), String> {
+        if self.original_path.exists() {
+            let recovery_path = self.temporary_directory.keep();
+            return Err(format!(
+                "The workspace database was not changed, but managed documents could not be restored because the original path already exists. The documents were preserved at {}.",
+                recovery_path.display()
+            ));
+        }
+
+        if let Err(error) = fs::rename(&self.staged_path, &self.original_path) {
+            let recovery_path = self.temporary_directory.keep();
+            return Err(format!(
+                "The workspace database was not changed, but managed documents could not be restored: {error}. The documents were preserved at {}.",
+                recovery_path.display()
+            ));
+        }
+
+        let _ = self.temporary_directory.close();
+        Ok(())
+    }
+
+    fn discard(self) {
+        let _ = self.temporary_directory.close();
+    }
+}
+
 fn application_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
@@ -642,12 +675,15 @@ fn project_storage_root_for_restore(destination: &Path) -> Result<PathBuf, Strin
     Ok(live_data_dir.join("projects"))
 }
 
-fn safety_backup_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+fn safety_backup_path(
+    app: &tauri::AppHandle,
+    action: &str,
+) -> Result<PathBuf, String> {
     let directory = backup_storage_root(app)?.join("safety");
     fs::create_dir_all(&directory)
         .map_err(|error| format!("Failed to create the safety backup directory: {error}"))?;
     Ok(directory.join(format!(
-        "Commissioning Workspace - Before Restore - {}.cwb",
+        "Commissioning Workspace - Before {action} - {}.cwb",
         Utc::now().format("%Y-%m-%d %H%M%S%.3f")
     )))
 }
@@ -795,6 +831,111 @@ fn path_with_suffix(path: &Path, suffix: &str) -> PathBuf {
     let mut value = path.as_os_str().to_os_string();
     value.push(suffix);
     PathBuf::from(value)
+}
+
+fn stage_workspace_documents(
+    projects_root: &Path,
+) -> Result<Option<StagedWorkspaceDocuments>, String> {
+    if !projects_root.exists() {
+        return Ok(None);
+    }
+
+    let data_directory = projects_root
+        .parent()
+        .ok_or_else(|| "Failed to resolve managed document storage.".to_string())?;
+    let temporary_directory = tempfile::Builder::new()
+        .prefix(".workspace-clear-")
+        .tempdir_in(data_directory)
+        .map_err(|error| format!("Failed to prepare managed document cleanup: {error}"))?;
+    let staged_path = temporary_directory.path().join("projects");
+    fs::rename(projects_root, &staged_path)
+        .map_err(|error| format!("Failed to stage managed documents for removal: {error}"))?;
+
+    Ok(Some(StagedWorkspaceDocuments {
+        temporary_directory,
+        staged_path,
+        original_path: projects_root.to_path_buf(),
+    }))
+}
+
+fn clear_workspace_data(database: &Path, projects_root: &Path) -> Result<(), String> {
+    let staged_documents = stage_workspace_documents(projects_root)?;
+
+    let clear_result = (|| -> Result<(), String> {
+        let mut connection = Connection::open(database)
+            .map_err(|error| format!("Failed to open the workspace database: {error}"))?;
+        connection
+            .execute_batch("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;")
+            .map_err(|error| format!("Failed to prepare the workspace reset: {error}"))?;
+        let transaction = connection
+            .transaction()
+            .map_err(|error| format!("Failed to start the workspace reset: {error}"))?;
+
+        let context_rows = transaction
+            .execute(
+                "
+                    UPDATE audit_operation_context
+                    SET enabled = 0, action = '', actor = '', reason = ''
+                    WHERE id = 1
+                ",
+                [],
+            )
+            .map_err(|error| format!("Failed to pause audit capture: {error}"))?;
+        if context_rows != 1 {
+            return Err("The workspace audit state is unavailable.".to_string());
+        }
+
+        transaction
+            .execute("DELETE FROM projects", [])
+            .map_err(|error| format!("Failed to remove workspace records: {error}"))?;
+        transaction
+            .execute("DELETE FROM workspace_settings", [])
+            .map_err(|error| format!("Failed to reset workspace settings: {error}"))?;
+        transaction
+            .execute(
+                "
+                    INSERT INTO workspace_settings (key, value, updated_at)
+                    VALUES (
+                        'current_operator',
+                        '',
+                        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    )
+                ",
+                [],
+            )
+            .map_err(|error| format!("Failed to restore workspace defaults: {error}"))?;
+        transaction
+            .execute(
+                "
+                    UPDATE audit_operation_context
+                    SET enabled = 1, action = '', actor = '', reason = ''
+                    WHERE id = 1
+                ",
+                [],
+            )
+            .map_err(|error| format!("Failed to restore audit capture: {error}"))?;
+        transaction
+            .commit()
+            .map_err(|error| format!("Failed to commit the workspace reset: {error}"))?;
+        Ok(())
+    })();
+
+    match clear_result {
+        Ok(()) => {
+            if let Some(staged_documents) = staged_documents {
+                staged_documents.discard();
+            }
+            Ok(())
+        }
+        Err(error) => {
+            if let Some(staged_documents) = staged_documents {
+                if let Err(restore_error) = staged_documents.restore() {
+                    return Err(format!("{error} {restore_error}"));
+                }
+            }
+            Err(error)
+        }
+    }
 }
 
 fn replace_workspace_data(
@@ -1004,7 +1145,7 @@ pub fn restore_workspace_backup(
         ));
     }
 
-    let safety_path = safety_backup_path(&app)?;
+    let safety_path = safety_backup_path(&app, "Restore")?;
     create_backup_at(&app, &safety_path)?;
     replace_workspace_data(
         &app,
@@ -1022,6 +1163,15 @@ pub fn restore_workspace_backup(
 }
 
 #[tauri::command]
+pub fn clear_workspace(app: tauri::AppHandle) -> Result<(), String> {
+    let safety_path = safety_backup_path(&app, "Clear")?;
+    create_backup_at(&app, &safety_path)?;
+    validate_backup(&safety_path)
+        .map_err(|error| format!("The safety backup could not be verified: {error}"))?;
+    clear_workspace_data(&database_path(&app)?, &project_storage_root(&app)?)
+}
+
+#[tauri::command]
 pub fn open_workspace_backup_directory(app: tauri::AppHandle) -> Result<(), String> {
     let directory = backup_storage_root(&app)?;
     fs::create_dir_all(&directory)
@@ -1029,11 +1179,6 @@ pub fn open_workspace_backup_directory(app: tauri::AppHandle) -> Result<(), Stri
     app.opener()
         .open_path(directory.to_string_lossy().into_owned(), None::<&str>)
         .map_err(|error| format!("Failed to open the backup directory: {error}"))
-}
-
-#[tauri::command]
-pub fn restart_application(app: tauri::AppHandle) {
-    app.restart();
 }
 
 #[cfg(test)]
@@ -1063,6 +1208,74 @@ mod tests {
                 CREATE TABLE readiness_stage_records (id TEXT PRIMARY KEY);
                 CREATE TABLE turnover_packages (id TEXT PRIMARY KEY);
                 INSERT INTO projects VALUES ('project-1');
+                "#,
+            )
+            .unwrap();
+    }
+
+    fn create_workspace_clear_test_database(path: &Path) {
+        let connection = Connection::open(path).unwrap();
+        connection
+            .execute_batch(
+                r#"
+                PRAGMA foreign_keys = ON;
+
+                CREATE TABLE projects (id TEXT PRIMARY KEY);
+                CREATE TABLE project_records (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE
+                );
+                CREATE TABLE audit_events (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE
+                );
+                CREATE TABLE test_record_revisions (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE
+                );
+                CREATE TABLE workspace_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE audit_operation_context (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    enabled INTEGER NOT NULL,
+                    action TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    reason TEXT NOT NULL
+                );
+
+                INSERT INTO projects VALUES ('project-1');
+                INSERT INTO project_records VALUES ('record-1', 'project-1');
+                INSERT INTO audit_events VALUES ('event-1', 'project-1');
+                INSERT INTO test_record_revisions VALUES ('revision-1', 'project-1');
+                INSERT INTO workspace_settings VALUES (
+                    'current_operator',
+                    'Operator One',
+                    '2026-01-01T00:00:00.000Z'
+                );
+                INSERT INTO workspace_settings VALUES (
+                    'future_workspace_setting',
+                    'value',
+                    '2026-01-01T00:00:00.000Z'
+                );
+                INSERT INTO audit_operation_context VALUES (
+                    1,
+                    1,
+                    'update',
+                    'Operator One',
+                    'Testing'
+                );
                 "#,
             )
             .unwrap();
@@ -1188,5 +1401,72 @@ mod tests {
         assert!(staging
             .join("projects/project-1/documents/document-1/manual.pdf")
             .is_file());
+    }
+
+    #[test]
+    fn clears_workspace_records_settings_and_documents() {
+        let data_directory = TempDir::new().unwrap();
+        let database = data_directory.path().join("workspace.db");
+        create_workspace_clear_test_database(&database);
+        let projects_root = data_directory.path().join("projects");
+        let document = projects_root.join("project-1/documents/manual.pdf");
+        fs::create_dir_all(document.parent().unwrap()).unwrap();
+        fs::write(&document, b"managed document").unwrap();
+
+        clear_workspace_data(&database, &projects_root).unwrap();
+
+        let connection = Connection::open(&database).unwrap();
+        for table in [
+            "projects",
+            "project_records",
+            "audit_events",
+            "test_record_revisions",
+        ] {
+            let count: i64 = connection
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(count, 0, "{table} should be empty");
+        }
+
+        let settings: Vec<(String, String)> = connection
+            .prepare("SELECT key, value FROM workspace_settings ORDER BY key")
+            .unwrap()
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(
+            settings,
+            vec![("current_operator".to_string(), "".to_string())]
+        );
+
+        let audit_context: (i64, String, String, String) = connection
+            .query_row(
+                "SELECT enabled, action, actor, reason FROM audit_operation_context WHERE id = 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            audit_context,
+            (1, "".to_string(), "".to_string(), "".to_string())
+        );
+        assert!(!projects_root.exists());
+    }
+
+    #[test]
+    fn restores_documents_when_workspace_clear_fails() {
+        let data_directory = TempDir::new().unwrap();
+        let database = data_directory.path().join("workspace.db");
+        Connection::open(&database).unwrap();
+        let projects_root = data_directory.path().join("projects");
+        let document = projects_root.join("project-1/documents/manual.pdf");
+        fs::create_dir_all(document.parent().unwrap()).unwrap();
+        fs::write(&document, b"managed document").unwrap();
+
+        assert!(clear_workspace_data(&database, &projects_root).is_err());
+        assert_eq!(fs::read(&document).unwrap(), b"managed document");
     }
 }

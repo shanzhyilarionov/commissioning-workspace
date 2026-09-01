@@ -145,9 +145,11 @@ export async function restoreWorkspaceBackup(
   }
 }
 
-export async function restartApplication(): Promise<void> {
+export async function clearWorkspace(): Promise<void> {
+  await closeDatabase();
+
   try {
-    await invoke("restart_application");
+    await invoke("clear_workspace");
   } catch (error) {
     await getDatabase().catch(() => undefined);
     throw error;

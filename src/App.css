@@ -435,23 +435,47 @@ pre,
 
 .first-project-welcome h2 {
   margin: 0;
-  font-size: var(--font-size-display);
-  font-weight: var(--font-weight-bold);
+  font-size: calc(var(--font-size-display) * 1.5);
+  font-weight: var(--font-weight-regular);
   line-height: var(--line-height-compact);
   letter-spacing: -0.02em;
   color: var(--color-text-primary);
+  white-space: nowrap;
 }
 
 .first-project-welcome-copy {
   display: flex;
+  align-items: center;
   flex-direction: column;
-  gap: 7px;
+  gap: 10px;
+}
+
+.first-project-welcome-lockup {
+  display: inline-grid;
+  justify-items: center;
+  gap: 15px;
+}
+
+.first-project-welcome-logo {
+  display: block;
+  width: 0;
+  min-width: 100%;
+  height: auto;
+}
+
+.first-project-welcome-logo-dark,
+:root[data-theme="dark"] .first-project-welcome-logo-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .first-project-welcome-logo-dark {
+  display: block;
 }
 
 .first-project-welcome h3 {
   margin: 0;
-  font-size: var(--font-size-heading);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
   line-height: var(--line-height-label);
   color: var(--color-text-primary);
 }

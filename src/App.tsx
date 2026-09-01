@@ -54,6 +54,8 @@ import {
   runAutomaticWorkspaceBackup,
 } from "./services/workspaceBackupService";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
+import firstProjectLogo from "./assets/logo-black.png";
+import firstProjectDarkLogo from "./assets/logo-white.png";
 import "./theme.css";
 import "./App.css";
 
@@ -454,6 +456,38 @@ function App() {
     setIsLoadingProjects(false);
   }
 
+  function resetWorkspaceView() {
+    clearContinueWorkingLocation();
+    setContinueWorkingLocation(null);
+    setCurrentProjectId(null);
+    setIsCreateProjectOpen(false);
+    setEditingProject(null);
+    setChangingProjectStatusId(null);
+    setProjectStatusActionError(null);
+    setProjectToDelete(null);
+    setIsDeletingProject(false);
+    setProjectDeleteError(null);
+    setAttentionNavigation(null);
+    setProjectLoadError(null);
+    setIsLoadingProjects(false);
+    setActivePage("Home");
+  }
+
+  function handleWorkspaceCleared() {
+    setProjects([]);
+    setCurrentOperatorName("");
+    resetWorkspaceView();
+  }
+
+  async function handleWorkspaceRestored() {
+    const restoredProjects = await listProjects();
+    const restoredOperator = await getCurrentOperator();
+
+    setProjects(restoredProjects);
+    setCurrentOperatorName(restoredOperator);
+    resetWorkspaceView();
+  }
+
   function handleThemeChange(nextTheme: AppTheme) {
     saveTheme(nextTheme);
     setTheme(nextTheme);
@@ -487,6 +521,8 @@ function App() {
           onOperatorNameChange={setCurrentOperatorName}
           onProjectsImported={handleProjectsImported}
           onThemeChange={handleThemeChange}
+          onWorkspaceCleared={handleWorkspaceCleared}
+          onWorkspaceRestored={handleWorkspaceRestored}
         />
       );
     }
@@ -518,7 +554,21 @@ function App() {
           aria-labelledby="first-project-welcome-title"
         >
           <div className="first-project-welcome-copy">
-            <h2 id="first-project-welcome-title">Welcome!</h2>
+            <div className="first-project-welcome-lockup">
+              <img
+                className="first-project-welcome-logo first-project-welcome-logo-light"
+                src={firstProjectLogo}
+                alt=""
+                aria-hidden="true"
+              />
+              <img
+                className="first-project-welcome-logo first-project-welcome-logo-dark"
+                src={firstProjectDarkLogo}
+                alt=""
+                aria-hidden="true"
+              />
+              <h2 id="first-project-welcome-title">Welcome!</h2>
+            </div>
             <h3>To begin with, create your first project.</h3>
           </div>
           <button
