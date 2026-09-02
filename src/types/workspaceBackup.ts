@@ -13,11 +13,14 @@ export interface AutomaticBackupPreferences {
   enabled: boolean;
   frequency: AutomaticBackupFrequency;
   retentionCount: number;
+  backupRoot: string | null;
 }
 
 export interface AutomaticBackupStatus {
   lastBackup: WorkspaceBackupSummary | null;
   created: boolean;
+  backupRoot: string;
+  nextBackupAt: string | null;
 }
 
 export interface WorkspaceBackupInspection {

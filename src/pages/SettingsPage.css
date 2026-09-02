@@ -282,7 +282,7 @@
 .settings-recovery-panel {
   display: grid;
   overflow: hidden;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   container-type: inline-size;
   background: var(--color-surface-subtle);
   border: 1px solid var(--color-border-subtle);
@@ -391,6 +391,54 @@
   border-color: var(--color-border);
 }
 
+.settings-backup-location {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+  padding: 14px;
+}
+
+.settings-backup-location::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 1px;
+  content: "";
+  background: var(--color-border-subtle);
+}
+
+.settings-backup-location-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-backup-location-copy p,
+.settings-backup-location-copy span {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+.settings-backup-location-copy span {
+  overflow-wrap: anywhere;
+}
+
+.settings-backup-location-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .settings-recovery-action {
   position: relative;
   display: flex;
@@ -407,7 +455,7 @@
   flex: 1 1 auto;
 }
 
-.settings-recovery-action:not(:nth-of-type(4))::after {
+.settings-recovery-action-divider::after {
   position: absolute;
   top: 12px;
   right: 0;
@@ -703,20 +751,6 @@
     width: 100%;
   }
 
-  .settings-recovery-action {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .settings-recovery-action > div {
-    width: 100%;
-    flex: 0 0 auto;
-  }
-
-  .settings-recovery-action .settings-card-button {
-    align-self: center;
-    margin-left: 0;
-  }
 }
 
 @container (max-width: 680px) {
@@ -736,9 +770,23 @@
   .settings-backup-field select {
     width: 100%;
   }
+
 }
 
 @container (max-width: 460px) {
+  .settings-recovery-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-recovery-action-divider::after {
+    top: auto;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    width: auto;
+    height: 1px;
+  }
+
   .settings-action-card,
   .settings-danger-panel {
     align-items: stretch;
@@ -802,5 +850,15 @@
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     gap: 4px;
+  }
+
+  .settings-backup-location-actions {
+    width: 100%;
+    align-self: stretch;
+    flex-direction: column;
+  }
+
+  .settings-backup-location-actions .secondary-button {
+    width: 100%;
   }
 }

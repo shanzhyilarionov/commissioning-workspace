@@ -12,16 +12,17 @@ import {
   revealProjectPackage,
 } from "../services/projectTransferService";
 import {
+  checkAutomaticWorkspaceBackup,
+  chooseAutomaticBackupDirectory,
   chooseAndCreateWorkspaceBackup,
   chooseAndInspectWorkspaceBackup,
   clearWorkspace,
   getAutomaticBackupPreferences,
-  getAutomaticWorkspaceBackupStatus,
   openWorkspaceBackupDirectory,
   restoreWorkspaceBackup,
   revealBackup,
-  runAutomaticWorkspaceBackup,
   saveAutomaticBackupPreferences,
+  subscribeAutomaticBackupMonitor,
 } from "../services/workspaceBackupService";
 import {
   getCurrentOperator,
@@ -81,6 +82,35 @@ function projectCountLabel(count: number): string {
   return `${count} ${count === 1 ? "project" : "projects"}`;
 }
 
+function automaticBackupStatusText(
+  preferences: AutomaticBackupPreferences,
+  status: AutomaticBackupStatus | null,
+): string {
+  if (!preferences.enabled) {
+    return "Automatic backups are turned off.";
+  }
+  if (!status?.lastBackup) {
+    return "No automatic backup has been created yet.";
+  }
+
+  const lastBackup = `Last backup: ${formatDateTime(status.lastBackup.createdAt)}`;
+  if (!status.nextBackupAt) {
+    return lastBackup;
+  }
+
+  const nextBackup = new Date(status.nextBackupAt);
+  if (
+    Number.isNaN(nextBackup.getTime()) ||
+    nextBackup.getTime() <= Date.now()
+  ) {
+    return `${lastBackup} · Waiting for workspace changes.`;
+  }
+
+  return `${lastBackup} · Next eligible: ${formatDateTime(
+    status.nextBackupAt,
+  )}.`;
+}
+
 function SettingsPage({
   projects,
   theme,
@@ -123,6 +153,8 @@ function SettingsPage({
     useState<AutomaticBackupStatus | null>(null);
   const [isUpdatingAutomaticBackups, setIsUpdatingAutomaticBackups] =
     useState(false);
+  const [isChoosingBackupLocation, setIsChoosingBackupLocation] =
+    useState(false);
   const [automaticBackupError, setAutomaticBackupError] =
     useState<string | null>(null);
   const [isClearWorkspaceModalOpen, setIsClearWorkspaceModalOpen] =
@@ -160,27 +192,14 @@ function SettingsPage({
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadAutomaticBackupStatus() {
-      try {
-        const status = await getAutomaticWorkspaceBackupStatus();
-        if (!cancelled) {
-          setAutomaticBackupStatus(status);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setAutomaticBackupError(
-            errorMessage(error, "Failed to load automatic backup status."),
-          );
-        }
-      }
-    }
-
-    void loadAutomaticBackupStatus();
-    return () => {
-      cancelled = true;
-    };
+    const unsubscribe = subscribeAutomaticBackupMonitor((snapshot) => {
+      setAutomaticBackupStatus(snapshot.status);
+      setAutomaticBackupError(snapshot.error);
+    });
+    void checkAutomaticWorkspaceBackup(
+      getAutomaticBackupPreferences(),
+    ).catch(() => undefined);
+    return unsubscribe;
   }, []);
 
   async function updateAutomaticBackupPreferences(
@@ -190,16 +209,69 @@ function SettingsPage({
     saveAutomaticBackupPreferences(next);
     setAutomaticBackupError(null);
 
-    if (!next.enabled) {
+    setIsUpdatingAutomaticBackups(true);
+    try {
+      setAutomaticBackupStatus(await checkAutomaticWorkspaceBackup(next));
+    } catch (error) {
+      setAutomaticBackupError(
+        errorMessage(error, "Failed to update automatic backups."),
+      );
+    } finally {
+      setIsUpdatingAutomaticBackups(false);
+    }
+  }
+
+  async function handleChooseAutomaticBackupLocation() {
+    if (isChoosingBackupLocation || isUpdatingAutomaticBackups) {
+      return;
+    }
+
+    setIsChoosingBackupLocation(true);
+    setAutomaticBackupError(null);
+
+    try {
+      const backupRoot = await chooseAutomaticBackupDirectory();
+      if (!backupRoot) {
+        return;
+      }
+
+      const next = {
+        ...automaticBackupPreferences,
+        backupRoot,
+      };
+      const status = await checkAutomaticWorkspaceBackup(next);
+      saveAutomaticBackupPreferences(next);
+      setAutomaticBackupPreferences(next);
+      setAutomaticBackupStatus(status);
+    } catch (error) {
+      setAutomaticBackupError(
+        errorMessage(error, "Failed to change the backup location."),
+      );
+    } finally {
+      setIsChoosingBackupLocation(false);
+    }
+  }
+
+  async function handleUseDefaultBackupLocation() {
+    if (isChoosingBackupLocation || isUpdatingAutomaticBackups) {
       return;
     }
 
     setIsUpdatingAutomaticBackups(true);
+    setAutomaticBackupError(null);
+
     try {
-      setAutomaticBackupStatus(await runAutomaticWorkspaceBackup(next));
+      const next = {
+        ...automaticBackupPreferences,
+        backupRoot: null,
+      };
+      const status = await checkAutomaticWorkspaceBackup(next);
+      saveAutomaticBackupPreferences(next);
+      setAutomaticBackupPreferences(next);
+      setAutomaticBackupStatus(status);
     } catch (error) {
       setAutomaticBackupError(
-        errorMessage(error, "Failed to update automatic backups."),
+        errorMessage(error, "Failed to restore the default backup location."),
       );
     } finally {
       setIsUpdatingAutomaticBackups(false);
@@ -476,7 +548,13 @@ function SettingsPage({
     isCreatingBackup ||
     isInspectingBackup ||
     isRestoringBackup ||
-    isClearingWorkspace;
+    isClearingWorkspace ||
+    isUpdatingAutomaticBackups ||
+    isChoosingBackupLocation;
+  const displayedBackupRoot =
+    automaticBackupStatus?.backupRoot ||
+    automaticBackupPreferences.backupRoot ||
+    "Loading backup location...";
 
   return (
     <>
@@ -697,11 +775,10 @@ function SettingsPage({
                       workspace has changed.
                     </p>
                     <span>
-                      {automaticBackupStatus?.lastBackup
-                        ? `Last automatic backup: ${formatDateTime(
-                            automaticBackupStatus.lastBackup.createdAt,
-                          )}`
-                        : "No automatic backup has been created yet."}
+                      {automaticBackupStatusText(
+                        automaticBackupPreferences,
+                        automaticBackupStatus,
+                      )}
                     </span>
                   </div>
 
@@ -721,7 +798,7 @@ function SettingsPage({
                               : "settings-theme-option"
                           }
                           aria-pressed={automaticBackupPreferences.enabled}
-                          disabled={isUpdatingAutomaticBackups}
+                          disabled={recoveryBusy}
                           onClick={() =>
                             void updateAutomaticBackupPreferences({
                               ...automaticBackupPreferences,
@@ -739,7 +816,7 @@ function SettingsPage({
                               : "settings-theme-option"
                           }
                           aria-pressed={!automaticBackupPreferences.enabled}
-                          disabled={isUpdatingAutomaticBackups}
+                          disabled={recoveryBusy}
                           onClick={() =>
                             void updateAutomaticBackupPreferences({
                               ...automaticBackupPreferences,
@@ -758,7 +835,7 @@ function SettingsPage({
                         value={automaticBackupPreferences.frequency}
                         disabled={
                           !automaticBackupPreferences.enabled ||
-                          isUpdatingAutomaticBackups
+                          recoveryBusy
                         }
                         onChange={(event) =>
                           void updateAutomaticBackupPreferences({
@@ -779,7 +856,7 @@ function SettingsPage({
                         value={automaticBackupPreferences.retentionCount}
                         disabled={
                           !automaticBackupPreferences.enabled ||
-                          isUpdatingAutomaticBackups
+                          recoveryBusy
                         }
                         onChange={(event) =>
                           void updateAutomaticBackupPreferences({
@@ -796,7 +873,49 @@ function SettingsPage({
                   </div>
                 </div>
 
-                <div className="settings-recovery-action">
+                <div className="settings-backup-location">
+                  <div className="settings-backup-location-copy">
+                    <p>
+                      Store new automatic and safety backups in this folder.
+                      Existing backups are not moved.
+                    </p>
+                    <span title={displayedBackupRoot}>{displayedBackupRoot}</span>
+                  </div>
+                  <div className="settings-backup-location-actions">
+                    {automaticBackupPreferences.backupRoot && (
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={recoveryBusy}
+                        onClick={() => void handleUseDefaultBackupLocation()}
+                      >
+                        Use default
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={recoveryBusy}
+                      onClick={() => void handleOpenBackupFolder()}
+                    >
+                      Open folder
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={recoveryBusy}
+                      onClick={() =>
+                        void handleChooseAutomaticBackupLocation()
+                      }
+                    >
+                      {isChoosingBackupLocation
+                        ? "Choosing..."
+                        : "Change location"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="settings-recovery-action settings-recovery-action-divider">
                   <div>
                     <p>Save the complete database and every managed document.</p>
                   </div>
@@ -821,20 +940,6 @@ function SettingsPage({
                     onClick={() => void handleSelectBackup()}
                   >
                     {isInspectingBackup ? "Validating..." : "Restore backup"}
-                  </button>
-                </div>
-
-                <div className="settings-recovery-action">
-                  <div>
-                    <p>Open the automatic and safety backup directory.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="secondary-button settings-card-button"
-                    disabled={isRestoringBackup}
-                    onClick={() => void handleOpenBackupFolder()}
-                  >
-                    Open folder
                   </button>
                 </div>
 

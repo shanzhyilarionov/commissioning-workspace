@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rusqlite::{backup::Backup, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -69,6 +69,8 @@ pub struct WorkspaceBackupSummary {
 pub struct AutomaticBackupStatus {
     last_backup: Option<WorkspaceBackupSummary>,
     created: bool,
+    backup_root: String,
+    next_backup_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -146,11 +148,45 @@ pub(crate) fn project_storage_root(app: &tauri::AppHandle) -> Result<PathBuf, St
     Ok(application_data_dir(app)?.join("projects"))
 }
 
-fn backup_storage_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    app.path()
-        .app_local_data_dir()
-        .map(|path| path.join("backups"))
-        .map_err(|error| format!("Failed to resolve the backup directory: {error}"))
+fn backup_storage_root(
+    app: &tauri::AppHandle,
+    configured_root: Option<&str>,
+) -> Result<PathBuf, String> {
+    let directory = match configured_root
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+    {
+        Some(path) => PathBuf::from(path),
+        None => app
+            .path()
+            .app_local_data_dir()
+            .map(|path| path.join("backups"))
+            .map_err(|error| format!("Failed to resolve the backup directory: {error}"))?,
+    };
+
+    fs::create_dir_all(&directory)
+        .map_err(|error| format!("Failed to create the backup directory: {error}"))?;
+    let directory = fs::canonicalize(&directory)
+        .map_err(|error| format!("Failed to resolve the backup directory: {error}"))?;
+
+    let projects_root = project_storage_root(app)?;
+    if projects_root.exists() {
+        let projects_root = fs::canonicalize(&projects_root)
+            .map_err(|error| format!("Failed to resolve managed document storage: {error}"))?;
+        if directory.starts_with(projects_root) {
+            return Err(
+                "The backup location cannot be inside managed project document storage."
+                    .to_string(),
+            );
+        }
+    }
+
+    tempfile::Builder::new()
+        .prefix(".commissioning-workspace-write-test-")
+        .tempfile_in(&directory)
+        .map_err(|error| format!("The backup location is not writable: {error}"))?;
+
+    Ok(directory)
 }
 
 fn schema_version(connection: &Connection) -> Result<u32, String> {
@@ -678,8 +714,9 @@ fn project_storage_root_for_restore(destination: &Path) -> Result<PathBuf, Strin
 fn safety_backup_path(
     app: &tauri::AppHandle,
     action: &str,
+    configured_root: Option<&str>,
 ) -> Result<PathBuf, String> {
-    let directory = backup_storage_root(app)?.join("safety");
+    let directory = backup_storage_root(app, configured_root)?.join("safety");
     fs::create_dir_all(&directory)
         .map_err(|error| format!("Failed to create the safety backup directory: {error}"))?;
     Ok(directory.join(format!(
@@ -688,8 +725,11 @@ fn safety_backup_path(
     )))
 }
 
-fn automatic_backup_directory(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let directory = backup_storage_root(app)?.join("automatic");
+fn automatic_backup_directory(
+    app: &tauri::AppHandle,
+    configured_root: Option<&str>,
+) -> Result<PathBuf, String> {
+    let directory = backup_storage_root(app, configured_root)?.join("automatic");
     fs::create_dir_all(&directory)
         .map_err(|error| format!("Failed to create the automatic backup directory: {error}"))?;
     Ok(directory)
@@ -757,6 +797,15 @@ fn latest_automatic_backup(
         }
     }
     Ok(None)
+}
+
+fn next_backup_time(
+    latest_backup: Option<&(WorkspaceBackupSummary, SystemTime)>,
+    interval: Duration,
+) -> Option<String> {
+    latest_backup
+        .and_then(|(_, modified)| modified.checked_add(interval))
+        .map(|time| DateTime::<Utc>::from(time).to_rfc3339())
 }
 
 fn latest_workspace_change(app: &tauri::AppHandle) -> Result<Option<SystemTime>, String> {
@@ -1053,12 +1102,23 @@ pub fn create_workspace_backup(
 #[tauri::command]
 pub fn get_automatic_workspace_backup_status(
     app: tauri::AppHandle,
+    frequency_days: u64,
+    backup_root: Option<String>,
 ) -> Result<AutomaticBackupStatus, String> {
-    let directory = automatic_backup_directory(&app)?;
+    if !(1..=30).contains(&frequency_days) {
+        return Err("The automatic backup frequency is invalid.".to_string());
+    }
+
+    let directory = automatic_backup_directory(&app, backup_root.as_deref())?;
+    let latest_backup = latest_automatic_backup(&directory)?;
+    let interval = Duration::from_secs(frequency_days * 24 * 60 * 60);
     Ok(AutomaticBackupStatus {
-        last_backup: latest_automatic_backup(&directory)?
-            .map(|(summary, _)| summary),
+        next_backup_at: next_backup_time(latest_backup.as_ref(), interval),
+        last_backup: latest_backup.map(|(summary, _)| summary),
         created: false,
+        backup_root: backup_storage_root(&app, backup_root.as_deref())?
+            .to_string_lossy()
+            .into_owned(),
     })
 }
 
@@ -1067,6 +1127,7 @@ pub fn run_automatic_workspace_backup(
     app: tauri::AppHandle,
     frequency_days: u64,
     retention_count: usize,
+    backup_root: Option<String>,
 ) -> Result<AutomaticBackupStatus, String> {
     if !(1..=30).contains(&frequency_days) {
         return Err("The automatic backup frequency is invalid.".to_string());
@@ -1075,7 +1136,8 @@ pub fn run_automatic_workspace_backup(
         return Err("The automatic backup retention count is invalid.".to_string());
     }
 
-    let directory = automatic_backup_directory(&app)?;
+    let resolved_backup_root = backup_storage_root(&app, backup_root.as_deref())?;
+    let directory = automatic_backup_directory(&app, backup_root.as_deref())?;
     prune_automatic_backups(&directory, retention_count)?;
     let latest_backup = latest_automatic_backup(&directory)?;
     let workspace_change = latest_workspace_change(&app)?;
@@ -1093,8 +1155,10 @@ pub fn run_automatic_workspace_backup(
 
     if !is_due || !has_changes {
         return Ok(AutomaticBackupStatus {
+            next_backup_at: next_backup_time(latest_backup.as_ref(), interval),
             last_backup: latest_backup.map(|(summary, _)| summary),
             created: false,
+            backup_root: resolved_backup_root.to_string_lossy().into_owned(),
         });
     }
 
@@ -1104,10 +1168,15 @@ pub fn run_automatic_workspace_backup(
     ));
     let summary = create_backup_at(&app, &path)?;
     prune_automatic_backups(&directory, retention_count)?;
+    let next_backup_at = SystemTime::now()
+        .checked_add(interval)
+        .map(|time| DateTime::<Utc>::from(time).to_rfc3339());
 
     Ok(AutomaticBackupStatus {
         last_backup: Some(summary),
         created: true,
+        backup_root: resolved_backup_root.to_string_lossy().into_owned(),
+        next_backup_at,
     })
 }
 
@@ -1130,6 +1199,7 @@ pub fn inspect_workspace_backup(path: String) -> Result<WorkspaceBackupInspectio
 pub fn restore_workspace_backup(
     app: tauri::AppHandle,
     path: String,
+    backup_root: Option<String>,
 ) -> Result<WorkspaceRestoreSummary, String> {
     let backup_path = PathBuf::from(&path);
     let data_dir = application_data_dir(&app)?;
@@ -1145,7 +1215,7 @@ pub fn restore_workspace_backup(
         ));
     }
 
-    let safety_path = safety_backup_path(&app, "Restore")?;
+    let safety_path = safety_backup_path(&app, "Restore", backup_root.as_deref())?;
     create_backup_at(&app, &safety_path)?;
     replace_workspace_data(
         &app,
@@ -1163,8 +1233,11 @@ pub fn restore_workspace_backup(
 }
 
 #[tauri::command]
-pub fn clear_workspace(app: tauri::AppHandle) -> Result<(), String> {
-    let safety_path = safety_backup_path(&app, "Clear")?;
+pub fn clear_workspace(
+    app: tauri::AppHandle,
+    backup_root: Option<String>,
+) -> Result<(), String> {
+    let safety_path = safety_backup_path(&app, "Clear", backup_root.as_deref())?;
     create_backup_at(&app, &safety_path)?;
     validate_backup(&safety_path)
         .map_err(|error| format!("The safety backup could not be verified: {error}"))?;
@@ -1172,10 +1245,11 @@ pub fn clear_workspace(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn open_workspace_backup_directory(app: tauri::AppHandle) -> Result<(), String> {
-    let directory = backup_storage_root(&app)?;
-    fs::create_dir_all(&directory)
-        .map_err(|error| format!("Failed to create the backup directory: {error}"))?;
+pub fn open_workspace_backup_directory(
+    app: tauri::AppHandle,
+    backup_root: Option<String>,
+) -> Result<(), String> {
+    let directory = backup_storage_root(&app, backup_root.as_deref())?;
     app.opener()
         .open_path(directory.to_string_lossy().into_owned(), None::<&str>)
         .map_err(|error| format!("Failed to open the backup directory: {error}"))

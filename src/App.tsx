@@ -50,8 +50,9 @@ import {
   type ContinueWorkingItem,
 } from "./services/continueWorkingService";
 import {
+  AUTOMATIC_BACKUP_CHECK_INTERVAL_MS,
+  checkAutomaticWorkspaceBackup,
   getAutomaticBackupPreferences,
-  runAutomaticWorkspaceBackup,
 } from "./services/workspaceBackupService";
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 import firstProjectLogo from "./assets/logo-black.png";
@@ -106,18 +107,27 @@ function App() {
   const [attentionNavigation, setAttentionNavigation] =
     useState<AttentionNavigationRequest | null>(null);
   const attentionRequestSequence = useRef(0);
-  const automaticBackupStarted = useRef(false);
 
   useEffect(() => {
-    if (automaticBackupStarted.current) {
-      return;
-    }
-    automaticBackupStarted.current = true;
+    function checkForAutomaticBackup() {
+      const preferences = getAutomaticBackupPreferences();
+      if (!preferences.enabled) {
+        return;
+      }
 
-    const preferences = getAutomaticBackupPreferences();
-    if (preferences.enabled) {
-      void runAutomaticWorkspaceBackup(preferences).catch(() => undefined);
+      void checkAutomaticWorkspaceBackup(preferences).catch(() => undefined);
     }
+
+    const initialCheck = window.setTimeout(checkForAutomaticBackup, 0);
+    const interval = window.setInterval(
+      checkForAutomaticBackup,
+      AUTOMATIC_BACKUP_CHECK_INTERVAL_MS,
+    );
+
+    return () => {
+      window.clearTimeout(initialCheck);
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
