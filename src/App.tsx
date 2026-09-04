@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import AttentionFocusManager, {
   type AttentionDestinationPage,
@@ -21,7 +16,6 @@ import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
-import { getCurrentOperator } from "./repositories/auditRepository";
 import {
   archiveProject,
   createProject,
@@ -30,12 +24,17 @@ import {
   restoreProject,
   updateProject,
 } from "./repositories/projectRepository";
+import {
+  EMPTY_REPORTING_IDENTITY,
+  getReportingIdentity,
+} from "./repositories/workspaceSettingsRepository";
 import type {
   CreateProjectInput,
   Project,
   UpdateProjectInput,
 } from "./types/project";
 import type { ProjectNavigationItem } from "./types/navigation";
+import type { ReportingIdentity } from "./types/reportingIdentity";
 import {
   getStoredTheme,
   saveTheme,
@@ -66,9 +65,7 @@ const utilityPages = ["Settings"] as const;
 
 type ProjectPage = (typeof projectPages)[number];
 type Page =
-  | (typeof globalPages)[number]
-  | ProjectPage
-  | (typeof utilityPages)[number];
+  (typeof globalPages)[number] | ProjectPage | (typeof utilityPages)[number];
 type ProjectStatusAction = "archive" | "restore";
 
 function isProjectPage(page: Page): page is ProjectPage {
@@ -79,31 +76,30 @@ function App() {
   const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [activePage, setActivePage] = useState<Page>("Home");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentOperatorName, setCurrentOperatorName] = useState("");
-  const [continueWorkingLocation, setContinueWorkingLocation] =
-    useState(loadContinueWorkingLocation);
-  const [currentProjectId, setCurrentProjectId] =
-    useState<string | null>(null);
-  const [isCreateProjectOpen, setIsCreateProjectOpen] =
-    useState(false);
-  const [editingProject, setEditingProject] =
-    useState<Project | null>(null);
-  const [changingProjectStatusId, setChangingProjectStatusId] =
-    useState<string | null>(null);
-  const [projectStatusActionError, setProjectStatusActionError] =
-    useState<string | null>(null);
-  const [projectToDelete, setProjectToDelete] =
-    useState<Project | null>(null);
-  const [isDeletingProject, setIsDeletingProject] =
-    useState(false);
+  const [reportingIdentity, setReportingIdentity] = useState<ReportingIdentity>(
+    EMPTY_REPORTING_IDENTITY,
+  );
+  const [continueWorkingLocation, setContinueWorkingLocation] = useState(
+    loadContinueWorkingLocation,
+  );
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [changingProjectStatusId, setChangingProjectStatusId] = useState<
+    string | null
+  >(null);
+  const [projectStatusActionError, setProjectStatusActionError] = useState<
+    string | null
+  >(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
 
   useEffect(() => watchSystemTheme(theme), [theme]);
-  const [projectDeleteError, setProjectDeleteError] =
-    useState<string | null>(null);
-  const [isLoadingProjects, setIsLoadingProjects] =
-    useState(true);
-  const [projectLoadError, setProjectLoadError] =
-    useState<string | null>(null);
+  const [projectDeleteError, setProjectDeleteError] = useState<string | null>(
+    null,
+  );
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [projectLoadError, setProjectLoadError] = useState<string | null>(null);
   const [attentionNavigation, setAttentionNavigation] =
     useState<AttentionNavigationRequest | null>(null);
   const attentionRequestSequence = useRef(0);
@@ -143,9 +139,7 @@ function App() {
       } catch (error) {
         if (!cancelled) {
           setProjectLoadError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load projects.",
+            error instanceof Error ? error.message : "Failed to load projects.",
           );
         }
       } finally {
@@ -165,21 +159,21 @@ function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadCurrentOperator() {
+    async function loadReportingIdentity() {
       try {
-        const operatorName = await getCurrentOperator();
+        const storedIdentity = await getReportingIdentity();
 
         if (!cancelled) {
-          setCurrentOperatorName(operatorName);
+          setReportingIdentity(storedIdentity);
         }
       } catch {
         if (!cancelled) {
-          setCurrentOperatorName("");
+          setReportingIdentity(EMPTY_REPORTING_IDENTITY);
         }
       }
     }
 
-    void loadCurrentOperator();
+    void loadReportingIdentity();
 
     return () => {
       cancelled = true;
@@ -187,14 +181,12 @@ function App() {
   }, []);
 
   const currentProject =
-    projects.find(
-      (project) => project.id === currentProjectId,
-    ) ?? null;
+    projects.find((project) => project.id === currentProjectId) ?? null;
   const hasProjects = projects.length > 0;
   const continueWorkingProject = continueWorkingLocation
-    ? projects.find(
+    ? (projects.find(
         (project) => project.id === continueWorkingLocation.projectId,
-      ) ?? null
+      ) ?? null)
     : null;
   const fallbackContinueWorkingProject =
     projects.find((project) => project.status === "active") ??
@@ -218,11 +210,7 @@ function App() {
         : null;
 
   useEffect(() => {
-    if (
-      !currentProject ||
-      !currentProjectId ||
-      !isProjectPage(activePage)
-    ) {
+    if (!currentProject || !currentProjectId || !isProjectPage(activePage)) {
       return;
     }
 
@@ -247,11 +235,7 @@ function App() {
 
     clearContinueWorkingLocation();
     setContinueWorkingLocation(null);
-  }, [
-    continueWorkingLocation,
-    continueWorkingProject,
-    isLoadingProjects,
-  ]);
+  }, [continueWorkingLocation, continueWorkingProject, isLoadingProjects]);
 
   useEffect(() => {
     if (
@@ -289,18 +273,13 @@ function App() {
     setActivePage(page);
   }
 
-  const handleAttentionFocusComplete = useCallback(
-    (requestId: number) => {
-      setAttentionNavigation((current) =>
-        current?.requestId === requestId ? null : current,
-      );
-    },
-    [],
-  );
+  const handleAttentionFocusComplete = useCallback((requestId: number) => {
+    setAttentionNavigation((current) =>
+      current?.requestId === requestId ? null : current,
+    );
+  }, []);
 
-  async function handleCreateProject(
-    input: CreateProjectInput,
-  ): Promise<void> {
+  async function handleCreateProject(input: CreateProjectInput): Promise<void> {
     const project = await createProject(input);
 
     setProjects((current) => [project, ...current]);
@@ -310,23 +289,16 @@ function App() {
     setActivePage("Overview");
   }
 
-  async function handleUpdateProject(
-    input: UpdateProjectInput,
-  ): Promise<void> {
+  async function handleUpdateProject(input: UpdateProjectInput): Promise<void> {
     if (!editingProject) {
       return;
     }
 
-    const updatedProject = await updateProject(
-      editingProject.id,
-      input,
-    );
+    const updatedProject = await updateProject(editingProject.id, input);
 
     setProjects((current) =>
       current.map((project) =>
-        project.id === updatedProject.id
-          ? updatedProject
-          : project,
+        project.id === updatedProject.id ? updatedProject : project,
       ),
     );
     setEditingProject(null);
@@ -485,16 +457,16 @@ function App() {
 
   function handleWorkspaceCleared() {
     setProjects([]);
-    setCurrentOperatorName("");
+    setReportingIdentity(EMPTY_REPORTING_IDENTITY);
     resetWorkspaceView();
   }
 
   async function handleWorkspaceRestored() {
     const restoredProjects = await listProjects();
-    const restoredOperator = await getCurrentOperator();
+    const restoredIdentity = await getReportingIdentity();
 
     setProjects(restoredProjects);
-    setCurrentOperatorName(restoredOperator);
+    setReportingIdentity(restoredIdentity);
     resetWorkspaceView();
   }
 
@@ -512,9 +484,7 @@ function App() {
     );
   }
 
-  function handleWindowDrag(
-    event: React.MouseEvent<HTMLDivElement>,
-  ) {
+  function handleWindowDrag(event: React.MouseEvent<HTMLDivElement>) {
     if (event.button !== 0) {
       return;
     }
@@ -528,7 +498,7 @@ function App() {
         <SettingsPage
           projects={projects}
           theme={theme}
-          onOperatorNameChange={setCurrentOperatorName}
+          onReportingIdentityChange={setReportingIdentity}
           onProjectsImported={handleProjectsImported}
           onThemeChange={handleThemeChange}
           onWorkspaceCleared={handleWorkspaceCleared}
@@ -541,9 +511,7 @@ function App() {
       return (
         <section className="content-card placeholder">
           <h3>Loading projects</h3>
-          <p>
-            Reading commissioning projects from the local database.
-          </p>
+          <p>Reading commissioning projects from the local database.</p>
         </section>
       );
     }
@@ -596,7 +564,7 @@ function App() {
       case "Home":
         return (
           <HomePage
-            currentOperatorName={currentOperatorName}
+            currentOperatorName={reportingIdentity.operatorName}
             continueWorkingItem={continueWorkingItem}
             onContinueWorking={handleContinueWorking}
           />
@@ -662,11 +630,7 @@ function App() {
           );
         }
 
-        return (
-          <ChecklistsTestsPage
-            currentProject={currentProject}
-          />
-        );
+        return <ChecklistsTestsPage currentProject={currentProject} />;
 
       case "Issues":
         if (!currentProject) {
@@ -696,6 +660,7 @@ function App() {
           <ReportsPage
             key="record-reports"
             currentProject={currentProject}
+            reportingIdentity={reportingIdentity}
             view="records"
           />
         );
@@ -711,6 +676,7 @@ function App() {
           <ReportsPage
             key="turnover-packages"
             currentProject={currentProject}
+            reportingIdentity={reportingIdentity}
             view="turnover"
             navigationItem={
               attentionNavigation?.page === "Turnover packages"
@@ -759,17 +725,13 @@ function App() {
           <div className="sidebar-body">
             <nav className="navigation">
               {globalPages
-                .filter(
-                  (page) => page !== "Projects" || hasProjects,
-                )
+                .filter((page) => page !== "Projects" || hasProjects)
                 .map((page) => (
                   <button
                     key={page}
                     type="button"
                     className={
-                      activePage === page
-                        ? "nav-item active"
-                        : "nav-item"
+                      activePage === page ? "nav-item active" : "nav-item"
                     }
                     onClick={() => handleNavigation(page)}
                   >
@@ -780,10 +742,7 @@ function App() {
 
             {currentProject && (
               <section className="project-navigation-section">
-                <label
-                  className="navigation-label"
-                  htmlFor="current-project"
-                >
+                <label className="navigation-label" htmlFor="current-project">
                   Current project
                 </label>
                 <select
@@ -806,9 +765,7 @@ function App() {
                       key={page}
                       type="button"
                       className={
-                        activePage === page
-                          ? "nav-item active"
-                          : "nav-item"
+                        activePage === page ? "nav-item active" : "nav-item"
                       }
                       onClick={() => handleNavigation(page)}
                     >
@@ -827,9 +784,7 @@ function App() {
                   key={page}
                   type="button"
                   className={
-                    activePage === page
-                      ? "nav-item active"
-                      : "nav-item"
+                    activePage === page ? "nav-item active" : "nav-item"
                   }
                   onClick={() => handleNavigation(page)}
                 >
@@ -868,9 +823,9 @@ function App() {
         message={
           projectToDelete ? (
             <>
-              Delete <strong>{projectToDelete.name}</strong>? All
-              assets belonging to this project will also be
-              permanently deleted. This action cannot be undone.
+              Delete <strong>{projectToDelete.name}</strong>? All assets
+              belonging to this project will also be permanently deleted. This
+              action cannot be undone.
             </>
           ) : null
         }

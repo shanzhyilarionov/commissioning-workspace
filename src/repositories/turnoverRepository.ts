@@ -9,6 +9,7 @@ import type { AssetStatus } from "../types/asset";
 import type { DocumentCategory, DocumentStatus } from "../types/document";
 import type { IssuePriority, IssueStatus } from "../types/issue";
 import type { ProjectStatus } from "../types/project";
+import type { ReportingIdentity } from "../types/reportingIdentity";
 import type { StructureKind } from "../types/readiness";
 import type { CommissioningStage } from "../types/system";
 import type { TestRecordType } from "../types/testRecord";
@@ -214,7 +215,10 @@ function mapProjectRow(row: ProjectRow): TurnoverProjectSnapshot {
   };
 }
 
-function mapScopeRow(kind: StructureKind, row: ScopeRow): TurnoverScopeSnapshot {
+function mapScopeRow(
+  kind: StructureKind,
+  row: ScopeRow,
+): TurnoverScopeSnapshot {
   return {
     kind,
     id: row.id,
@@ -253,9 +257,12 @@ function mapPackageSummary(row: TurnoverPackageRow): TurnoverPackageSummary {
 function parseSnapshot(value: string): TurnoverPackageSnapshot {
   try {
     const parsed = JSON.parse(value) as Partial<TurnoverPackageSnapshot>;
+    const reportingIdentity = parsed.reportingIdentity;
 
     if (
-      (parsed.schemaVersion !== 1 && parsed.schemaVersion !== 2) ||
+      (parsed.schemaVersion !== 1 &&
+        parsed.schemaVersion !== 2 &&
+        parsed.schemaVersion !== 3) ||
       !parsed.project ||
       !parsed.scope ||
       !parsed.readiness ||
@@ -263,7 +270,12 @@ function parseSnapshot(value: string): TurnoverPackageSnapshot {
       !Array.isArray(parsed.testRecords) ||
       !Array.isArray(parsed.issues) ||
       !Array.isArray(parsed.documents) ||
-      (parsed.schemaVersion === 2 && !Array.isArray(parsed.auditEvents))
+      (parsed.schemaVersion !== 1 && !Array.isArray(parsed.auditEvents)) ||
+      (parsed.schemaVersion === 3 &&
+        (!reportingIdentity ||
+          typeof reportingIdentity.operatorName !== "string" ||
+          typeof reportingIdentity.organization !== "string" ||
+          typeof reportingIdentity.jobTitle !== "string"))
     ) {
       throw new Error();
     }
@@ -337,7 +349,9 @@ async function getScope(
   );
 
   if (!rows[0]) {
-    throw new Error(`${kind === "system" ? "System" : "Subsystem"} not found in this project.`);
+    throw new Error(
+      `${kind === "system" ? "System" : "Subsystem"} not found in this project.`,
+    );
   }
 
   return mapScopeRow(kind, rows[0]);
@@ -567,9 +581,11 @@ async function getExistingScopePackageCount(
 
 function getScopeReference(scope: TurnoverScopeSnapshot): string {
   if (scope.kind === "subsystem") {
-    return [scope.parentSystemCode, scope.code]
-      .filter((value) => value.trim().length > 0)
-      .join("-") || scope.name;
+    return (
+      [scope.parentSystemCode, scope.code]
+        .filter((value) => value.trim().length > 0)
+        .join("-") || scope.name
+    );
   }
 
   return scope.code || scope.name;
@@ -683,7 +699,8 @@ export async function getTurnoverPackagePreflight(
   return {
     scope: currentScope,
     blockerCount: review.blockers.length,
-    forcedTransitionCount: review.records.filter((record) => record.forced).length,
+    forcedTransitionCount: review.records.filter((record) => record.forced)
+      .length,
     assetCount: assets.length,
     testRecordCount: testRecords.length,
     issueCount: issues.length,
@@ -700,6 +717,7 @@ export async function getTurnoverPackagePreflight(
 export async function createTurnoverPackage(
   projectId: string,
   input: CreateTurnoverPackageInput,
+  reportingIdentity: ReportingIdentity,
 ): Promise<TurnoverPackage> {
   await ensureTurnoverStorage();
   const packageNumber = input.packageNumber.trim().toUpperCase();
@@ -707,6 +725,11 @@ export async function createTurnoverPackage(
   const preparedBy = input.preparedBy.trim();
   const approvedBy = input.approvedBy.trim();
   const notes = input.notes.trim();
+  const identitySnapshot: ReportingIdentity = {
+    operatorName: reportingIdentity.operatorName.trim(),
+    organization: reportingIdentity.organization.trim(),
+    jobTitle: reportingIdentity.jobTitle.trim(),
+  };
 
   if (!packageNumber) {
     throw new Error("Package number is required.");
@@ -778,8 +801,9 @@ export async function createTurnoverPackage(
     stage: review.stage,
   };
   const snapshot: TurnoverPackageSnapshot = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt,
+    reportingIdentity: identitySnapshot,
     project,
     scope: currentScope,
     readiness: {

@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import ProjectExportModal from "../components/ProjectExportModal";
 import {
@@ -25,10 +21,12 @@ import {
   subscribeAutomaticBackupMonitor,
 } from "../services/workspaceBackupService";
 import {
-  getCurrentOperator,
-  setCurrentOperator,
-} from "../repositories/auditRepository";
+  EMPTY_REPORTING_IDENTITY,
+  getReportingIdentity,
+  saveReportingIdentity,
+} from "../repositories/workspaceSettingsRepository";
 import type { Project } from "../types/project";
+import type { ReportingIdentity } from "../types/reportingIdentity";
 import type {
   ProjectPackageImportSummary,
   ProjectPackageInspection,
@@ -46,7 +44,7 @@ import "./SettingsPage.css";
 interface SettingsPageProps {
   projects: Project[];
   theme: AppTheme;
-  onOperatorNameChange: (operatorName: string) => void;
+  onReportingIdentityChange: (identity: ReportingIdentity) => void;
   onProjectsImported: () => Promise<void>;
   onThemeChange: (theme: AppTheme) => void;
   onWorkspaceCleared: () => void;
@@ -82,6 +80,17 @@ function projectCountLabel(count: number): string {
   return `${count} ${count === 1 ? "project" : "projects"}`;
 }
 
+function reportingIdentitiesMatch(
+  current: ReportingIdentity,
+  saved: ReportingIdentity,
+): boolean {
+  return (
+    current.operatorName.trim() === saved.operatorName &&
+    current.organization.trim() === saved.organization &&
+    current.jobTitle.trim() === saved.jobTitle
+  );
+}
+
 function automaticBackupStatusText(
   preferences: AutomaticBackupPreferences,
   status: AutomaticBackupStatus | null,
@@ -114,16 +123,19 @@ function automaticBackupStatusText(
 function SettingsPage({
   projects,
   theme,
-  onOperatorNameChange,
+  onReportingIdentityChange,
   onProjectsImported,
   onThemeChange,
   onWorkspaceCleared,
   onWorkspaceRestored,
 }: SettingsPageProps) {
-  const [operatorName, setOperatorName] = useState("");
-  const [savedOperatorName, setSavedOperatorName] = useState("");
-  const [isSavingOperator, setIsSavingOperator] = useState(false);
-  const [operatorError, setOperatorError] = useState<string | null>(null);
+  const [reportingIdentity, setReportingIdentity] = useState<ReportingIdentity>(
+    EMPTY_REPORTING_IDENTITY,
+  );
+  const [savedReportingIdentity, setSavedReportingIdentity] =
+    useState<ReportingIdentity>(EMPTY_REPORTING_IDENTITY);
+  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+  const [identityError, setIdentityError] = useState<string | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isInspectingImport, setIsInspectingImport] = useState(false);
@@ -143,8 +155,9 @@ function SettingsPage({
   const [isRestoringBackup, setIsRestoringBackup] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [lastBackup, setLastBackup] =
-    useState<WorkspaceBackupSummary | null>(null);
+  const [lastBackup, setLastBackup] = useState<WorkspaceBackupSummary | null>(
+    null,
+  );
   const [selectedBackup, setSelectedBackup] =
     useState<WorkspaceBackupInspection | null>(null);
   const [automaticBackupPreferences, setAutomaticBackupPreferences] =
@@ -155,36 +168,38 @@ function SettingsPage({
     useState(false);
   const [isChoosingBackupLocation, setIsChoosingBackupLocation] =
     useState(false);
-  const [automaticBackupError, setAutomaticBackupError] =
-    useState<string | null>(null);
+  const [automaticBackupError, setAutomaticBackupError] = useState<
+    string | null
+  >(null);
   const [isClearWorkspaceModalOpen, setIsClearWorkspaceModalOpen] =
     useState(false);
   const [clearWorkspaceConfirmation, setClearWorkspaceConfirmation] =
     useState("");
   const [isClearingWorkspace, setIsClearingWorkspace] = useState(false);
-  const [clearWorkspaceError, setClearWorkspaceError] =
-    useState<string | null>(null);
+  const [clearWorkspaceError, setClearWorkspaceError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadOperator() {
+    async function loadIdentity() {
       try {
-        const storedOperator = await getCurrentOperator();
+        const storedIdentity = await getReportingIdentity();
         if (!cancelled) {
-          setOperatorName(storedOperator);
-          setSavedOperatorName(storedOperator);
+          setReportingIdentity(storedIdentity);
+          setSavedReportingIdentity(storedIdentity);
         }
       } catch (error) {
         if (!cancelled) {
-          setOperatorError(
-            errorMessage(error, "Failed to load the current operator."),
+          setIdentityError(
+            errorMessage(error, "Failed to load the reporting identity."),
           );
         }
       }
     }
 
-    void loadOperator();
+    void loadIdentity();
 
     return () => {
       cancelled = true;
@@ -196,9 +211,9 @@ function SettingsPage({
       setAutomaticBackupStatus(snapshot.status);
       setAutomaticBackupError(snapshot.error);
     });
-    void checkAutomaticWorkspaceBackup(
-      getAutomaticBackupPreferences(),
-    ).catch(() => undefined);
+    void checkAutomaticWorkspaceBackup(getAutomaticBackupPreferences()).catch(
+      () => undefined,
+    );
     return unsubscribe;
   }, []);
 
@@ -278,29 +293,27 @@ function SettingsPage({
     }
   }
 
-  async function handleSaveOperator(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function handleSaveIdentity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (isSavingOperator) {
+    if (isSavingIdentity) {
       return;
     }
 
-    setIsSavingOperator(true);
-    setOperatorError(null);
+    setIsSavingIdentity(true);
+    setIdentityError(null);
 
     try {
-      const savedOperator = await setCurrentOperator(operatorName);
-      setOperatorName(savedOperator);
-      setSavedOperatorName(savedOperator);
-      onOperatorNameChange(savedOperator);
+      const savedIdentity = await saveReportingIdentity(reportingIdentity);
+      setReportingIdentity(savedIdentity);
+      setSavedReportingIdentity(savedIdentity);
+      onReportingIdentityChange(savedIdentity);
     } catch (error) {
-      setOperatorError(
-        errorMessage(error, "Failed to save the current operator."),
+      setIdentityError(
+        errorMessage(error, "Failed to save the reporting identity."),
       );
     } finally {
-      setIsSavingOperator(false);
+      setIsSavingIdentity(false);
     }
   }
 
@@ -320,7 +333,9 @@ function SettingsPage({
         setIsExportModalOpen(false);
       }
     } catch (error) {
-      setExportError(errorMessage(error, "Failed to export the selected projects."));
+      setExportError(
+        errorMessage(error, "Failed to export the selected projects."),
+      );
     } finally {
       setIsExporting(false);
     }
@@ -387,7 +402,9 @@ function SettingsPage({
         );
       }
     } catch (error) {
-      setImportError(errorMessage(error, "Failed to import the project package."));
+      setImportError(
+        errorMessage(error, "Failed to import the project package."),
+      );
     } finally {
       setIsImporting(false);
     }
@@ -398,7 +415,9 @@ function SettingsPage({
     try {
       await revealProjectPackage(path);
     } catch (error) {
-      setTransferError(errorMessage(error, "Failed to show the project package."));
+      setTransferError(
+        errorMessage(error, "Failed to show the project package."),
+      );
     }
   }
 
@@ -416,7 +435,9 @@ function SettingsPage({
         setLastBackup(result);
       }
     } catch (error) {
-      setBackupError(errorMessage(error, "Failed to create the workspace backup."));
+      setBackupError(
+        errorMessage(error, "Failed to create the workspace backup."),
+      );
     } finally {
       setIsCreatingBackup(false);
     }
@@ -442,7 +463,9 @@ function SettingsPage({
         setSelectedBackup(inspection);
       }
     } catch (error) {
-      setRestoreError(errorMessage(error, "Failed to validate the selected backup."));
+      setRestoreError(
+        errorMessage(error, "Failed to validate the selected backup."),
+      );
     } finally {
       setIsInspectingBackup(false);
     }
@@ -484,7 +507,9 @@ function SettingsPage({
     try {
       await restoreWorkspaceBackup(selectedBackup);
     } catch (error) {
-      setRestoreError(errorMessage(error, "Failed to restore the workspace backup."));
+      setRestoreError(
+        errorMessage(error, "Failed to restore the workspace backup."),
+      );
       setIsRestoringBackup(false);
       return;
     }
@@ -555,6 +580,11 @@ function SettingsPage({
     automaticBackupStatus?.backupRoot ||
     automaticBackupPreferences.backupRoot ||
     "Loading backup location...";
+  const hasReportingIdentity = Boolean(
+    reportingIdentity.operatorName.trim() ||
+    reportingIdentity.organization.trim() ||
+    reportingIdentity.jobTitle.trim(),
+  );
 
   return (
     <>
@@ -629,51 +659,102 @@ function SettingsPage({
 
               <form
                 className="settings-identity-card"
-                onSubmit={(event) => void handleSaveOperator(event)}
+                onSubmit={(event) => void handleSaveIdentity(event)}
               >
-                <div>
+                <div className="settings-identity-copy">
                   <p>
-                    This name is recorded as the default operator for audit
-                    events and controlled workflow actions, and is used in
-                    the Home greeting.
+                    Identify the default operator for audit events, workflow
+                    actions, and report preparation. The organization and role
+                    are shown in generated PDFs.
                   </p>
                 </div>
-                <input
-                  className="settings-identity-input"
-                  type="text"
-                  value={operatorName}
-                  disabled={isSavingOperator}
-                  placeholder="Technician, engineer, or approver"
-                  aria-label="Current operator"
-                  onChange={(event) => {
-                    setOperatorName(event.target.value);
-                    setOperatorError(null);
-                  }}
-                />
+
+                <div className="settings-identity-fields">
+                  <label className="settings-identity-field">
+                    <span>Operator</span>
+                    <input
+                      className="settings-identity-input"
+                      type="text"
+                      value={reportingIdentity.operatorName}
+                      disabled={isSavingIdentity}
+                      maxLength={120}
+                      placeholder="Morgan Lee"
+                      onChange={(event) => {
+                        setReportingIdentity((current) => ({
+                          ...current,
+                          operatorName: event.target.value,
+                        }));
+                        setIdentityError(null);
+                      }}
+                    />
+                  </label>
+
+                  <label className="settings-identity-field">
+                    <span>Organization</span>
+                    <input
+                      className="settings-identity-input"
+                      type="text"
+                      value={reportingIdentity.organization}
+                      disabled={isSavingIdentity}
+                      maxLength={160}
+                      placeholder="Organization name"
+                      onChange={(event) => {
+                        setReportingIdentity((current) => ({
+                          ...current,
+                          organization: event.target.value,
+                        }));
+                        setIdentityError(null);
+                      }}
+                    />
+                  </label>
+
+                  <label className="settings-identity-field">
+                    <span>Role / Title</span>
+                    <input
+                      className="settings-identity-input"
+                      type="text"
+                      value={reportingIdentity.jobTitle}
+                      disabled={isSavingIdentity}
+                      maxLength={120}
+                      placeholder="Commissioning Engineer"
+                      onChange={(event) => {
+                        setReportingIdentity((current) => ({
+                          ...current,
+                          jobTitle: event.target.value,
+                        }));
+                        setIdentityError(null);
+                      }}
+                    />
+                  </label>
+                </div>
+
                 <button
                   type="submit"
                   className="secondary-button settings-card-button"
                   disabled={
-                    isSavingOperator ||
-                    operatorName.trim() === savedOperatorName
+                    isSavingIdentity ||
+                    reportingIdentitiesMatch(
+                      reportingIdentity,
+                      savedReportingIdentity,
+                    )
                   }
                 >
-                  {isSavingOperator
-                    ? operatorName.trim()
+                  {isSavingIdentity
+                    ? hasReportingIdentity
                       ? "Saving..."
                       : "Clearing..."
-                    : operatorName.trim()
-                      ? "Save operator"
-                      : "Clear operator"}
+                    : hasReportingIdentity
+                      ? "Save identity"
+                      : "Clear identity"}
                 </button>
               </form>
 
-              {operatorError && (
+              {identityError && (
                 <p
                   className="settings-message settings-message-error"
                   role="alert"
                 >
-                  {operatorError}
+                  {identityError}
                 </p>
               )}
             </section>
@@ -687,8 +768,8 @@ function SettingsPage({
                 <section className="settings-action-card">
                   <div>
                     <p>
-                      Choose one, several, or all projects and save their records
-                      and managed documents in one .cwp package.
+                      Choose one, several, or all projects and save their
+                      records and managed documents in one .cwp package.
                     </p>
                   </div>
                   <button
@@ -723,7 +804,10 @@ function SettingsPage({
               </div>
 
               {transferError && (
-                <p className="settings-message settings-message-error" role="alert">
+                <p
+                  className="settings-message settings-message-error"
+                  role="alert"
+                >
                   {transferError}
                 </p>
               )}
@@ -734,13 +818,16 @@ function SettingsPage({
                     <strong>Project package created</strong>
                     <span>
                       {projectCountLabel(lastExport.projects.length)} ·{" "}
-                      {lastExport.fileCount} files · {formatBytes(lastExport.totalBytes)}
+                      {lastExport.fileCount} files ·{" "}
+                      {formatBytes(lastExport.totalBytes)}
                     </span>
                   </div>
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => void handleRevealProjectPackage(lastExport.path)}
+                    onClick={() =>
+                      void handleRevealProjectPackage(lastExport.path)
+                    }
                   >
                     Show file
                   </button>
@@ -752,7 +839,9 @@ function SettingsPage({
                   <div>
                     <strong>Projects imported</strong>
                     <span>
-                      {lastImport.projects.map((project) => project.name).join(", ")}
+                      {lastImport.projects
+                        .map((project) => project.name)
+                        .join(", ")}
                     </span>
                   </div>
                   <span className="settings-result-meta">
@@ -834,14 +923,13 @@ function SettingsPage({
                       <select
                         value={automaticBackupPreferences.frequency}
                         disabled={
-                          !automaticBackupPreferences.enabled ||
-                          recoveryBusy
+                          !automaticBackupPreferences.enabled || recoveryBusy
                         }
                         onChange={(event) =>
                           void updateAutomaticBackupPreferences({
                             ...automaticBackupPreferences,
-                            frequency: event.target.value as
-                              AutomaticBackupPreferences["frequency"],
+                            frequency: event.target
+                              .value as AutomaticBackupPreferences["frequency"],
                           })
                         }
                       >
@@ -855,8 +943,7 @@ function SettingsPage({
                       <select
                         value={automaticBackupPreferences.retentionCount}
                         disabled={
-                          !automaticBackupPreferences.enabled ||
-                          recoveryBusy
+                          !automaticBackupPreferences.enabled || recoveryBusy
                         }
                         onChange={(event) =>
                           void updateAutomaticBackupPreferences({
@@ -879,7 +966,9 @@ function SettingsPage({
                       Store new automatic and safety backups in this folder.
                       Existing backups are not moved.
                     </p>
-                    <span title={displayedBackupRoot}>{displayedBackupRoot}</span>
+                    <span title={displayedBackupRoot}>
+                      {displayedBackupRoot}
+                    </span>
                   </div>
                   <div className="settings-backup-location-actions">
                     {automaticBackupPreferences.backupRoot && (
@@ -904,9 +993,7 @@ function SettingsPage({
                       type="button"
                       className="secondary-button"
                       disabled={recoveryBusy}
-                      onClick={() =>
-                        void handleChooseAutomaticBackupLocation()
-                      }
+                      onClick={() => void handleChooseAutomaticBackupLocation()}
                     >
                       {isChoosingBackupLocation
                         ? "Choosing..."
@@ -917,7 +1004,9 @@ function SettingsPage({
 
                 <div className="settings-recovery-action settings-recovery-action-divider">
                   <div>
-                    <p>Save the complete database and every managed document.</p>
+                    <p>
+                      Save the complete database and every managed document.
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -931,7 +1020,9 @@ function SettingsPage({
 
                 <div className="settings-recovery-action">
                   <div>
-                    <p>Replace the entire workspace after creating a safety copy.</p>
+                    <p>
+                      Replace the entire workspace after creating a safety copy.
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -946,13 +1037,19 @@ function SettingsPage({
                 {(automaticBackupError ||
                   backupError ||
                   (restoreError && !selectedBackup)) && (
-                  <p className="settings-message settings-message-error" role="alert">
+                  <p
+                    className="settings-message settings-message-error"
+                    role="alert"
+                  >
                     {automaticBackupError || backupError || restoreError}
                   </p>
                 )}
 
                 {lastBackup && (
-                  <div className="settings-result settings-recovery-result" role="status">
+                  <div
+                    className="settings-result settings-recovery-result"
+                    role="status"
+                  >
                     <div>
                       <strong>Backup created</strong>
                       <span>
@@ -993,7 +1090,7 @@ function SettingsPage({
                     isInspectingImport ||
                     isImporting ||
                     isExporting ||
-                    isSavingOperator ||
+                    isSavingIdentity ||
                     isUpdatingAutomaticBackups
                   }
                   onClick={() => {
@@ -1046,7 +1143,9 @@ function SettingsPage({
                 <div>
                   <dt>Names</dt>
                   <dd>
-                    {selectedImport.projects.map((project) => project.name).join(", ")}
+                    {selectedImport.projects
+                      .map((project) => project.name)
+                      .join(", ")}
                   </dd>
                 </div>
                 <div>
@@ -1119,7 +1218,7 @@ function SettingsPage({
           <div className="clear-workspace-confirmation-content">
             <p>
               This permanently removes all projects, records, audit history,
-              revisions, the current operator, and managed documents from this
+              revisions, the reporting identity, and managed documents from this
               device. Theme and automatic backup preferences remain unchanged.
             </p>
             <p>

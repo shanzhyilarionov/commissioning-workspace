@@ -3,6 +3,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { jsPDF } from "jspdf";
 import { autoTable, type Table } from "jspdf-autotable";
 import type { ReadinessBlockerType } from "../types/readiness";
+import type { ReportingIdentity } from "../types/reportingIdentity";
 import type { CommissioningStage } from "../types/system";
 import type { TurnoverPackage } from "../types/turnover";
 import { exportColors } from "./exportTheme";
@@ -11,9 +12,43 @@ interface SaveTurnoverPackageInput {
   turnoverPackage: TurnoverPackage;
 }
 
+const PRODUCT_NAME = "Commissioning Workspace";
+
 function displayText(value: string | null | undefined): string {
   const normalized = value?.trim();
   return normalized || "-";
+}
+
+function packageReportingIdentity(
+  turnoverPackage: TurnoverPackage,
+): ReportingIdentity {
+  return (
+    turnoverPackage.snapshot.reportingIdentity ?? {
+      operatorName: turnoverPackage.preparedBy,
+      organization: "",
+      jobTitle: "",
+    }
+  );
+}
+
+function reportingBrand(identity: ReportingIdentity): string {
+  return identity.organization.trim() || PRODUCT_NAME;
+}
+
+function preparedByWithTitle(
+  turnoverPackage: TurnoverPackage,
+  identity: ReportingIdentity,
+): string {
+  const preparedBy = turnoverPackage.preparedBy.trim();
+  const title = identity.jobTitle.trim();
+  const isCurrentOperator =
+    preparedBy.localeCompare(identity.operatorName.trim(), undefined, {
+      sensitivity: "base",
+    }) === 0;
+
+  return title && preparedBy && isCurrentOperator
+    ? `${preparedBy}\n${title}`
+    : preparedBy;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -148,11 +183,9 @@ function drawField(
   document.text(fitText(document, value, width - 6, 3), x + 3, y + 9);
 }
 
-function drawCover(
-  document: jsPDF,
-  turnoverPackage: TurnoverPackage,
-): void {
+function drawCover(document: jsPDF, turnoverPackage: TurnoverPackage): void {
   const { snapshot } = turnoverPackage;
+  const reportingIdentity = packageReportingIdentity(turnoverPackage);
   const pageWidth = document.internal.pageSize.getWidth();
   const margin = 16;
   const availableWidth = pageWidth - margin * 2;
@@ -160,8 +193,31 @@ function drawCover(
   document.setTextColor(...exportColors.heading);
   document.setFont("helvetica", "bold");
   document.setFontSize(8);
-  document.text("COMMISSIONING WORKSPACE", margin, 15);
+  document.text(
+    fitText(
+      document,
+      reportingBrand(reportingIdentity).toUpperCase(),
+      availableWidth - 90,
+      1,
+    ),
+    margin,
+    15,
+  );
 
+  if (reportingIdentity.organization.trim()) {
+    document.setFont("helvetica", "normal");
+    document.setFontSize(5.5);
+    document.setTextColor(...exportColors.muted);
+    document.text(
+      "GENERATED WITH COMMISSIONING WORKSPACE",
+      pageWidth - margin,
+      15,
+      { align: "right" },
+    );
+  }
+
+  document.setTextColor(...exportColors.heading);
+  document.setFont("helvetica", "bold");
   document.setFontSize(23);
   document.text("System Turnover Package", margin, 29);
 
@@ -295,7 +351,7 @@ function drawCover(
     signoffWidth,
     16,
     "Prepared by",
-    turnoverPackage.preparedBy,
+    preparedByWithTitle(turnoverPackage, reportingIdentity),
   );
   drawField(
     document,
@@ -336,7 +392,10 @@ function drawTableSection(
   head: string[],
   body: string[][],
   startY: number,
-  columnStyles: Record<number, { cellWidth?: number; halign?: "left" | "center" | "right" }> = {},
+  columnStyles: Record<
+    number,
+    { cellWidth?: number; halign?: "left" | "center" | "right" }
+  > = {},
 ): number {
   const y = ensureVerticalSpace(document, startY, body.length === 0 ? 16 : 28);
   drawSectionTitle(document, title, y);
@@ -400,11 +459,13 @@ function drawPackageContents(
       document,
       "Package lifecycle record",
       ["Status", "Voided", "Reason"],
-      [[
-        "VOID",
-        formatDateTime(turnoverPackage.voidedAt ?? ""),
-        displayText(turnoverPackage.voidReason),
-      ]],
+      [
+        [
+          "VOID",
+          formatDateTime(turnoverPackage.voidedAt ?? ""),
+          displayText(turnoverPackage.voidReason),
+        ],
+      ],
       y,
       {
         0: { cellWidth: 24 },
@@ -520,7 +581,15 @@ function drawPackageContents(
   y = drawTableSection(
     document,
     "Document index",
-    ["Asset", "Document", "Category", "Revision", "Status", "Readiness", "File"],
+    [
+      "Asset",
+      "Document",
+      "Category",
+      "Revision",
+      "Status",
+      "Readiness",
+      "File",
+    ],
     snapshot.documents.map((projectDocument) => [
       projectDocument.assetTag || "Project",
       projectDocument.title,
@@ -663,9 +732,7 @@ export async function saveTurnoverPackagePdf({
     return null;
   }
 
-  const outputPath = path.toLowerCase().endsWith(".pdf")
-    ? path
-    : `${path}.pdf`;
+  const outputPath = path.toLowerCase().endsWith(".pdf") ? path : `${path}.pdf`;
   const document = createTurnoverPackagePdf(turnoverPackage);
   const arrayBuffer = document.output("arraybuffer");
   const bytes = Array.from(new Uint8Array(arrayBuffer));

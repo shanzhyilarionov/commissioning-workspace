@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { getTurnoverPackagePreflight } from "../repositories/turnoverRepository";
 import type { StructureKind } from "../types/readiness";
 import type {
@@ -20,6 +15,7 @@ import type {
 interface TurnoverPackageModalProps {
   isOpen: boolean;
   projectId: string;
+  defaultPreparedBy: string;
   systems: CommissioningSystem[];
   subsystems: Subsystem[];
   onClose: () => void;
@@ -55,14 +51,16 @@ function formatStage(stage: CommissioningStage): string {
 function TurnoverPackageModal({
   isOpen,
   projectId,
+  defaultPreparedBy,
   systems,
   subsystems,
   onClose,
   onCreate,
 }: TurnoverPackageModalProps) {
   const [form, setForm] = useState<CreateTurnoverPackageInput>(emptyForm);
-  const [preflight, setPreflight] =
-    useState<TurnoverPackagePreflight | null>(null);
+  const [preflight, setPreflight] = useState<TurnoverPackagePreflight | null>(
+    null,
+  );
   const [isLoadingPreflight, setIsLoadingPreflight] = useState(false);
   const [preflightError, setPreflightError] = useState("");
   const [submitError, setSubmitError] = useState("");
@@ -90,19 +88,20 @@ function TurnoverPackageModal({
       systems.length > 0 ? "system" : "subsystem";
     const initialScopeId =
       initialKind === "system"
-        ? systems[0]?.id ?? ""
-        : subsystems[0]?.id ?? "";
+        ? (systems[0]?.id ?? "")
+        : (subsystems[0]?.id ?? "");
 
     setForm({
       ...emptyForm,
       scopeKind: initialKind,
       scopeId: initialScopeId,
+      preparedBy: defaultPreparedBy,
     });
     setPreflight(null);
     setPreflightError("");
     setSubmitError("");
     setIsSubmitting(false);
-  }, [isOpen, subsystems, systems]);
+  }, [defaultPreparedBy, isOpen, subsystems, systems]);
 
   useEffect(() => {
     if (!isOpen || !form.scopeId) {
@@ -167,7 +166,7 @@ function TurnoverPackageModal({
 
   function handleScopeKindChange(kind: StructureKind) {
     const scopeId =
-      kind === "system" ? systems[0]?.id ?? "" : subsystems[0]?.id ?? "";
+      kind === "system" ? (systems[0]?.id ?? "") : (subsystems[0]?.id ?? "");
 
     setForm((current) => ({
       ...current,
@@ -194,7 +193,9 @@ function TurnoverPackageModal({
     setSubmitError("");
 
     if (!preflight) {
-      setSubmitError("Complete the scope readiness review before creating a package.");
+      setSubmitError(
+        "Complete the scope readiness review before creating a package.",
+      );
       return;
     }
 
@@ -243,7 +244,8 @@ function TurnoverPackageModal({
 
               {!hasAnyScope ? (
                 <div className="turnover-modal-empty">
-                  Create a system or subsystem before generating a turnover package.
+                  Create a system or subsystem before generating a turnover
+                  package.
                 </div>
               ) : (
                 <>
@@ -276,7 +278,9 @@ function TurnoverPackageModal({
                       <select
                         value={form.scopeId}
                         disabled={isSubmitting}
-                        onChange={(event) => handleScopeChange(event.target.value)}
+                        onChange={(event) =>
+                          handleScopeChange(event.target.value)
+                        }
                       >
                         {form.scopeKind === "system"
                           ? systems.map((system) => (
@@ -295,7 +299,10 @@ function TurnoverPackageModal({
                                 }
                               >
                                 {group.subsystems.map((subsystem) => (
-                                  <option key={subsystem.id} value={subsystem.id}>
+                                  <option
+                                    key={subsystem.id}
+                                    value={subsystem.id}
+                                  >
                                     {subsystem.code
                                       ? `${subsystem.code} - `
                                       : ""}
@@ -326,7 +333,9 @@ function TurnoverPackageModal({
                             created.
                           </p>
                         </div>
-                        <span className={`status-badge ${preflight.scope.stage}`}>
+                        <span
+                          className={`status-badge ${preflight.scope.stage}`}
+                        >
                           {formatStage(preflight.scope.stage)}
                         </span>
                       </div>
@@ -537,10 +546,7 @@ function TurnoverPackageModal({
               className="primary-button"
               type="submit"
               disabled={
-                isSubmitting ||
-                !hasAnyScope ||
-                !preflight ||
-                isLoadingPreflight
+                isSubmitting || !hasAnyScope || !preflight || isLoadingPreflight
               }
             >
               {isSubmitting ? "Creating package..." : "Create package"}

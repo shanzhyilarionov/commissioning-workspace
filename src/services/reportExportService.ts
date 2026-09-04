@@ -3,6 +3,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { jsPDF } from "jspdf";
 import { autoTable, type Table } from "jspdf-autotable";
 import type { Project } from "../types/project";
+import type { ReportingIdentity } from "../types/reportingIdentity";
 import type {
   ReportLinkedIssue,
   ReportRecordSummary,
@@ -15,7 +16,10 @@ import { exportColors } from "./exportTheme";
 interface SaveTestRecordReportInput {
   project: Project;
   bundle: TestRecordReportBundle;
+  reportingIdentity: ReportingIdentity;
 }
+
+const PRODUCT_NAME = "Commissioning Workspace";
 
 function formatRecordType(recordType: TestRecordType): string {
   return recordType === "checklist" ? "Checklist" : "Functional test";
@@ -92,6 +96,26 @@ function displayText(value: string | null | undefined): string {
   return normalized || "-";
 }
 
+function reportingBrand(identity: ReportingIdentity): string {
+  return identity.organization.trim() || PRODUCT_NAME;
+}
+
+function identityNameWithTitle(
+  name: string,
+  identity: ReportingIdentity,
+): string {
+  const normalizedName = name.trim();
+  const title = identity.jobTitle.trim();
+  const isCurrentOperator =
+    normalizedName.localeCompare(identity.operatorName.trim(), undefined, {
+      sensitivity: "base",
+    }) === 0;
+
+  return title && normalizedName && isCurrentOperator
+    ? `${normalizedName}\n${title}`
+    : normalizedName;
+}
+
 function sanitizeFileName(value: string): string {
   const normalized = value
     .trim()
@@ -131,7 +155,8 @@ function fitText(
 
   const visibleLines = lines.slice(0, maximumLines);
   const finalLine = visibleLines[maximumLines - 1];
-  visibleLines[maximumLines - 1] = `${finalLine.slice(0, Math.max(0, finalLine.length - 1))}…`;
+  visibleLines[maximumLines - 1] =
+    `${finalLine.slice(0, Math.max(0, finalLine.length - 1))}…`;
   return visibleLines;
 }
 
@@ -139,6 +164,7 @@ function drawHeader(
   document: jsPDF,
   project: Project,
   record: ReportRecordSummary,
+  reportingIdentity: ReportingIdentity,
 ): number {
   const pageWidth = document.internal.pageSize.getWidth();
   const margin = 12;
@@ -146,13 +172,33 @@ function drawHeader(
   document.setTextColor(...exportColors.heading);
   document.setFont("helvetica", "bold");
   document.setFontSize(7.5);
-  document.text("COMMISSIONING WORKSPACE", margin, 12);
+  document.text(
+    fitText(
+      document,
+      reportingBrand(reportingIdentity).toUpperCase(),
+      pageWidth - 105,
+      1,
+    ),
+    margin,
+    12,
+  );
 
+  const hasOrganization = Boolean(reportingIdentity.organization.trim());
+  const contentOffset = hasOrganization ? 2 : 0;
+  if (hasOrganization) {
+    document.setFont("helvetica", "normal");
+    document.setFontSize(5.5);
+    document.setTextColor(...exportColors.muted);
+    document.text("GENERATED WITH COMMISSIONING WORKSPACE", margin, 15.5);
+  }
+
+  document.setTextColor(...exportColors.heading);
+  document.setFont("helvetica", "bold");
   document.setFontSize(18);
   document.text(
     fitText(document, record.title, pageWidth - 105, 1),
     margin,
-    20,
+    20 + contentOffset,
   );
 
   document.setFont("helvetica", "normal");
@@ -161,7 +207,7 @@ function drawHeader(
   document.text(
     `${formatRecordType(record.recordType)} completion report`,
     margin,
-    26,
+    26 + contentOffset,
   );
 
   document.setFontSize(7.5);
@@ -171,14 +217,24 @@ function drawHeader(
   document.text(`Record ID: ${record.id}`, pageWidth - margin, 17, {
     align: "right",
   });
-  document.text(`Signed: ${formatDateTime(record.signedOffAt)}`, pageWidth - margin, 22, {
-    align: "right",
-  });
+  document.text(
+    `Signed: ${formatDateTime(record.signedOffAt)}`,
+    pageWidth - margin,
+    22,
+    {
+      align: "right",
+    },
+  );
 
   document.setDrawColor(...exportColors.divider);
   document.setLineWidth(0.6);
-  document.line(margin, 30, pageWidth - margin, 30);
-  return 36;
+  document.line(
+    margin,
+    30 + contentOffset,
+    pageWidth - margin,
+    30 + contentOffset,
+  );
+  return 36 + contentOffset;
 }
 
 function drawField(
@@ -334,6 +390,7 @@ function ensureVerticalSpace(
 function drawSignoff(
   document: jsPDF,
   record: ReportRecordSummary,
+  reportingIdentity: ReportingIdentity,
   startY: number,
 ): number {
   const margin = 12;
@@ -347,7 +404,10 @@ function drawSignoff(
     ["Executed by", record.executedBy],
     ["Witnessed by", record.witnessedBy],
     ["Execution date", formatDate(record.executionDate)],
-    ["Signed off by", record.signedOffBy],
+    [
+      "Signed off by",
+      identityNameWithTitle(record.signedOffBy, reportingIdentity),
+    ],
     ["Signed off at", formatDateTime(record.signedOffAt)],
     [
       "Final result",
@@ -402,12 +462,9 @@ function drawPageFooters(
     document.setFont("helvetica", "normal");
     document.setFontSize(6.5);
     document.setTextColor(...exportColors.muted);
-    document.text(
-      `${project.name} · ${record.title}`,
-      12,
-      pageHeight - 6,
-      { maxWidth: pageWidth - 55 },
-    );
+    document.text(`${project.name} · ${record.title}`, 12, pageHeight - 6, {
+      maxWidth: pageWidth - 55,
+    });
     document.text(
       `Page ${pageNumber} of ${totalPages}`,
       pageWidth - 12,
@@ -417,7 +474,11 @@ function drawPageFooters(
   }
 }
 
-function createPdf({ project, bundle }: SaveTestRecordReportInput): jsPDF {
+function createPdf({
+  project,
+  bundle,
+  reportingIdentity,
+}: SaveTestRecordReportInput): jsPDF {
   const { record, items } = bundle;
   const document = new jsPDF({
     orientation: "landscape",
@@ -433,7 +494,7 @@ function createPdf({ project, bundle }: SaveTestRecordReportInput): jsPDF {
     creator: "Commissioning Workspace",
   });
 
-  let y = drawHeader(document, project, record);
+  let y = drawHeader(document, project, record, reportingIdentity);
   y = drawInformation(document, project, record, y);
   y = drawSummary(document, record, y);
   drawSectionTitle(document, "Checklist and test items", y);
@@ -441,14 +502,7 @@ function createPdf({ project, bundle }: SaveTestRecordReportInput): jsPDF {
   autoTable(document, {
     startY: y + 3,
     head: [
-      [
-        "No.",
-        "Item",
-        "Acceptance criteria",
-        "Result",
-        "Notes",
-        "Linked issue",
-      ],
+      ["No.", "Item", "Acceptance criteria", "Result", "Notes", "Linked issue"],
     ],
     body: buildTableRows(items),
     theme: "grid",
@@ -490,7 +544,7 @@ function createPdf({ project, bundle }: SaveTestRecordReportInput): jsPDF {
   const tableFinalY = (document as jsPDF & { lastAutoTable?: Table })
     .lastAutoTable?.finalY;
 
-  drawSignoff(document, record, (tableFinalY ?? 88) + 8);
+  drawSignoff(document, record, reportingIdentity, (tableFinalY ?? 88) + 8);
   drawPageFooters(document, project, record);
   return document;
 }
@@ -517,9 +571,7 @@ export async function saveTestRecordReport(
     return null;
   }
 
-  const outputPath = path.toLowerCase().endsWith(".pdf")
-    ? path
-    : `${path}.pdf`;
+  const outputPath = path.toLowerCase().endsWith(".pdf") ? path : `${path}.pdf`;
   const document = createPdf(input);
   const arrayBuffer = document.output("arraybuffer");
   const bytes = Array.from(new Uint8Array(arrayBuffer));

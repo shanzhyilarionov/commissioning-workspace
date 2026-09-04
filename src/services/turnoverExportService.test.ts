@@ -90,4 +90,24 @@ describe("createTurnoverPackagePdf", () => {
     expect(document.getNumberOfPages()).toBeGreaterThanOrEqual(2);
     expect(bytes.byteLength).toBeGreaterThan(1_000);
   });
+
+  it("creates a PDF with a snapshotted reporting identity", () => {
+    const document = createTurnoverPackagePdf({
+      ...turnoverPackage,
+      preparedBy: "Morgan Lee",
+      snapshot: {
+        ...turnoverPackage.snapshot,
+        schemaVersion: 3,
+        reportingIdentity: {
+          operatorName: "Morgan Lee",
+          organization: "Northline Energy",
+          jobTitle: "Commissioning Engineer",
+        },
+      },
+    });
+    const bytes = new Uint8Array(document.output("arraybuffer"));
+
+    expect(document.getNumberOfPages()).toBeGreaterThanOrEqual(2);
+    expect(bytes.byteLength).toBeGreaterThan(1_000);
+  });
 });

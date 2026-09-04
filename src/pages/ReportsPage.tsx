@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
@@ -26,6 +21,7 @@ import {
   listSystemsByProject,
 } from "../repositories/systemRepository";
 import type { Project } from "../types/project";
+import type { ReportingIdentity } from "../types/reportingIdentity";
 import {
   isAuditNavigationItem,
   type ProjectNavigationItem,
@@ -47,6 +43,7 @@ import "./ReportsPage.css";
 
 interface ReportsPageProps {
   currentProject: Project;
+  reportingIdentity: ReportingIdentity;
   view: ReportsView;
   navigationItem?: ProjectNavigationItem | null;
 }
@@ -126,6 +123,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 function ReportsPage({
   currentProject,
+  reportingIdentity,
   view,
   navigationItem = null,
 }: ReportsPageProps) {
@@ -335,7 +333,8 @@ function ReportsPage({
         .join(" ")
         .toLowerCase();
       const matchesSearch =
-        normalizedQuery.length === 0 || searchableText.includes(normalizedQuery);
+        normalizedQuery.length === 0 ||
+        searchableText.includes(normalizedQuery);
 
       return matchesType && matchesFrom && matchesTo && matchesSearch;
     });
@@ -361,7 +360,8 @@ function ReportsPage({
         .join(" ")
         .toLowerCase();
       const matchesSearch =
-        normalizedQuery.length === 0 || searchableText.includes(normalizedQuery);
+        normalizedQuery.length === 0 ||
+        searchableText.includes(normalizedQuery);
 
       return matchesStatus && matchesSearch;
     });
@@ -406,10 +406,7 @@ function ReportsPage({
       setSubsystems(subsystemsResult.value);
     } else {
       errors.push(
-        getErrorMessage(
-          subsystemsResult.reason,
-          "Failed to load subsystems.",
-        ),
+        getErrorMessage(subsystemsResult.reason, "Failed to load subsystems."),
       );
     }
 
@@ -428,12 +425,12 @@ function ReportsPage({
 
     try {
       const bundle = await getTestRecordReportBundle(record.id);
-      const { saveTestRecordReport } = await import(
-        "../services/reportExportService"
-      );
+      const { saveTestRecordReport } =
+        await import("../services/reportExportService");
       const path = await saveTestRecordReport({
         project: currentProject,
         bundle,
+        reportingIdentity,
       });
 
       if (path) {
@@ -456,9 +453,8 @@ function ReportsPage({
     setSavedReportPath(null);
 
     try {
-      const { saveTurnoverPackagePdf } = await import(
-        "../services/turnoverExportService"
-      );
+      const { saveTurnoverPackagePdf } =
+        await import("../services/turnoverExportService");
       const path = await saveTurnoverPackagePdf({ turnoverPackage });
 
       if (path) {
@@ -488,9 +484,8 @@ function ReportsPage({
 
     try {
       const storedPackage = await getTurnoverPackageById(turnoverPackage.id);
-      const { saveTurnoverPackagePdf } = await import(
-        "../services/turnoverExportService"
-      );
+      const { saveTurnoverPackagePdf } =
+        await import("../services/turnoverExportService");
       const path = await saveTurnoverPackagePdf({
         turnoverPackage: storedPackage,
       });
@@ -515,6 +510,7 @@ function ReportsPage({
     const turnoverPackage = await createTurnoverPackage(
       currentProject.id,
       input,
+      reportingIdentity,
     );
 
     setTurnoverPackages((current) => [turnoverPackage, ...current]);
@@ -522,9 +518,7 @@ function ReportsPage({
     await saveTurnoverPackage(turnoverPackage);
   }
 
-  function handleRequestDeletePackage(
-    turnoverPackage: TurnoverPackageSummary,
-  ) {
+  function handleRequestDeletePackage(turnoverPackage: TurnoverPackageSummary) {
     setOpenMenuPackageId(null);
     setPackageDeleteError(null);
     setPackageToDelete(turnoverPackage);
@@ -564,9 +558,7 @@ function ReportsPage({
     }
   }
 
-  function handleRequestVoidPackage(
-    turnoverPackage: TurnoverPackageSummary,
-  ) {
+  function handleRequestVoidPackage(turnoverPackage: TurnoverPackageSummary) {
     setOpenMenuPackageId(null);
     setPackageVoidError(null);
     setPackageToVoid(turnoverPackage);
@@ -797,7 +789,9 @@ function ReportsPage({
           ) : filteredRecords.length === 0 ? (
             <div className="empty-state compact reports-empty-state">
               <h3>No matching reports</h3>
-              <p>Change the search text, record type, or execution date range.</p>
+              <p>
+                Change the search text, record type, or execution date range.
+              </p>
             </div>
           ) : (
             <FixedHeaderTable
@@ -939,8 +933,7 @@ function ReportsPage({
             body={
               <>
                 {filteredTurnoverPackages.map((turnoverPackage) => {
-                  const isExporting =
-                    exportingPackageId === turnoverPackage.id;
+                  const isExporting = exportingPackageId === turnoverPackage.id;
 
                   return (
                     <tr
@@ -1022,9 +1015,7 @@ function ReportsPage({
                             <ActionMenu
                               ariaLabel={`More actions for ${turnoverPackage.packageNumber}`}
                               disabled={isDeletingPackage || isVoidingPackage}
-                              isOpen={
-                                openMenuPackageId === turnoverPackage.id
-                              }
+                              isOpen={openMenuPackageId === turnoverPackage.id}
                               onOpenChange={(isOpen) =>
                                 setOpenMenuPackageId(
                                   isOpen ? turnoverPackage.id : null,
@@ -1037,9 +1028,7 @@ function ReportsPage({
                                   type="button"
                                   role="menuitem"
                                   onClick={() =>
-                                    handleRequestDeletePackage(
-                                      turnoverPackage,
-                                    )
+                                    handleRequestDeletePackage(turnoverPackage)
                                   }
                                 >
                                   Delete draft
@@ -1050,9 +1039,7 @@ function ReportsPage({
                                   type="button"
                                   role="menuitem"
                                   onClick={() =>
-                                    handleRequestVoidPackage(
-                                      turnoverPackage,
-                                    )
+                                    handleRequestVoidPackage(turnoverPackage)
                                   }
                                 >
                                   Void package
@@ -1074,6 +1061,7 @@ function ReportsPage({
       <TurnoverPackageModal
         isOpen={isTurnoverModalOpen}
         projectId={currentProject.id}
+        defaultPreparedBy={reportingIdentity.operatorName}
         systems={systems}
         subsystems={subsystems}
         onClose={() => setIsTurnoverModalOpen(false)}

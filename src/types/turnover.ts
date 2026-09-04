@@ -2,6 +2,7 @@ import type { AssetStatus } from "./asset";
 import type { DocumentCategory, DocumentStatus } from "./document";
 import type { IssuePriority, IssueStatus } from "./issue";
 import type { ProjectStatus } from "./project";
+import type { ReportingIdentity } from "./reportingIdentity";
 import type {
   ReadinessBlocker,
   ReadinessStageRecord,
@@ -88,8 +89,9 @@ export interface TurnoverDocumentSnapshot {
 }
 
 export interface TurnoverPackageSnapshot {
-  schemaVersion: 1 | 2;
+  schemaVersion: 1 | 2 | 3;
   generatedAt: string;
+  reportingIdentity?: ReportingIdentity;
   project: TurnoverProjectSnapshot;
   scope: TurnoverScopeSnapshot;
   readiness: {

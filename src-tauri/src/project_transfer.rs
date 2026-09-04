@@ -1235,7 +1235,11 @@ fn selected_projects_and_prune(
             "
                 UPDATE workspace_settings
                 SET value = ''
-                WHERE key = 'current_operator';
+                WHERE key IN (
+                    'current_operator',
+                    'reporting_organization',
+                    'reporting_job_title'
+                );
 
                 UPDATE audit_operation_context
                 SET enabled = 1, action = '', actor = '', reason = ''
@@ -1614,6 +1618,16 @@ mod tests {
             .execute_batch("PRAGMA foreign_keys = ON;")
             .unwrap();
         connection
+            .execute_batch(
+                "
+                    INSERT INTO workspace_settings VALUES
+                        ('current_operator', 'Morgan Lee', '2026-01-01T00:00:00Z'),
+                        ('reporting_organization', 'Northline Energy', '2026-01-01T00:00:00Z'),
+                        ('reporting_job_title', 'Commissioning Engineer', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .unwrap();
+        connection
             .execute(
                 "INSERT INTO projects VALUES (?1, ?2, '', '', '', 'active', ?3, ?3)",
                 params!["project-one", "Plant", "2026-01-01T00:00:00Z"],
@@ -1756,6 +1770,25 @@ mod tests {
             )
             .unwrap();
         assert_eq!(excluded_projects, 0);
+        let reporting_identity_values: Vec<String> = packaged_database
+            .prepare(
+                "
+                    SELECT value
+                    FROM workspace_settings
+                    WHERE key IN (
+                        'current_operator',
+                        'reporting_organization',
+                        'reporting_job_title'
+                    )
+                    ORDER BY key
+                ",
+            )
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(reporting_identity_values, vec!["", "", ""]);
         drop(packaged_database);
 
         let destination_directory = TempDir::new().unwrap();
