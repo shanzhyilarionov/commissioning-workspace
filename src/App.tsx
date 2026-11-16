@@ -567,6 +567,7 @@ function App() {
             currentOperatorName={reportingIdentity.operatorName}
             continueWorkingItem={continueWorkingItem}
             onContinueWorking={handleContinueWorking}
+            onOpenProject={handleOpenProject}
           />
         );
       case "Projects":

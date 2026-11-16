@@ -576,7 +576,9 @@
   flex: 0 0 auto;
 }
 
-.turnover-row-actions {
+.project-row-actions.turnover-row-actions {
+  display: grid;
+  grid-template-columns: max-content 42px;
   gap: 7px;
 }
 

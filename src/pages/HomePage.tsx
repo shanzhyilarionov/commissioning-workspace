@@ -12,6 +12,7 @@ interface HomePageProps {
   currentOperatorName: string;
   continueWorkingItem: ContinueWorkingItem | null;
   onContinueWorking: () => void;
+  onOpenProject: (projectId: string) => void;
 }
 
 type DashboardTone = "positive" | "accent" | "negative" | "neutral";
@@ -132,8 +133,10 @@ function ProjectPerformanceValue({
 
 function ProjectPerformancePanel({
   projects,
+  onOpenProject,
 }: {
   projects: WorkspaceProjectPerformance[];
+  onOpenProject: (projectId: string) => void;
 }) {
   return (
     <section
@@ -166,9 +169,22 @@ function ProjectPerformancePanel({
           body={
             <>
               {projects.map((project) => (
-                <tr key={project.projectId}>
+                <tr
+                  key={project.projectId}
+                  onClick={() => onOpenProject(project.projectId)}
+                >
                   <td className="home-performance-project-cell">
-                    <strong>{project.projectName}</strong>
+                    <button
+                      className="home-performance-project-button"
+                      type="button"
+                      aria-label={`Open overview for ${project.projectName}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenProject(project.projectId);
+                      }}
+                    >
+                      {project.projectName}
+                    </button>
                   </td>
                   <td>
                     <ProjectPerformanceValue
@@ -565,11 +581,13 @@ function AnalyticsContent({
   continueWorkingItem,
   currentTime,
   onContinueWorking,
+  onOpenProject,
 }: {
   analytics: WorkspaceAnalytics;
   continueWorkingItem: ContinueWorkingItem | null;
   currentTime: Date;
   onContinueWorking: () => void;
+  onOpenProject: (projectId: string) => void;
 }) {
   const assetCompletionPercent =
     analytics.assets.total === 0
@@ -863,6 +881,7 @@ function AnalyticsContent({
         />
         <ProjectPerformancePanel
           projects={analytics.projectPerformance}
+          onOpenProject={onOpenProject}
         />
       </div>
     </>
@@ -873,6 +892,7 @@ export default function HomePage({
   currentOperatorName,
   continueWorkingItem,
   onContinueWorking,
+  onOpenProject,
 }: HomePageProps) {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [analytics, setAnalytics] = useState<WorkspaceAnalytics | null>(
@@ -941,6 +961,7 @@ export default function HomePage({
               continueWorkingItem={continueWorkingItem}
               currentTime={currentTime}
               onContinueWorking={onContinueWorking}
+              onOpenProject={onOpenProject}
             />
           ) : (
             <section className="home-panel home-analytics-state">

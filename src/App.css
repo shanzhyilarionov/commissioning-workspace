@@ -1054,16 +1054,28 @@ pre,
   overflow-wrap: anywhere;
 }
 
-.home-performance-project-cell > strong {
+.home-performance-project-button {
   width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
   overflow: visible;
+  font-family: inherit;
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-label);
   color: var(--color-text-primary);
+  text-align: left;
   text-overflow: clip;
   white-space: normal;
   overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.home-performance-project-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 .home-performance-issues.attention {
@@ -1103,8 +1115,13 @@ pre,
   font-variant-numeric: tabular-nums;
 }
 
-.projects-table.home-project-performance-table tbody tr:hover {
-  background: var(--color-surface);
+.home-project-performance-table tbody tr {
+  cursor: pointer;
+}
+
+.projects-table.home-project-performance-table tbody tr:hover td,
+.projects-table.home-project-performance-table tbody tr:focus-within td {
+  background: var(--color-surface-hover);
 }
 
 .home-attention-panel {
