@@ -1,0 +1,225 @@
+import { useEffect, useState } from "react";
+import FixedHeaderTable from "../components/FixedHeaderTable";
+import { listWorkspaceDeliverables } from "../repositories/workspaceDeliverableRepository";
+import { getWorkspaceDeliverableFilterOptions } from "../services/workspaceDeliverableFilters";
+import {
+  deliverableLabels,
+  type WorkspaceDeliverable,
+  type WorkspaceDeliverableKind,
+} from "../types/workspaceDeliverable";
+import "./WorkspaceDeliverablesPage.css";
+
+interface WorkspaceDeliverablesPageProps {
+  kind: WorkspaceDeliverableKind;
+  onBack: () => void;
+  onOpenItem: (item: WorkspaceDeliverable) => void;
+}
+
+const statusOptions: Record<WorkspaceDeliverableKind, readonly string[]> = {
+  required_documents: ["draft", "for_review", "approved", "superseded"],
+  test_records: ["unsigned", "signed_off"],
+  subsystem_handover: [
+    "not_started", "in_progress", "ready", "commissioned", "handed_over",
+  ],
+};
+
+const detailLabels: Record<WorkspaceDeliverableKind, string> = {
+  required_documents: "Revision",
+  test_records: "Test progress",
+  subsystem_handover: "Asset completion",
+};
+
+function formatStatus(status: string): string {
+  return status
+    .replace(/_/g, " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+export default function WorkspaceDeliverablesPage({
+  kind,
+  onBack,
+  onOpenItem,
+}: WorkspaceDeliverablesPageProps) {
+  const [items, setItems] = useState<WorkspaceDeliverable[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshSequence, setRefreshSequence] = useState(0);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadError(null);
+
+    void listWorkspaceDeliverables(kind)
+      .then((result) => {
+        if (!cancelled) setItems(result);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load deliverables.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, refreshSequence]);
+
+  const { statuses, projects } = getWorkspaceDeliverableFilterOptions(
+    items,
+    statusFilter,
+    projectFilter,
+  );
+  const query = search.trim().toLowerCase();
+  const visibleItems = items.filter(
+    (item) =>
+      (statusFilter === "all" || item.status === statusFilter) &&
+      (projectFilter === "all" || item.projectId === projectFilter) &&
+      [
+        item.title,
+        item.projectName,
+        item.context,
+        formatStatus(item.status),
+        item.kind === "required_documents" ? item.revision : "",
+      ].some((value) => value.toLowerCase().includes(query)),
+  );
+
+  return (
+    <section className="content-card section-card deliverables-page">
+      <div className="card-header test-record-page-header">
+        <div className="test-record-page-heading">
+          <button
+            className="back-navigation-button"
+            type="button"
+            onClick={onBack}
+          >
+            <span aria-hidden="true">←</span>
+            Back to Home
+          </button>
+          <h3>{deliverableLabels[kind]}</h3>
+          <p>All entries across your workspace, including archived projects.</p>
+        </div>
+      </div>
+
+      <div className="projects-toolbar deliverables-toolbar">
+        <input
+          className="project-search-input"
+          type="search"
+          aria-label="Search deliverables"
+          placeholder="Search items, projects, or scope..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <select
+          className="project-status-filter"
+          aria-label="Filter by status"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+        >
+          <option value="all">All statuses</option>
+          {statusOptions[kind].filter((status) => statuses.has(status)).map((status) => (
+            <option key={status} value={status}>{formatStatus(status)}</option>
+          ))}
+        </select>
+        <select
+          className="project-status-filter deliverables-project-filter"
+          aria-label="Filter by project"
+          value={projectFilter}
+          onChange={(event) => setProjectFilter(event.target.value)}
+        >
+          <option value="all">All projects</option>
+          {projects.map(([id, name]) => (
+            <option key={id} value={id}>{name}</option>
+          ))}
+        </select>
+        {!isLoading && !loadError && (
+          <span className="project-result-count" role="status">
+            {visibleItems.length} of {items.length}
+          </span>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="empty-state" role="status">Loading deliverables...</div>
+      ) : loadError ? (
+        <div className="empty-state" role="alert">
+          <h3>Unable to load deliverables</h3>
+          <p>{loadError}</p>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setRefreshSequence((value) => value + 1)}
+          >
+            Try again
+          </button>
+        </div>
+      ) : visibleItems.length === 0 ? (
+        <div className="empty-state">
+          <h3>{items.length === 0 ? "No entries yet" : "No matching entries"}</h3>
+          <p>
+            {items.length === 0
+              ? `No ${deliverableLabels[kind].toLowerCase()} in your workspace.`
+              : "Try a different search, status, or project filter."}
+          </p>
+        </div>
+      ) : (
+        <FixedHeaderTable
+          className={`projects-table deliverables-table ${kind}`}
+          ariaLabel={`${deliverableLabels[kind]} across all projects`}
+          header={
+            <tr>
+              <th>Item</th>
+              <th>Project</th>
+              <th>{kind === "subsystem_handover" ? "System" : "Asset"}</th>
+              <th>Status</th>
+              <th>{detailLabels[kind]}</th>
+            </tr>
+          }
+          body={visibleItems.map((item) => (
+            <tr key={item.id}>
+              <td>
+                <button
+                  className="test-record-title-button deliverables-item-button"
+                  type="button"
+                  onClick={() => onOpenItem(item)}
+                >
+                  <strong className="issue-title-text">{item.title}</strong>
+                </button>
+              </td>
+              <td>{item.projectName}</td>
+              <td>{item.context || "-"}</td>
+              <td className="status-cell">
+                <span className={`status-badge ${item.status}`}>
+                  {formatStatus(item.status)}
+                </span>
+              </td>
+              <td>
+                {item.kind === "required_documents" ? (
+                  item.revision || "-"
+                ) : (
+                  <span
+                    title={item.kind === "test_records"
+                      ? "Assessed test items / total test items"
+                      : "Completed assets / total assets"}
+                  >
+                    {item.completedCount} / {item.totalCount}
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        />
+      )}
+    </section>
+  );
+}

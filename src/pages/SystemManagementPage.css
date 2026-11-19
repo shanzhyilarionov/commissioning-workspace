@@ -79,12 +79,12 @@
 }
 
 .structure-systems-table {
-  --table-min-width: 686px;
-  --table-min-width-value: 686;
+  --table-min-width: 744px;
+  --table-min-width-value: 744;
   --table-fixed-side-count: 8;
   --table-grid-columns:
     calc(
-      42px +
+      100px +
       var(--table-fixed-padding-x) +
       var(--table-fixed-padding-x)
     )
@@ -122,12 +122,12 @@
 }
 
 .structure-subsystems-table {
-  --table-min-width: 792px;
-  --table-min-width-value: 792;
+  --table-min-width: 850px;
+  --table-min-width-value: 850;
   --table-fixed-side-count: 12;
   --table-grid-columns:
     calc(
-      42px +
+      100px +
       var(--table-fixed-padding-x) +
       var(--table-fixed-padding-x)
     )
@@ -205,6 +205,12 @@
 .structure-code-cell {
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
+}
+
+.structure-systems-table tr > .structure-code-cell,
+.structure-subsystems-table tr > .structure-code-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .structure-name {

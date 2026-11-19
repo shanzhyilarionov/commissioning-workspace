@@ -13,6 +13,11 @@ import ProjectOverviewPage from "./pages/DashboardPage";
 import IssuesPage from "./pages/IssuesPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import HomePage from "./pages/HomePage";
+import WorkspaceDeliverablesPage from "./pages/WorkspaceDeliverablesPage";
+import type {
+  WorkspaceDeliverable,
+  WorkspaceDeliverableKind,
+} from "./types/workspaceDeliverable";
 import ProjectsPage from "./pages/ProjectsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -65,7 +70,10 @@ const utilityPages = ["Settings"] as const;
 
 type ProjectPage = (typeof projectPages)[number];
 type Page =
-  (typeof globalPages)[number] | ProjectPage | (typeof utilityPages)[number];
+  | (typeof globalPages)[number]
+  | ProjectPage
+  | (typeof utilityPages)[number]
+  | "Deliverables";
 type ProjectStatusAction = "archive" | "restore";
 
 function isProjectPage(page: Page): page is ProjectPage {
@@ -75,6 +83,8 @@ function isProjectPage(page: Page): page is ProjectPage {
 function App() {
   const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [activePage, setActivePage] = useState<Page>("Home");
+  const [deliverableKind, setDeliverableKind] =
+    useState<WorkspaceDeliverableKind>("required_documents");
   const [projects, setProjects] = useState<Project[]>([]);
   const [reportingIdentity, setReportingIdentity] = useState<ReportingIdentity>(
     EMPTY_REPORTING_IDENTITY,
@@ -253,6 +263,30 @@ function App() {
   function handleNavigation(page: Page) {
     setAttentionNavigation(null);
     setActivePage(page);
+  }
+
+  function handleOpenDeliverables(kind: WorkspaceDeliverableKind) {
+    setDeliverableKind(kind);
+    setAttentionNavigation(null);
+    setActivePage("Deliverables");
+  }
+
+  function handleOpenDeliverable(item: WorkspaceDeliverable) {
+    const destination = {
+      required_documents: { page: "Documents", entityType: "document" },
+      test_records: { page: "Checklists & Tests", entityType: "test_record" },
+      subsystem_handover: { page: "Assets", entityType: "subsystem" },
+    } as const;
+    const { page, entityType } = destination[deliverableKind];
+
+    setCurrentProjectId(item.projectId);
+    handleOverviewNavigation(page, {
+      navigationKind: "audit",
+      entityType,
+      id: item.id,
+      matchText: item.title,
+      parentId: item.parentId,
+    });
   }
 
   function handleOverviewNavigation(
@@ -568,6 +602,16 @@ function App() {
             continueWorkingItem={continueWorkingItem}
             onContinueWorking={handleContinueWorking}
             onOpenProject={handleOpenProject}
+            onOpenDeliverables={handleOpenDeliverables}
+          />
+        );
+      case "Deliverables":
+        return (
+          <WorkspaceDeliverablesPage
+            key={deliverableKind}
+            kind={deliverableKind}
+            onBack={() => handleNavigation("Home")}
+            onOpenItem={handleOpenDeliverable}
           />
         );
       case "Projects":
@@ -732,7 +776,10 @@ function App() {
                     key={page}
                     type="button"
                     className={
-                      activePage === page ? "nav-item active" : "nav-item"
+                      activePage === page ||
+                      (page === "Home" && activePage === "Deliverables")
+                        ? "nav-item active"
+                        : "nav-item"
                     }
                     onClick={() => handleNavigation(page)}
                   >

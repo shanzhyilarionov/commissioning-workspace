@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import { getWorkspaceAnalytics } from "../repositories/workspaceAnalyticsRepository";
 import type { ContinueWorkingItem } from "../services/continueWorkingService";
+import type { WorkspaceDeliverableKind } from "../types/workspaceDeliverable";
 import type {
   WorkspaceAnalytics,
   WorkspaceDailyActivity,
@@ -13,6 +14,7 @@ interface HomePageProps {
   continueWorkingItem: ContinueWorkingItem | null;
   onContinueWorking: () => void;
   onOpenProject: (projectId: string) => void;
+  onOpenDeliverables: (kind: WorkspaceDeliverableKind) => void;
 }
 
 type DashboardTone = "positive" | "accent" | "negative" | "neutral";
@@ -582,12 +584,14 @@ function AnalyticsContent({
   currentTime,
   onContinueWorking,
   onOpenProject,
+  onOpenDeliverables,
 }: {
   analytics: WorkspaceAnalytics;
   continueWorkingItem: ContinueWorkingItem | null;
   currentTime: Date;
   onContinueWorking: () => void;
   onOpenProject: (projectId: string) => void;
+  onOpenDeliverables: (kind: WorkspaceDeliverableKind) => void;
 }) {
   const assetCompletionPercent =
     analytics.assets.total === 0
@@ -619,8 +623,16 @@ function AnalyticsContent({
             analytics.deliverables.handoverSubsystemsTotal) *
             100,
         );
-  const readinessRows = [
+  const readinessRows: {
+    kind: WorkspaceDeliverableKind;
+    label: string;
+    percent: number;
+    total: number;
+    remaining: number;
+    complete: number;
+  }[] = [
     {
+      kind: "required_documents",
       label: "Required documents",
       percent: requiredDocumentPercent,
       total: analytics.deliverables.requiredDocumentsTotal,
@@ -630,6 +642,7 @@ function AnalyticsContent({
       complete: analytics.deliverables.requiredDocumentsApproved,
     },
     {
+      kind: "test_records",
       label: "Test records",
       percent: signedRecordPercent,
       total: analytics.deliverables.testRecordsTotal,
@@ -639,6 +652,7 @@ function AnalyticsContent({
       complete: analytics.deliverables.testRecordsSigned,
     },
     {
+      kind: "subsystem_handover",
       label: "Subsystem handover",
       percent: handoverScopePercent,
       total: analytics.deliverables.handoverSubsystemsTotal,
@@ -837,10 +851,16 @@ function AnalyticsContent({
           </div>
           <div className="home-readiness-table-body">
             {readinessRows.map((row) => (
-              <div className="home-readiness-row" key={row.label}>
+              <button
+                className="home-readiness-row"
+                key={row.kind}
+                type="button"
+                aria-label={`View all ${row.label.toLowerCase()}`}
+                onClick={() => onOpenDeliverables(row.kind)}
+              >
                 <strong>{row.label}</strong>
-                <div className="home-readiness-progress-cell">
-                  <div
+                <span className="home-readiness-progress-cell">
+                  <span
                     className="home-readiness-progress"
                     role="progressbar"
                     aria-label={`${row.label} readiness`}
@@ -849,13 +869,13 @@ function AnalyticsContent({
                     aria-valuenow={row.percent}
                   >
                     <span style={{ width: `${row.percent}%` }} />
-                  </div>
+                  </span>
                   <small>{row.percent}%</small>
-                </div>
+                </span>
                 <span className="total">{row.total}</span>
                 <span className="remaining">{row.remaining}</span>
                 <span className="complete">{row.complete}</span>
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -893,6 +913,7 @@ export default function HomePage({
   continueWorkingItem,
   onContinueWorking,
   onOpenProject,
+  onOpenDeliverables,
 }: HomePageProps) {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [analytics, setAnalytics] = useState<WorkspaceAnalytics | null>(
@@ -962,6 +983,7 @@ export default function HomePage({
               currentTime={currentTime}
               onContinueWorking={onContinueWorking}
               onOpenProject={onOpenProject}
+              onOpenDeliverables={onOpenDeliverables}
             />
           ) : (
             <section className="home-panel home-analytics-state">

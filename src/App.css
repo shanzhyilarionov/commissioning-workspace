@@ -1252,9 +1252,24 @@ pre,
 
 .home-readiness-row {
   min-height: 42px;
+  width: 100%;
   padding: 7px 14px;
+  font: inherit;
+  color: var(--color-text-primary);
+  text-align: left;
   background: var(--color-surface);
+  border: 0;
   border-bottom: 1px solid var(--color-border-subtle);
+  cursor: pointer;
+}
+
+.home-readiness-row:hover {
+  background: var(--color-surface-hover);
+}
+
+.home-readiness-row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -3px;
 }
 
 .home-readiness-row:last-child {
@@ -1272,6 +1287,7 @@ pre,
 }
 
 .home-readiness-progress {
+  display: block;
   height: 8px;
   min-width: 110px;
   flex: 1 1 auto;
@@ -1306,7 +1322,7 @@ pre,
   font-variant-numeric: tabular-nums;
 }
 
-.home-readiness-row > span {
+.home-readiness-row > span:not(.home-readiness-progress-cell) {
   justify-self: center;
   font-family: var(--font-family-sans);
   font-size: var(--font-size-body);
