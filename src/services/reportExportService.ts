@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { jsPDF } from "jspdf";
-import { autoTable, type Table } from "jspdf-autotable";
+import { autoTable, type CellInput } from "jspdf-autotable";
 import type { Project } from "../types/project";
 import type { ReportingIdentity } from "../types/reportingIdentity";
 import type {
@@ -11,15 +11,21 @@ import type {
   TestRecordReportBundle,
 } from "../types/report";
 import type { TestItemResult, TestRecordType } from "../types/testRecord";
-import { exportColors } from "./exportTheme";
+import {
+  PAGE_MARGIN,
+  tableOptions,
+  tableEnd,
+  tableSectionHead,
+  drawTableSection,
+  drawPageNumbers,
+  drawPdfTitle,
+} from "./pdfLayout";
 
 interface SaveTestRecordReportInput {
   project: Project;
   bundle: TestRecordReportBundle;
   reportingIdentity: ReportingIdentity;
 }
-
-const PRODUCT_NAME = "Commissioning Workspace";
 
 function formatRecordType(recordType: TestRecordType): string {
   return recordType === "checklist" ? "Checklist" : "Functional test";
@@ -76,28 +82,16 @@ function formatDate(value: string | null | undefined): string {
 }
 
 function formatDateTime(value: string): string {
+  if (!value.trim()) return "-";
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString("en-CA", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
 function displayText(value: string | null | undefined): string {
   const normalized = value?.trim();
   return normalized || "-";
-}
-
-function reportingBrand(identity: ReportingIdentity): string {
-  return identity.organization.trim() || PRODUCT_NAME;
 }
 
 function identityNameWithTitle(
@@ -138,253 +132,76 @@ function getLinkedIssueText(issue: ReportLinkedIssue | null): string {
     issue.dueDate ? `Due: ${formatDate(issue.dueDate)}` : null,
   ].filter((value): value is string => value !== null);
 
-  return `${issue.title}\n${details.join(" · ")}`;
+  return `Issue: ${issue.title}\n${details.join(" | ")}`;
 }
 
-function fitText(
+function drawFields(
   document: jsPDF,
-  value: string,
-  width: number,
-  maximumLines: number,
-): string[] {
-  const lines = document.splitTextToSize(displayText(value), width) as string[];
-
-  if (lines.length <= maximumLines) {
-    return lines;
-  }
-
-  const visibleLines = lines.slice(0, maximumLines);
-  const finalLine = visibleLines[maximumLines - 1];
-  visibleLines[maximumLines - 1] =
-    `${finalLine.slice(0, Math.max(0, finalLine.length - 1))}…`;
-  return visibleLines;
-}
-
-function drawHeader(
-  document: jsPDF,
-  project: Project,
-  record: ReportRecordSummary,
-  reportingIdentity: ReportingIdentity,
+  rows: string[][],
+  startY: number,
 ): number {
-  const pageWidth = document.internal.pageSize.getWidth();
-  const margin = 12;
-
-  document.setTextColor(...exportColors.heading);
-  document.setFont("helvetica", "bold");
-  document.setFontSize(7.5);
-  document.text(
-    fitText(
-      document,
-      reportingBrand(reportingIdentity).toUpperCase(),
-      pageWidth - 105,
-      1,
-    ),
-    margin,
-    12,
-  );
-
-  const hasOrganization = Boolean(reportingIdentity.organization.trim());
-  const contentOffset = hasOrganization ? 2 : 0;
-  if (hasOrganization) {
-    document.setFont("helvetica", "normal");
-    document.setFontSize(5.5);
-    document.setTextColor(...exportColors.muted);
-    document.text("GENERATED WITH COMMISSIONING WORKSPACE", margin, 15.5);
-  }
-
-  document.setTextColor(...exportColors.heading);
-  document.setFont("helvetica", "bold");
-  document.setFontSize(18);
-  document.text(
-    fitText(document, record.title, pageWidth - 105, 1),
-    margin,
-    20 + contentOffset,
-  );
-
-  document.setFont("helvetica", "normal");
-  document.setFontSize(8.5);
-  document.setTextColor(...exportColors.secondary);
-  document.text(
-    `${formatRecordType(record.recordType)} completion report`,
-    margin,
-    26 + contentOffset,
-  );
-
-  document.setFontSize(7.5);
-  document.text(`Project: ${project.name}`, pageWidth - margin, 12, {
-    align: "right",
-  });
-  document.text(`Record ID: ${record.id}`, pageWidth - margin, 17, {
-    align: "right",
-  });
-  document.text(
-    `Signed: ${formatDateTime(record.signedOffAt)}`,
-    pageWidth - margin,
-    22,
-    {
-      align: "right",
+  const options = tableOptions();
+  autoTable(document, {
+    ...options,
+    startY,
+    body: rows.map(([label, value]) => [label, displayText(value)]),
+    columnStyles: {
+      0: { ...options.headStyles, cellWidth: 24 },
     },
-  );
-
-  document.setDrawColor(...exportColors.divider);
-  document.setLineWidth(0.6);
-  document.line(
-    margin,
-    30 + contentOffset,
-    pageWidth - margin,
-    30 + contentOffset,
-  );
-  return 36 + contentOffset;
-}
-
-function drawField(
-  document: jsPDF,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  label: string,
-  value: string,
-): void {
-  document.setDrawColor(...exportColors.fieldBorder);
-  document.setLineWidth(0.2);
-  document.rect(x, y, width, height);
-
-  document.setFont("helvetica", "bold");
-  document.setFontSize(6.5);
-  document.setTextColor(...exportColors.label);
-  document.text(label.toUpperCase(), x + 3, y + 4.2);
-
-  document.setFont("helvetica", "normal");
-  document.setFontSize(8.2);
-  document.setTextColor(...exportColors.primary);
-  document.text(fitText(document, value, width - 6, 3), x + 3, y + 9);
+  });
+  return tableEnd(document) + 9;
 }
 
 function drawInformation(
   document: jsPDF,
   project: Project,
   record: ReportRecordSummary,
-  startY: number,
 ): number {
-  const margin = 12;
-  const availableWidth = document.internal.pageSize.getWidth() - margin * 2;
-  const columnWidth = availableWidth / 4;
-  const rowHeight = 16;
-  const fields = [
-    ["Project", project.name],
-    ["Client", project.client],
-    ["Location", project.location],
-    ["Project status", project.status],
-    ["Asset tag", record.assetTag ?? ""],
-    ["Asset name", record.assetName ?? ""],
-    ["System", record.assetSystemName ?? ""],
-    ["Execution date", formatDate(record.executionDate)],
-  ] as const;
-
-  fields.forEach(([label, value], index) => {
-    const column = index % 4;
-    const row = Math.floor(index / 4);
-    drawField(
-      document,
-      margin + column * columnWidth,
-      startY + row * rowHeight,
-      columnWidth,
-      rowHeight,
-      label,
-      value,
-    );
-  });
-
-  const descriptionY = startY + rowHeight * 2 + 3;
-  drawField(
-    document,
-    margin,
-    descriptionY,
-    availableWidth / 2,
-    19,
-    "Record description",
-    record.description,
+  const pendingItemCount = Math.max(
+    0,
+    record.totalItemCount - record.passedItemCount -
+      record.failedItemCount - record.notApplicableItemCount,
   );
-  drawField(
-    document,
-    margin + availableWidth / 2,
-    descriptionY,
-    availableWidth / 2,
-    19,
-    "Project description",
-    project.description,
-  );
+  const rows = [
+    [
+      "Project",
+      `${project.name}\nStatus: ${project.status.charAt(0).toUpperCase() + project.status.slice(1)}`,
+    ],
+    ["Record ID", record.id],
+  ];
+  if (project.client.trim()) rows.push(["Client", project.client]);
+  if (project.location.trim()) rows.push(["Location", project.location]);
+  const asset = [record.assetTag, record.assetName]
+    .filter((value) => value?.trim()).join(" - ");
+  if (asset) rows.push(["Asset", asset]);
+  if (record.assetSystemName?.trim()) rows.push(["System", record.assetSystemName]);
+  if (record.description.trim()) rows.push(["Record scope", record.description]);
+  if (project.description.trim()) rows.push(["Project scope", project.description]);
+  rows.push(["Results", [
+    `${record.totalItemCount} total`,
+    `${record.passedItemCount} passed`,
+    `${record.failedItemCount} failed`,
+    `${record.notApplicableItemCount} N/A`,
+    pendingItemCount > 0 ? `${pendingItemCount} pending` : "",
+  ].filter(Boolean).join(" | ")]);
 
-  return descriptionY + 24;
-}
-
-function drawSummary(
-  document: jsPDF,
-  record: ReportRecordSummary,
-  startY: number,
-): number {
-  const margin = 12;
-  const gap = 3;
-  const availableWidth = document.internal.pageSize.getWidth() - margin * 2;
-  const cardWidth = (availableWidth - gap * 3) / 4;
-  const cards = [
-    ["Total", record.totalItemCount],
-    ["Passed", record.passedItemCount],
-    ["Failed", record.failedItemCount],
-    ["Not applicable", record.notApplicableItemCount],
-  ] as const;
-
-  cards.forEach(([label, value], index) => {
-    const x = margin + index * (cardWidth + gap);
-    document.setFillColor(...exportColors.surfaceSubtle);
-    document.setDrawColor(...exportColors.borderSubtle);
-    document.roundedRect(x, startY, cardWidth, 14, 1.5, 1.5, "FD");
-
-    document.setFont("helvetica", "bold");
-    document.setFontSize(6.5);
-    document.setTextColor(...exportColors.label);
-    document.text(label.toUpperCase(), x + 3, startY + 4.2);
-
-    document.setFontSize(12);
-    document.setTextColor(...exportColors.primary);
-    document.text(String(value), x + 3, startY + 11);
-  });
-
-  return startY + 20;
-}
-
-function drawSectionTitle(document: jsPDF, title: string, y: number): void {
-  document.setFont("helvetica", "bold");
-  document.setFontSize(8);
-  document.setTextColor(...exportColors.section);
-  document.text(title.toUpperCase(), 12, y);
+  return drawFields(document, rows, tableEnd(document) + 3);
 }
 
 function buildTableRows(items: ReportTestItem[]): string[][] {
   return items.map((item, index) => [
     String(index + 1),
-    displayText(item.description),
-    displayText(item.acceptanceCriteria),
+    [
+      displayText(item.description),
+      item.acceptanceCriteria.trim()
+        ? `Acceptance: ${item.acceptanceCriteria.trim()}` : "",
+    ].filter(Boolean).join("\n"),
     formatResult(item.result),
-    displayText(item.notes),
-    getLinkedIssueText(item.linkedIssue),
+    [
+      item.notes.trim(),
+      item.linkedIssue ? getLinkedIssueText(item.linkedIssue) : "",
+    ].filter(Boolean).join("\n") || "-",
   ]);
-}
-
-function ensureVerticalSpace(
-  document: jsPDF,
-  currentY: number,
-  requiredHeight: number,
-): number {
-  const pageHeight = document.internal.pageSize.getHeight();
-
-  if (currentY + requiredHeight <= pageHeight - 14) {
-    return currentY;
-  }
-
-  document.addPage();
-  return 16;
 }
 
 function drawSignoff(
@@ -392,96 +209,47 @@ function drawSignoff(
   record: ReportRecordSummary,
   reportingIdentity: ReportingIdentity,
   startY: number,
-): number {
-  const margin = 12;
-  const availableWidth = document.internal.pageSize.getWidth() - margin * 2;
-  const columnWidth = availableWidth / 3;
-  const y = ensureVerticalSpace(document, startY, 43);
-
-  drawSectionTitle(document, "Completion and sign-off", y);
-  const fieldsY = y + 4;
-  const fields = [
-    ["Executed by", record.executedBy],
-    ["Witnessed by", record.witnessedBy],
-    ["Execution date", formatDate(record.executionDate)],
-    [
-      "Signed off by",
-      identityNameWithTitle(record.signedOffBy, reportingIdentity),
-    ],
-    ["Signed off at", formatDateTime(record.signedOffAt)],
-    [
-      "Final result",
-      record.failedItemCount > 0
-        ? "Completed with linked deficiencies"
-        : "Completed",
-    ],
-  ] as const;
-
-  fields.forEach(([label, value], index) => {
-    const column = index % 3;
-    const row = Math.floor(index / 3);
-    drawField(
-      document,
-      margin + column * columnWidth,
-      fieldsY + row * 15,
-      columnWidth,
-      15,
-      label,
-      value,
-    );
-  });
-
-  drawField(
-    document,
-    margin,
-    fieldsY + 33,
-    availableWidth,
-    17,
-    "Completion notes",
-    record.completionNotes,
-  );
-
-  return fieldsY + 53;
-}
-
-function drawPageFooters(
-  document: jsPDF,
-  project: Project,
-  record: ReportRecordSummary,
 ): void {
-  const totalPages = document.getNumberOfPages();
-  const pageWidth = document.internal.pageSize.getWidth();
-  const pageHeight = document.internal.pageSize.getHeight();
-
-  for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
-    document.setPage(pageNumber);
-    document.setDrawColor(...exportColors.borderSubtle);
-    document.setLineWidth(0.2);
-    document.line(12, pageHeight - 10, pageWidth - 12, pageHeight - 10);
-
-    document.setFont("helvetica", "normal");
-    document.setFontSize(6.5);
-    document.setTextColor(...exportColors.muted);
-    document.text(`${project.name} · ${record.title}`, 12, pageHeight - 6, {
-      maxWidth: pageWidth - 55,
-    });
-    document.text(
-      `Page ${pageNumber} of ${totalPages}`,
-      pageWidth - 12,
-      pageHeight - 6,
-      { align: "right" },
-    );
+  const body: CellInput[][] = [
+    [
+      [displayText(record.executedBy), formatDate(record.executionDate)].join("\n"),
+      displayText(record.witnessedBy),
+      [
+        displayText(identityNameWithTitle(record.signedOffBy, reportingIdentity)),
+        formatDateTime(record.signedOffAt),
+      ].join("\n"),
+    ],
+    [{
+      content: `Final result: ${record.failedItemCount > 0 ? "Completed with linked deficiencies" : "Completed"}`,
+      colSpan: 3,
+    }],
+  ];
+  if (record.completionNotes.trim()) {
+    body.push([{ content: `Completion notes: ${record.completionNotes.trim()}`, colSpan: 3 }]);
   }
+  const nameColumnWidth = (document.internal.pageSize.getWidth() - PAGE_MARGIN * 2 - 50) / 2;
+  autoTable(document, {
+    ...tableOptions(),
+    startY,
+    head: tableSectionHead("Completion and sign-off", ["Executed", "Witnessed by", "Signed off"]),
+    body,
+    columnStyles: {
+      0: { cellWidth: nameColumnWidth },
+      1: { cellWidth: 50 },
+      2: { cellWidth: nameColumnWidth },
+    },
+    pageBreak: "avoid",
+  });
 }
 
-function createPdf({
+export function createTestRecordReportPdf({
   project,
   bundle,
   reportingIdentity,
 }: SaveTestRecordReportInput): jsPDF {
   const { record, items } = bundle;
   const document = new jsPDF({
-    orientation: "landscape",
+    orientation: "portrait",
     unit: "mm",
     format: "a4",
     compress: true,
@@ -494,58 +262,23 @@ function createPdf({
     creator: "Commissioning Workspace",
   });
 
-  let y = drawHeader(document, project, record, reportingIdentity);
-  y = drawInformation(document, project, record, y);
-  y = drawSummary(document, record, y);
-  drawSectionTitle(document, "Checklist and test items", y);
-
-  autoTable(document, {
-    startY: y + 3,
-    head: [
-      ["No.", "Item", "Acceptance criteria", "Result", "Notes", "Linked issue"],
-    ],
-    body: buildTableRows(items),
-    theme: "grid",
-    margin: {
-      left: 12,
-      right: 12,
-      top: 12,
-      bottom: 15,
-    },
-    styles: {
-      font: "helvetica",
-      fontSize: 7,
-      cellPadding: 2.2,
-      lineColor: exportColors.tableBorder,
-      lineWidth: 0.2,
-      textColor: exportColors.section,
-      overflow: "linebreak",
-      valign: "top",
-    },
-    headStyles: {
-      fillColor: exportColors.primary,
-      textColor: exportColors.onStrong,
-      fontStyle: "bold",
-      fontSize: 6.5,
-    },
-    alternateRowStyles: {
-      fillColor: exportColors.surfaceAlternate,
-    },
-    columnStyles: {
-      0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: 55 },
-      2: { cellWidth: 55 },
-      3: { cellWidth: 18, halign: "center", fontStyle: "bold" },
-      4: { cellWidth: 60 },
-      5: { cellWidth: 75 },
-    },
-  });
-
-  const tableFinalY = (document as jsPDF & { lastAutoTable?: Table })
-    .lastAutoTable?.finalY;
-
-  drawSignoff(document, record, reportingIdentity, (tableFinalY ?? 88) + 8);
-  drawPageFooters(document, project, record);
+  drawPdfTitle(
+    document,
+    record.title.trim() || "Record Report",
+    `${formatRecordType(record.recordType)} completion report`.toUpperCase(),
+    reportingIdentity.organization,
+  );
+  let y = drawInformation(document, project, record);
+  y = drawTableSection(
+    document,
+    "Checklist and test items",
+    ["No.", "Item / Acceptance criteria", "Result", "Notes / Linked issue"],
+    buildTableRows(items),
+    y,
+    [9, 0, 18, 66],
+  );
+  drawSignoff(document, record, reportingIdentity, y);
+  drawPageNumbers(document);
   return document;
 }
 
@@ -572,7 +305,7 @@ export async function saveTestRecordReport(
   }
 
   const outputPath = path.toLowerCase().endsWith(".pdf") ? path : `${path}.pdf`;
-  const document = createPdf(input);
+  const document = createTestRecordReportPdf(input);
   const arrayBuffer = document.output("arraybuffer");
   const bytes = Array.from(new Uint8Array(arrayBuffer));
 

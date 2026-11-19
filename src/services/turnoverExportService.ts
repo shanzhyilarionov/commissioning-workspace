@@ -1,57 +1,25 @@
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { jsPDF } from "jspdf";
-import {
-  autoTable,
-  type CellInput,
-  type Table,
-  type UserOptions,
-} from "jspdf-autotable";
+import { autoTable, type CellInput } from "jspdf-autotable";
 import type { ReportingIdentity } from "../types/reportingIdentity";
 import type { CommissioningStage } from "../types/system";
 import type {
   TurnoverPackage,
   TurnoverTestRecordSnapshot,
 } from "../types/turnover";
-import { exportColors } from "./exportTheme";
+import {
+  PAGE_MARGIN,
+  tableOptions,
+  tableEnd,
+  ensureVerticalSpace,
+  drawTableSection,
+  drawPageNumbers,
+  drawPdfTitle,
+} from "./pdfLayout";
 
 interface SaveTurnoverPackageInput {
   turnoverPackage: TurnoverPackage;
-}
-
-const PAGE_MARGIN = 14;
-const CONTENT_TOP = PAGE_MARGIN;
-const CONTENT_BOTTOM = 18;
-const TABLE_FONT_SIZE = 8.5;
-const TABLE_CELL_PADDING = 2;
-
-function tableOptions(): UserOptions {
-  return {
-    theme: "grid",
-    margin: {
-      left: PAGE_MARGIN,
-      right: PAGE_MARGIN,
-      top: CONTENT_TOP,
-      bottom: CONTENT_BOTTOM,
-    },
-    styles: {
-      font: "helvetica",
-      fontSize: TABLE_FONT_SIZE,
-      cellPadding: TABLE_CELL_PADDING,
-      textColor: exportColors.primary,
-      fillColor: exportColors.onStrong,
-      lineColor: exportColors.tableBorder,
-      lineWidth: 0.2,
-      overflow: "linebreak",
-      valign: "top",
-    },
-    headStyles: {
-      fillColor: exportColors.surfaceSubtle,
-      textColor: exportColors.primary,
-      fontStyle: "bold",
-    },
-    rowPageBreak: "avoid",
-  };
 }
 
 function displayText(value: string | null | undefined): string {
@@ -151,29 +119,6 @@ function sanitizeFileName(value: string): string {
   return (normalized || "turnover-package").slice(0, 120);
 }
 
-function tableEnd(document: jsPDF): number {
-  return (
-    (document as jsPDF & { lastAutoTable?: Table }).lastAutoTable?.finalY ??
-    CONTENT_TOP
-  );
-}
-
-function ensureVerticalSpace(
-  document: jsPDF,
-  currentY: number,
-  requiredHeight: number,
-): number {
-  if (
-    currentY + requiredHeight <=
-    document.internal.pageSize.getHeight() - CONTENT_BOTTOM
-  ) {
-    return currentY;
-  }
-
-  document.addPage();
-  return CONTENT_TOP;
-}
-
 function drawPackageDetails(
   document: jsPDF,
   turnoverPackage: TurnoverPackage,
@@ -182,31 +127,9 @@ function drawPackageDetails(
   const identity = packageReportingIdentity(turnoverPackage);
   const pageWidth = document.internal.pageSize.getWidth();
   const availableWidth = pageWidth - PAGE_MARGIN * 2;
-  const titleRows: CellInput[][] = [];
-  if (identity.organization.trim()) {
-    titleRows.push([{
-      content: identity.organization.trim(),
-      styles: { fontSize: 9 },
-    }]);
-  }
-  titleRows.push(
-    [{ content: packageTitle(turnoverPackage), styles: { fontSize: 16 } }],
-    [{ content: "TURNOVER PACKAGE", styles: { fontSize: 8, fontStyle: "normal" } }],
+  drawPdfTitle(
+    document, packageTitle(turnoverPackage), "TURNOVER PACKAGE", identity.organization,
   );
-  autoTable(document, {
-    startY: 14,
-    body: titleRows,
-    theme: "plain",
-    margin: {
-      left: PAGE_MARGIN, right: PAGE_MARGIN,
-      top: CONTENT_TOP, bottom: CONTENT_BOTTOM,
-    },
-    styles: {
-      font: "helvetica", fontStyle: "bold", halign: "center",
-      cellPadding: { top: 0, right: 0, bottom: 3, left: 0 },
-      textColor: exportColors.heading, overflow: "linebreak",
-    },
-  });
 
   const fullRow = (label: string, value: string): CellInput[] => [
     label,
@@ -267,69 +190,6 @@ function drawPackageDetails(
       2: { ...options.headStyles, cellWidth: 22 },
       3: { cellWidth: availableWidth / 2 - 22 },
     },
-  });
-
-  return tableEnd(document) + 9;
-}
-
-function drawTableSection(
-  document: jsPDF,
-  title: string,
-  head: string[],
-  body: string[][],
-  startY: number,
-  widths: number[],
-): number {
-  if (body.length === 0) return startY;
-
-  const availableWidth = document.internal.pageSize.getWidth() - PAGE_MARGIN * 2;
-  const flexibleWidth =
-    availableWidth - widths.reduce((sum, width) => sum + width, 0);
-  const columnWidths = widths.map((width) => width || flexibleWidth);
-
-  // Keep the title, column headings and first row together, including wrapped text.
-  document.setFont("helvetica", "normal");
-  document.setFontSize(TABLE_FONT_SIZE);
-  const rowHeight = (cells: string[]): number => Math.max(
-    ...cells.map((cell, index) => {
-      const lines = document.splitTextToSize(
-        cell, columnWidths[index] - TABLE_CELL_PADDING * 2,
-      ) as string[];
-      return lines.length * document.getLineHeight() / document.internal.scaleFactor +
-        TABLE_CELL_PADDING * 2;
-    }),
-  );
-  const firstRowHeight = rowHeight(body[0]);
-  document.setFont("helvetica", "bold");
-  const headingHeight = rowHeight(head);
-  document.setFontSize(10);
-  const titleHeight = document.getLineHeight() / document.internal.scaleFactor + 3;
-  const requiredHeight = Math.min(
-    titleHeight + headingHeight + firstRowHeight + 1,
-    document.internal.pageSize.getHeight() - CONTENT_TOP - CONTENT_BOTTOM,
-  );
-  const y = ensureVerticalSpace(document, startY, requiredHeight);
-
-  autoTable(document, {
-    ...tableOptions(),
-    startY: y,
-    head: [
-      [{
-        content: title,
-        colSpan: head.length,
-        styles: {
-          fillColor: exportColors.onStrong,
-          fontSize: 10,
-          cellPadding: { top: 0, right: 0, bottom: 3, left: 0 },
-          lineWidth: 0,
-        },
-      }],
-      head,
-    ],
-    body,
-    columnStyles: Object.fromEntries(
-      columnWidths.map((width, index) => [index, { cellWidth: width }]),
-    ),
   });
 
   return tableEnd(document) + 9;
@@ -501,23 +361,6 @@ function drawPackageContents(
     },
     pageBreak: "avoid",
   });
-}
-
-function drawPageNumbers(document: jsPDF): void {
-  const totalPages = document.getNumberOfPages();
-  const pageWidth = document.internal.pageSize.getWidth();
-  const pageHeight = document.internal.pageSize.getHeight();
-
-  for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
-    document.setPage(pageNumber);
-    document.setFont("helvetica", "normal");
-    document.setFontSize(7);
-    document.setTextColor(...exportColors.muted);
-    document.text(
-      `Page ${pageNumber} of ${totalPages}`,
-      pageWidth / 2, pageHeight - 8, { align: "center" },
-    );
-  }
 }
 
 export function createTurnoverPackagePdf(
