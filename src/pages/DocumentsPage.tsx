@@ -26,10 +26,12 @@ import "./DocumentsPage.css";
 
 interface DocumentsPageProps {
   currentProject: Project;
+  initialRequiredOnly?: boolean;
 }
 
 type CategoryFilter = "all" | DocumentCategory;
 type StatusFilter = "all" | DocumentStatus;
+type RequirementFilter = "all" | "required" | "optional";
 
 function fileNameFromPath(path: string) {
   const parts = path.split(/[\\/]/);
@@ -100,7 +102,10 @@ function sortDocuments(documents: ProjectDocument[]) {
   });
 }
 
-function DocumentsPage({ currentProject }: DocumentsPageProps) {
+function DocumentsPage({
+  currentProject,
+  initialRequiredOnly = false,
+}: DocumentsPageProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +117,9 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("all");
   const [assetFilter, setAssetFilter] = useState("all");
+  const [requirementFilter, setRequirementFilter] = useState<RequirementFilter>(
+    initialRequiredOnly ? "required" : "all",
+  );
   const [isDocumentModalOpen, setIsDocumentModalOpen] =
     useState(false);
   const [editingDocument, setEditingDocument] =
@@ -197,6 +205,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
     setCategoryFilter("all");
     setStatusFilter("all");
     setAssetFilter("all");
+    setRequirementFilter(initialRequiredOnly ? "required" : "all");
     setActionError(null);
     setEditingDocument(null);
     setSourcePath(null);
@@ -230,6 +239,9 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
       const matchesStatus =
         statusFilter === "all" ||
         document.status === statusFilter;
+      const matchesRequirement =
+        requirementFilter === "all" ||
+        document.requiredForReadiness === (requirementFilter === "required");
       const matchesAsset =
         assetFilter === "all" ||
         (assetFilter === "unlinked"
@@ -251,6 +263,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
       return (
         matchesCategory &&
         matchesStatus &&
+        matchesRequirement &&
         matchesAsset &&
         (normalizedQuery.length === 0 ||
           searchableText.includes(normalizedQuery))
@@ -263,6 +276,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
     documents,
     searchQuery,
     statusFilter,
+    requirementFilter,
   ]);
 
   async function handleImportDocument() {
@@ -548,6 +562,19 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
                 {asset.tag} - {asset.name}
               </option>
             ))}
+          </select>
+
+          <select
+            className="document-filter document-requirement-filter"
+            value={requirementFilter}
+            aria-label="Filter documents by requirement"
+            onChange={(event) =>
+              setRequirementFilter(event.target.value as RequirementFilter)
+            }
+          >
+            <option value="all">All requirements</option>
+            <option value="required">Required only</option>
+            <option value="optional">Optional only</option>
           </select>
 
           <button

@@ -10,6 +10,7 @@ import type {
 } from "../types/audit";
 import type { ProjectNavigationItem } from "../types/navigation";
 import type { Project } from "../types/project";
+import type { WorkspaceDeliverableKind } from "../types/workspaceDeliverable";
 import type {
   ProjectOverview,
   ProjectOverviewScopeStages,
@@ -21,6 +22,8 @@ interface ProjectOverviewPageProps {
     page: AttentionDestinationPage,
     item?: ProjectNavigationItem,
   ) => void;
+  onOpenDeliverables: (kind: WorkspaceDeliverableKind) => void;
+  onOpenRequiredDocuments: () => void;
   onEditProject: () => void;
 }
 
@@ -39,6 +42,7 @@ interface ScopeChartSegment {
 
 interface ReadinessRowData {
   label: string;
+  onOpen: () => void;
   percent: number;
   total: number;
   remaining: number;
@@ -199,6 +203,8 @@ function ScopePieChart({
 function ProjectOverviewPage({
   currentProject,
   onNavigate,
+  onOpenDeliverables,
+  onOpenRequiredDocuments,
   onEditProject,
 }: ProjectOverviewPageProps) {
   const [overview, setOverview] = useState<ProjectOverview | null>(null);
@@ -288,6 +294,7 @@ function ProjectOverviewPage({
     ? [
         {
           label: "Required documents",
+          onOpen: onOpenRequiredDocuments,
           percent: calculatePercent(
             overview.deliverables.requiredDocumentsApproved,
             overview.deliverables.requiredDocumentsTotal,
@@ -300,6 +307,7 @@ function ProjectOverviewPage({
         },
         {
           label: "Test records",
+          onOpen: () => onNavigate("Checklists & Tests"),
           percent: calculatePercent(
             overview.deliverables.testRecordsSigned,
             overview.deliverables.testRecordsTotal,
@@ -312,6 +320,7 @@ function ProjectOverviewPage({
         },
         {
           label: "Subsystem handover",
+          onOpen: () => onOpenDeliverables("subsystem_handover"),
           percent: calculatePercent(
             overview.deliverables.subsystemsHandedOver,
             overview.deliverables.subsystemsTotal,
@@ -489,10 +498,16 @@ function ProjectOverviewPage({
                     </div>
                     <div className="home-readiness-table-body">
                       {readinessRows.map((row) => (
-                        <div className="home-readiness-row" key={row.label}>
+                        <button
+                          className="home-readiness-row"
+                          key={row.label}
+                          type="button"
+                          aria-label={`View all ${row.label.toLowerCase()}`}
+                          onClick={row.onOpen}
+                        >
                           <strong>{row.label}</strong>
-                          <div className="home-readiness-progress-cell">
-                            <div
+                          <span className="home-readiness-progress-cell">
+                            <span
                               className="home-readiness-progress"
                               role="progressbar"
                               aria-label={`${row.label} readiness`}
@@ -501,13 +516,13 @@ function ProjectOverviewPage({
                               aria-valuenow={row.percent}
                             >
                               <span style={{ width: `${row.percent}%` }} />
-                            </div>
+                            </span>
                             <small>{row.percent}%</small>
-                          </div>
+                          </span>
                           <span className="total">{row.total}</span>
                           <span className="remaining">{row.remaining}</span>
                           <span className="complete">{row.complete}</span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </section>

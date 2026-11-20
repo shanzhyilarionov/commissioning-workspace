@@ -26,6 +26,7 @@ const deliverableQueries: Record<WorkspaceDeliverableKind, string> = {
     INNER JOIN projects ON projects.id = documents.project_id
     LEFT JOIN assets ON assets.id = documents.asset_id
     WHERE documents.required_for_readiness = 1
+      AND ($1 IS NULL OR documents.project_id = $1)
     ORDER BY projects.name COLLATE NOCASE, documents.title COLLATE NOCASE, documents.id
   `,
   test_records: `
@@ -45,6 +46,7 @@ const deliverableQueries: Record<WorkspaceDeliverableKind, string> = {
       FROM test_items
       GROUP BY test_record_id
     ) AS progress ON progress.test_record_id = records.id
+    WHERE ($1 IS NULL OR records.project_id = $1)
     ORDER BY projects.name COLLATE NOCASE, records.title COLLATE NOCASE, records.id
   `,
   subsystem_handover: `
@@ -64,6 +66,7 @@ const deliverableQueries: Record<WorkspaceDeliverableKind, string> = {
       FROM assets
       GROUP BY subsystem_id
     ) AS progress ON progress.subsystem_id = subsystems.id
+    WHERE ($1 IS NULL OR systems.project_id = $1)
     ORDER BY projects.name COLLATE NOCASE, systems.code COLLATE NOCASE,
       subsystems.code COLLATE NOCASE, subsystems.id
   `,
@@ -71,9 +74,12 @@ const deliverableQueries: Record<WorkspaceDeliverableKind, string> = {
 
 export async function listWorkspaceDeliverables(
   kind: WorkspaceDeliverableKind,
+  projectId?: string,
 ): Promise<WorkspaceDeliverable[]> {
   const database = await getDatabase();
-  const rows = await database.select<DeliverableRow[]>(deliverableQueries[kind]);
+  const rows = await database.select<DeliverableRow[]>(deliverableQueries[kind], [
+    projectId ?? null,
+  ]);
 
   return rows.map<WorkspaceDeliverable>((row) => {
     const item = {

@@ -40,8 +40,9 @@ beforeEach(async () => {
     INSERT INTO assets (id, tag) VALUES ('asset', 'P-101');
   `);
   mocks.getDatabase.mockResolvedValue({
-    select: (query: string) => {
+    select: (query: string, values: (string | null)[] = []) => {
       const statement = database.prepare(query);
+      statement.bind(Object.fromEntries(values.map((value, index) => [`$${index + 1}`, value])));
       const rows = [];
       try {
         while (statement.step()) rows.push(statement.getAsObject());
@@ -59,6 +60,36 @@ afterEach(() => {
 });
 
 describe("workspace deliverables", () => {
+  it("scopes each workstream to the selected project while preserving workspace totals", async () => {
+    database.run(`
+      INSERT INTO systems VALUES
+        ('system', 'active', 'SYS', 'System'),
+        ('other-system', 'archived', 'OTHER', 'Other system');
+      INSERT INTO project_documents (id, project_id, title, status, required_for_readiness) VALUES
+        ('required', 'active', 'Required drawing', 'approved', 1),
+        ('optional', 'active', 'Optional drawing', 'approved', 0),
+        ('other-document', 'archived', 'Other drawing', 'draft', 1);
+      INSERT INTO test_records VALUES
+        ('record', 'active', NULL, 'Inspection', NULL),
+        ('other-record', 'archived', NULL, 'Other inspection', NULL);
+      INSERT INTO subsystems VALUES
+        ('subsystem', 'system', '01', 'Subsystem', 'handed_over'),
+        ('other-subsystem', 'other-system', '02', 'Other subsystem', 'not_started');
+    `);
+
+    for (const [kind, id] of [
+      ["required_documents", "required"],
+      ["test_records", "record"],
+      ["subsystem_handover", "subsystem"],
+    ] as const) {
+      expect(await listWorkspaceDeliverables(kind, "active")).toMatchObject([
+        { id, projectId: "active" },
+      ]);
+      expect(await listWorkspaceDeliverables(kind)).toHaveLength(2);
+      expect(await listWorkspaceDeliverables(kind, "missing")).toEqual([]);
+    }
+  });
+
   it("includes all required document statuses and archived projects, excluding optional documents", async () => {
     database.run(`
       INSERT INTO project_documents (id, project_id, asset_id, title, status, required_for_readiness) VALUES

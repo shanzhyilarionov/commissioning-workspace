@@ -168,7 +168,7 @@ function StructureBlockerButton({
       }
       onClick={onClick}
     >
-      {count > 0 ? count : "None"}
+      {count}
     </button>
   );
 }

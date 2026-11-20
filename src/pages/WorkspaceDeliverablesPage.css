@@ -52,6 +52,29 @@
   --deliverables-detail-width: 104px;
 }
 
+.deliverables-table.project-subsystem-handover {
+  --table-min-width: 720px;
+  --table-min-width-value: 720;
+  --table-grid-columns:
+    minmax(200px, 2fr)
+    minmax(160px, 1.4fr)
+    calc(100px + var(--table-user-padding-x) + var(--table-user-padding-x))
+    88px
+    var(--deliverables-detail-width);
+}
+
+.deliverables-table .deliverables-blocker-cell {
+  text-align: center;
+}
+
+.deliverables-blocker-count.blocked {
+  color: var(--color-status-negative);
+}
+
+.deliverables-blocker-count.clear {
+  color: var(--color-status-positive);
+}
+
 .deliverables-table .status-cell {
   white-space: nowrap;
 }

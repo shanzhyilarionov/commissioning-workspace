@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import { listWorkspaceDeliverables } from "../repositories/workspaceDeliverableRepository";
+import { listStructureReadinessSummaries } from "../repositories/readinessRepository";
 import { getWorkspaceDeliverableFilterOptions } from "../services/workspaceDeliverableFilters";
+import type { Project } from "../types/project";
 import {
   deliverableLabels,
   type WorkspaceDeliverable,
@@ -11,6 +13,7 @@ import "./WorkspaceDeliverablesPage.css";
 
 interface WorkspaceDeliverablesPageProps {
   kind: WorkspaceDeliverableKind;
+  project?: Project | null;
   onBack: () => void;
   onOpenItem: (item: WorkspaceDeliverable) => void;
 }
@@ -37,25 +40,40 @@ function formatStatus(status: string): string {
 
 export default function WorkspaceDeliverablesPage({
   kind,
+  project = null,
   onBack,
   onOpenItem,
 }: WorkspaceDeliverablesPageProps) {
   const [items, setItems] = useState<WorkspaceDeliverable[]>([]);
+  const [blockerCounts, setBlockerCounts] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshSequence, setRefreshSequence] = useState(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [projectFilter, setProjectFilter] = useState("all");
+  const showBlockers = project !== null && kind === "subsystem_handover";
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setLoadError(null);
 
-    void listWorkspaceDeliverables(kind)
-      .then((result) => {
-        if (!cancelled) setItems(result);
+    void Promise.all([
+      listWorkspaceDeliverables(kind, project?.id),
+      project && kind === "subsystem_handover"
+        ? listStructureReadinessSummaries(project.id)
+        : Promise.resolve([]),
+    ])
+      .then(([result, summaries]) => {
+        if (!cancelled) {
+          setItems(result);
+          setBlockerCounts(new Map(
+            summaries
+              .filter((summary) => summary.kind === "subsystem")
+              .map((summary) => [summary.structureId, summary.blockerCount]),
+          ));
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -73,7 +91,7 @@ export default function WorkspaceDeliverablesPage({
     return () => {
       cancelled = true;
     };
-  }, [kind, refreshSequence]);
+  }, [kind, project?.id, refreshSequence]);
 
   const { statuses, projects } = getWorkspaceDeliverableFilterOptions(
     items,
@@ -104,10 +122,14 @@ export default function WorkspaceDeliverablesPage({
             onClick={onBack}
           >
             <span aria-hidden="true">←</span>
-            Back to Home
+            {project ? "Back to Overview" : "Back to Home"}
           </button>
           <h3>{deliverableLabels[kind]}</h3>
-          <p>All entries across your workspace, including archived projects.</p>
+          <p>
+            {project
+              ? `Deliverables for ${project.name}.`
+              : "All entries across your workspace, including archived projects."}
+          </p>
         </div>
       </div>
 
@@ -116,7 +138,7 @@ export default function WorkspaceDeliverablesPage({
           className="project-search-input"
           type="search"
           aria-label="Search deliverables"
-          placeholder="Search items, projects, or scope..."
+          placeholder={project ? "Search subsystems or systems..." : "Search items, projects, or scope..."}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -131,17 +153,19 @@ export default function WorkspaceDeliverablesPage({
             <option key={status} value={status}>{formatStatus(status)}</option>
           ))}
         </select>
-        <select
-          className="project-status-filter deliverables-project-filter"
-          aria-label="Filter by project"
-          value={projectFilter}
-          onChange={(event) => setProjectFilter(event.target.value)}
-        >
-          <option value="all">All projects</option>
-          {projects.map(([id, name]) => (
-            <option key={id} value={id}>{name}</option>
-          ))}
-        </select>
+        {!project && (
+          <select
+            className="project-status-filter deliverables-project-filter"
+            aria-label="Filter by project"
+            value={projectFilter}
+            onChange={(event) => setProjectFilter(event.target.value)}
+          >
+            <option value="all">All projects</option>
+            {projects.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+        )}
         {!isLoading && !loadError && (
           <span className="project-result-count" role="status">
             {visibleItems.length} of {items.length}
@@ -168,20 +192,23 @@ export default function WorkspaceDeliverablesPage({
           <h3>{items.length === 0 ? "No entries yet" : "No matching entries"}</h3>
           <p>
             {items.length === 0
-              ? `No ${deliverableLabels[kind].toLowerCase()} in your workspace.`
-              : "Try a different search, status, or project filter."}
+              ? `No ${deliverableLabels[kind].toLowerCase()} in ${project ? "this project" : "your workspace"}.`
+              : project
+                ? "Try a different search or status filter."
+                : "Try a different search, status, or project filter."}
           </p>
         </div>
       ) : (
         <FixedHeaderTable
-          className={`projects-table deliverables-table ${kind}`}
-          ariaLabel={`${deliverableLabels[kind]} across all projects`}
+          className={`projects-table deliverables-table ${kind}${showBlockers ? " project-subsystem-handover" : ""}`}
+          ariaLabel={`${deliverableLabels[kind]} ${project ? `for ${project.name}` : "across all projects"}`}
           header={
             <tr>
               <th>Item</th>
-              <th>Project</th>
+              {!showBlockers && <th>Project</th>}
               <th>{kind === "subsystem_handover" ? "System" : "Asset"}</th>
               <th>Status</th>
+              {showBlockers && <th className="deliverables-blocker-cell">Blockers</th>}
               <th>{detailLabels[kind]}</th>
             </tr>
           }
@@ -196,13 +223,27 @@ export default function WorkspaceDeliverablesPage({
                   <strong className="issue-title-text">{item.title}</strong>
                 </button>
               </td>
-              <td>{item.projectName}</td>
+              {!showBlockers && <td>{item.projectName}</td>}
               <td>{item.context || "-"}</td>
               <td className="status-cell">
                 <span className={`status-badge ${item.status}`}>
                   {formatStatus(item.status)}
                 </span>
               </td>
+              {showBlockers && (
+                <td className="deliverables-blocker-cell">
+                  <span
+                    className={`deliverables-blocker-count ${
+                      blockerCounts.get(item.id) === undefined
+                        ? ""
+                        : blockerCounts.get(item.id) === 0 ? "clear" : "blocked"
+                    }`}
+                    title="Outstanding readiness blockers"
+                  >
+                    {blockerCounts.get(item.id) ?? "-"}
+                  </span>
+                </td>
+              )}
               <td>
                 {item.kind === "required_documents" ? (
                   item.revision || "-"

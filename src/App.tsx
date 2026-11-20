@@ -83,8 +83,11 @@ function isProjectPage(page: Page): page is ProjectPage {
 function App() {
   const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [activePage, setActivePage] = useState<Page>("Home");
+  const [documentsRequiredOnly, setDocumentsRequiredOnly] = useState(false);
   const [deliverableKind, setDeliverableKind] =
     useState<WorkspaceDeliverableKind>("required_documents");
+  const [deliverablesProject, setDeliverablesProject] =
+    useState<Project | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [reportingIdentity, setReportingIdentity] = useState<ReportingIdentity>(
     EMPTY_REPORTING_IDENTITY,
@@ -261,12 +264,17 @@ function App() {
   }, [activePage, hasProjects, isLoadingProjects, projectLoadError]);
 
   function handleNavigation(page: Page) {
+    setDocumentsRequiredOnly(false);
     setAttentionNavigation(null);
     setActivePage(page);
   }
 
-  function handleOpenDeliverables(kind: WorkspaceDeliverableKind) {
+  function handleOpenDeliverables(
+    kind: WorkspaceDeliverableKind,
+    project: Project | null = null,
+  ) {
     setDeliverableKind(kind);
+    setDeliverablesProject(project);
     setAttentionNavigation(null);
     setActivePage("Deliverables");
   }
@@ -277,7 +285,7 @@ function App() {
       test_records: { page: "Checklists & Tests", entityType: "test_record" },
       subsystem_handover: { page: "Assets", entityType: "subsystem" },
     } as const;
-    const { page, entityType } = destination[deliverableKind];
+    const { page, entityType } = destination[item.kind];
 
     setCurrentProjectId(item.projectId);
     handleOverviewNavigation(page, {
@@ -293,6 +301,7 @@ function App() {
     page: AttentionDestinationPage,
     item?: ProjectNavigationItem,
   ) {
+    setDocumentsRequiredOnly(false);
     if (item) {
       attentionRequestSequence.current += 1;
       setAttentionNavigation({
@@ -608,9 +617,16 @@ function App() {
       case "Deliverables":
         return (
           <WorkspaceDeliverablesPage
-            key={deliverableKind}
+            key={`${deliverableKind}:${deliverablesProject?.id ?? "workspace"}`}
             kind={deliverableKind}
-            onBack={() => handleNavigation("Home")}
+            project={deliverablesProject}
+            onBack={() => {
+              if (deliverablesProject) {
+                handleOpenProject(deliverablesProject.id);
+              } else {
+                handleNavigation("Home");
+              }
+            }}
             onOpenItem={handleOpenDeliverable}
           />
         );
@@ -645,6 +661,13 @@ function App() {
           <ProjectOverviewPage
             currentProject={currentProject}
             onNavigate={handleOverviewNavigation}
+            onOpenDeliverables={(kind) =>
+              handleOpenDeliverables(kind, currentProject)
+            }
+            onOpenRequiredDocuments={() => {
+              handleOverviewNavigation("Documents");
+              setDocumentsRequiredOnly(true);
+            }}
             onEditProject={() => setEditingProject(currentProject)}
           />
         );
@@ -693,7 +716,13 @@ function App() {
           );
         }
 
-        return <DocumentsPage currentProject={currentProject} />;
+        return (
+          <DocumentsPage
+            key={documentsRequiredOnly ? "required" : "all"}
+            currentProject={currentProject}
+            initialRequiredOnly={documentsRequiredOnly}
+          />
+        );
       case "Record reports":
         if (!currentProject) {
           return renderNoProjectSelected(
@@ -777,7 +806,7 @@ function App() {
                     type="button"
                     className={
                       activePage === page ||
-                      (page === "Home" && activePage === "Deliverables")
+                      (page === "Home" && activePage === "Deliverables" && !deliverablesProject)
                         ? "nav-item active"
                         : "nav-item"
                     }
@@ -813,7 +842,10 @@ function App() {
                       key={page}
                       type="button"
                       className={
-                        activePage === page ? "nav-item active" : "nav-item"
+                        activePage === page ||
+                        (page === "Overview" && activePage === "Deliverables" && deliverablesProject)
+                          ? "nav-item active"
+                          : "nav-item"
                       }
                       onClick={() => handleNavigation(page)}
                     >

@@ -14,6 +14,7 @@
 
 .documents-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding:
@@ -284,12 +285,12 @@
   .documents-toolbar {
     display: grid;
     grid-template-columns:
-      repeat(3, minmax(0, 1fr))
+      repeat(4, minmax(0, 1fr))
       max-content;
     grid-template-areas:
-      "search search search search"
-      "category status asset import"
-      "count count count count";
+      "search search search search search"
+      "category status asset requirement import"
+      "count count count count count";
   }
 
   .document-search-input {
@@ -308,6 +309,10 @@
 
   .document-asset-filter {
     grid-area: asset;
+  }
+
+  .document-requirement-filter {
+    grid-area: requirement;
   }
 
   .documents-toolbar .toolbar-primary-button {
@@ -331,7 +336,7 @@
     grid-template-areas:
       "search search search"
       "category status asset"
-      "import . ."
+      "requirement import ."
       "count count count";
   }
 
@@ -348,6 +353,7 @@
       "category"
       "status"
       "asset"
+      "requirement"
       "import"
       "count";
   }
