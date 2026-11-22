@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 import { listWorkspaceDeliverables } from "../repositories/workspaceDeliverableRepository";
 import { listStructureReadinessSummaries } from "../repositories/readinessRepository";
 import { getWorkspaceDeliverableFilterOptions } from "../services/workspaceDeliverableFilters";
@@ -133,7 +134,7 @@ export default function WorkspaceDeliverablesPage({
         </div>
       </div>
 
-      <div className="projects-toolbar deliverables-toolbar">
+      <ListToolbar filterCount={project ? 1 : 2} hasAction={false}>
         <input
           className="project-search-input"
           type="search"
@@ -142,6 +143,19 @@ export default function WorkspaceDeliverablesPage({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
+        {!project && (
+          <select
+            className="project-status-filter"
+            aria-label="Filter by project"
+            value={projectFilter}
+            onChange={(event) => setProjectFilter(event.target.value)}
+          >
+            <option value="all">All projects</option>
+            {projects.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+        )}
         <select
           className="project-status-filter"
           aria-label="Filter by status"
@@ -153,25 +167,12 @@ export default function WorkspaceDeliverablesPage({
             <option key={status} value={status}>{formatStatus(status)}</option>
           ))}
         </select>
-        {!project && (
-          <select
-            className="project-status-filter deliverables-project-filter"
-            aria-label="Filter by project"
-            value={projectFilter}
-            onChange={(event) => setProjectFilter(event.target.value)}
-          >
-            <option value="all">All projects</option>
-            {projects.map(([id, name]) => (
-              <option key={id} value={id}>{name}</option>
-            ))}
-          </select>
-        )}
         {!isLoading && !loadError && (
           <span className="project-result-count" role="status">
             {visibleItems.length} of {items.length}
           </span>
         )}
-      </div>
+      </ListToolbar>
 
       {isLoading ? (
         <div className="empty-state" role="status">Loading deliverables...</div>

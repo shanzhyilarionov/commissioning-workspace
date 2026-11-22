@@ -7,6 +7,7 @@ import {
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 import ReopenTestRecordModal from "../components/ReopenTestRecordModal";
 import TestItemModal from "../components/TestItemModal";
 import TestRecordCompletionModal from "../components/TestRecordCompletionModal";
@@ -715,7 +716,7 @@ function TestRecordDetailPage({
           </p>
         )}
 
-        <div className="assets-toolbar issues-toolbar test-record-items-toolbar">
+        <ListToolbar filterCount={1}>
           <input
             className="asset-search-input"
             type="search"
@@ -789,7 +790,7 @@ function TestRecordDetailPage({
           <span className="asset-result-count">
             {filteredTestItems.length} of {testItems.length}
           </span>
-        </div>
+        </ListToolbar>
 
         {isLoading ? (
           <div className="empty-state test-record-detail-state">

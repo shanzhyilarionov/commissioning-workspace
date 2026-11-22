@@ -287,15 +287,6 @@
   }
 }
 
-.assets-toolbar.reports-toolbar.turnover-toolbar {
-  grid-template-columns: minmax(190px, 1fr) minmax(130px, 160px) auto auto;
-  grid-template-areas: "search type action count";
-}
-
-.turnover-new-button {
-  grid-area: action;
-}
-
 .turnover-table-wrapper {
   --reports-table-min-width: 910px;
 }
@@ -591,51 +582,13 @@
   min-height: 96px;
 }
 
-@media (max-width: 1120px) {
-  .assets-toolbar.reports-toolbar.turnover-toolbar {
-    grid-template-columns: minmax(0, 1fr) max-content auto;
-    grid-template-areas:
-      "search search search"
-      "type action count";
-  }
-
-  .turnover-toolbar .reports-result-count {
-    justify-self: end;
-  }
-}
-
 @media (max-width: 760px) {
-  .assets-toolbar.reports-toolbar.turnover-toolbar {
-    grid-template-columns: minmax(0, 1fr) max-content;
-    grid-template-areas:
-      "search search"
-      "type action"
-      "count count";
-  }
-
-  .turnover-toolbar .reports-result-count {
-    justify-self: start;
-  }
-
   .turnover-preflight-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 600px) {
-  .assets-toolbar.reports-toolbar.turnover-toolbar {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "search"
-      "type"
-      "action"
-      "count";
-  }
-
-  .turnover-new-button {
-    width: 100%;
-  }
-
   .turnover-form-grid,
   .turnover-identity-grid {
     grid-template-columns: minmax(0, 1fr);

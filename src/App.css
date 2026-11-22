@@ -2872,21 +2872,22 @@ body:has(.modal-backdrop) .window-drag-region {
     gap: 10px;
   }
 
-  .asset-search-input,
-  .project-search-input {
+  .assets-toolbar > .asset-search-input,
+  .projects-toolbar > .project-search-input {
     grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
   }
 
-  .asset-status-filter,
-  .project-status-filter {
+  .assets-toolbar > .asset-status-filter,
+  .projects-toolbar > .project-status-filter {
     grid-column: 1;
     width: 100%;
     min-width: 0;
   }
 
-  .toolbar-primary-button {
+  .assets-toolbar > .toolbar-primary-button,
+  .projects-toolbar > .toolbar-primary-button {
     grid-column: 2;
     width: auto;
     min-width: 120px;
@@ -2894,46 +2895,14 @@ body:has(.modal-backdrop) .window-drag-region {
     padding: 0 16px;
   }
 
-  .asset-result-count,
-  .project-result-count {
+  .assets-toolbar > .asset-result-count,
+  .projects-toolbar > .project-result-count {
     grid-column: 1 / -1;
     margin-left: 0;
   }
 
   .asset-form-row {
     grid-template-columns: 1fr;
-  }
-
-  .issues-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
-  }
-
-  .issues-toolbar .asset-search-input {
-    grid-column: 1 / -1;
-  }
-
-  .issues-toolbar .asset-status-filter {
-    width: 100%;
-    min-width: 0;
-    grid-row: 2;
-  }
-
-  .issues-toolbar .asset-status-filter:nth-of-type(1) {
-    grid-column: 1;
-  }
-
-  .issues-toolbar .asset-status-filter:nth-of-type(2) {
-    grid-column: 2;
-  }
-
-  .issues-toolbar .toolbar-primary-button {
-    grid-column: 3;
-    grid-row: 2;
-    min-width: 120px;
-  }
-
-  .issues-toolbar .asset-result-count {
-    grid-column: 1 / -1;
   }
 }
 
@@ -3580,63 +3549,9 @@ body:has(.modal-backdrop) .window-drag-region {
   }
 }
 
-@media (max-width: 900px) {
-  .test-record-items-toolbar {
-    grid-template-columns: minmax(0, 1fr) max-content;
-  }
-
-  .test-record-items-toolbar .asset-search-input {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .test-record-items-toolbar .asset-status-filter:nth-of-type(1) {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .test-record-items-toolbar .toolbar-primary-button {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .test-record-items-toolbar .asset-result-count {
-    grid-column: 1 / -1;
-    grid-row: 3;
-  }
-}
-
 @media (max-width: 760px) {
   .test-record-page-summary {
     gap: 18px;
-  }
-
-  .test-record-items-toolbar {
-    grid-template-columns: 1fr;
-  }
-
-  .test-record-items-toolbar .asset-search-input,
-  .test-record-items-toolbar .asset-status-filter:nth-of-type(1),
-  .test-record-items-toolbar .toolbar-primary-button,
-  .test-record-items-toolbar .asset-result-count {
-    grid-column: 1;
-  }
-
-  .test-record-items-toolbar .asset-search-input {
-    grid-row: 1;
-  }
-
-  .test-record-items-toolbar .asset-status-filter:nth-of-type(1) {
-    grid-row: 2;
-  }
-
-  .test-record-items-toolbar .toolbar-primary-button {
-    grid-row: 3;
-    width: 100%;
-  }
-
-  .test-record-items-toolbar .asset-result-count {
-    grid-row: 4;
   }
 }
 
@@ -4594,28 +4509,7 @@ button.overview-activity-item:hover {
   }
 }
 
-@media (max-width: 900px) {
-  .test-record-items-toolbar .test-record-toolbar-actions {
-    grid-column: 2;
-    grid-row: 2;
-  }
-}
-
 @media (max-width: 760px) {
-  .test-record-items-toolbar .test-record-toolbar-actions {
-    grid-column: 1;
-    grid-row: 3;
-    width: 100%;
-  }
-
-  .test-record-items-toolbar
-    .test-record-toolbar-actions
-    .toolbar-primary-button {
-    width: auto;
-    min-width: 0;
-    flex: 1 1 0;
-  }
-
   .test-record-signoff-panel,
   .completion-form-grid {
     grid-template-columns: 1fr;

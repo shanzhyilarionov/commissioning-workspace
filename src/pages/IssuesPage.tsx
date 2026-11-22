@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 import IssueModal from "../components/IssueModal";
 import { listAssetsByProject } from "../repositories/assetRepository";
 import {
@@ -354,7 +355,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
           </div>
         </div>
 
-        <div className="assets-toolbar issues-toolbar">
+        <ListToolbar filterCount={2}>
           <input
             className="asset-search-input"
             type="search"
@@ -405,7 +406,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
           <span className="asset-result-count">
             {filteredIssues.length} of {issues.length}
           </span>
-        </div>
+        </ListToolbar>
 
         {issueActionError && (
           <p className="form-submit-error" role="alert">

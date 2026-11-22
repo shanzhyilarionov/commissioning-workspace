@@ -6,28 +6,6 @@
   overflow: hidden;
 }
 
-.deliverables-page .deliverables-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.deliverables-toolbar > .project-search-input {
-  width: auto;
-  max-width: 360px;
-  flex: 1 1 240px;
-}
-
-.deliverables-toolbar > .project-status-filter {
-  width: auto;
-  flex: 0 1 160px;
-}
-
-.deliverables-toolbar > .deliverables-project-filter {
-  min-width: 180px;
-  max-width: 360px;
-  flex-basis: 260px;
-}
-
 .deliverables-table {
   --deliverables-detail-width: 124px;
   --table-min-width: 608px;
@@ -91,11 +69,4 @@
 
 .deliverables-table .status-badge.commissioned {
   color: var(--color-status-info);
-}
-
-@media (max-width: 1100px) {
-  .deliverables-toolbar > .project-search-input {
-    max-width: none;
-    flex-basis: 100%;
-  }
 }

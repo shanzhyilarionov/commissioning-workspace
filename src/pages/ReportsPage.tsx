@@ -3,6 +3,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 import TurnoverPackageModal from "../components/TurnoverPackageModal";
 import VoidTurnoverPackageModal from "../components/VoidTurnoverPackageModal";
 import {
@@ -697,7 +698,7 @@ function ReportsPage({
             </span>
           </div>
         ) : (
-          <div className="assets-toolbar reports-toolbar turnover-toolbar">
+          <ListToolbar filterCount={1}>
             <input
               className="asset-search-input reports-search-input"
               type="search"
@@ -734,7 +735,7 @@ function ReportsPage({
             <span className="asset-result-count reports-result-count">
               {filteredTurnoverPackages.length} of {turnoverPackages.length}
             </span>
-          </div>
+          </ListToolbar>
         )}
 
         {exportError && (

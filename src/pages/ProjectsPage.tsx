@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import ActionMenu from "../components/ActionMenu";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 
 import type {
   Project,
@@ -109,7 +110,7 @@ function ProjectsPage({
       </div>
 
       {projects.length > 0 && (
-        <div className="projects-toolbar">
+        <ListToolbar filterCount={1}>
           <input
             className="project-search-input"
             type="search"
@@ -148,7 +149,7 @@ function ProjectsPage({
           <span className="project-result-count">
             {resultCountText}
           </span>
-        </div>
+        </ListToolbar>
       )}
 
       {actionError && (

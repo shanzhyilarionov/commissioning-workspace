@@ -7,6 +7,7 @@ import {
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 import TestRecordModal from "../components/TestRecordModal";
 import { listAssetsByProject } from "../repositories/assetRepository";
 import {
@@ -562,7 +563,7 @@ function ChecklistsTestsPage({
           </div>
         </div>
 
-        <div className="assets-toolbar issues-toolbar">
+        <ListToolbar filterCount={2}>
           <input
             className="asset-search-input"
             type="search"
@@ -648,7 +649,7 @@ function ChecklistsTestsPage({
             }{" "}
             of {testRecords.length}
           </span>
-        </div>
+        </ListToolbar>
 
         {testRecords.length === 0 ? (
           <div className="empty-state">
