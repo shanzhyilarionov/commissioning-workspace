@@ -1,0 +1,301 @@
+.app-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-app-background);
+}
+
+.sidebar {
+  position: relative;
+  display: flex;
+  width: var(--sidebar-width);
+  height: 100vh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--sidebar-top-spacing) 12px 22px;
+  color: var(--color-sidebar-text);
+  background: var(--color-sidebar-background);
+  border-right: 1px solid var(--color-sidebar-border);
+}
+
+.sidebar button,
+.sidebar select,
+.sidebar option,
+.sidebar strong {
+  color: var(--color-sidebar-text);
+}
+
+.sidebar-logo {
+  display: flex;
+  min-height: 48px;
+  flex-shrink: 0;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 0 12px;
+}
+
+.sidebar-logo img {
+  display: block;
+  width: 100%;
+  max-width: 174px;
+  height: auto;
+  object-fit: contain;
+}
+
+.sidebar-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.sidebar-body > .navigation {
+  flex-shrink: 0;
+}
+
+.navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  padding: 7px 12px;
+  overflow: hidden;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-label);
+  color: var(--color-sidebar-text);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+
+.nav-item:hover {
+  background: var(--color-sidebar-surface);
+}
+
+.nav-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-accent);
+}
+
+.nav-item.active {
+  background: var(--color-sidebar-active);
+}
+
+.project-navigation-section {
+  display: flex;
+  min-height: 0;
+  flex: 0 1 auto;
+  flex-direction: column;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-sidebar-border);
+}
+
+.project-navigation::-webkit-scrollbar,
+.project-navigation::-webkit-scrollbar-track,
+.project-navigation::-webkit-scrollbar-track-piece {
+  background: var(--color-sidebar-background);
+}
+
+.project-navigation::-webkit-scrollbar-thumb {
+  background-color: var(--color-sidebar-control-border);
+  border-color: var(--color-sidebar-background);
+}
+
+.navigation-label {
+  display: block;
+  flex-shrink: 0;
+  margin-bottom: 6px;
+  padding: 0 12px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-label);
+  color: var(--color-sidebar-text-muted);
+}
+
+.project-switcher {
+  width: 100%;
+  min-height: 34px;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+  padding: 7px 34px 7px 12px;
+  overflow: hidden;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  color-scheme: dark;
+  appearance: none;
+  background-color: var(--color-sidebar-surface);
+  background-image: var(--icon-chevron-sidebar);
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 12px;
+  border: 1px solid var(--color-sidebar-control-border);
+  border-radius: 8px;
+  outline: none;
+}
+
+.project-switcher:hover {
+  background-color: var(--color-sidebar-active);
+  border-color: var(--color-sidebar-control-border-hover);
+}
+
+.project-switcher:focus {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus-accent);
+}
+
+.project-switcher option {
+  color: var(--color-sidebar-text);
+  background: var(--color-sidebar-background);
+}
+
+.project-navigation {
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 2px;
+  scrollbar-color: var(--color-sidebar-control-border) var(--color-sidebar-background);
+}
+
+.sidebar-spacer {
+  min-height: 14px;
+  flex: 1;
+}
+
+.utility-navigation {
+  padding-top: 10px;
+  border-top: 1px solid var(--color-sidebar-border);
+}
+
+.main-content {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-header {
+  display: flex;
+  min-height: 102px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 30px 18px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.page-header h2 {
+  margin: 0 0 5px;
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-compact);
+  letter-spacing: -0.02em;
+}
+
+.page-header > div > p:last-child {
+  margin: 0;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+.page-content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  padding:
+    var(--workspace-top-spacing)
+    var(--workspace-side-spacing)
+    30px;
+}
+
+.first-project-welcome {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.first-project-welcome h2 {
+  margin: 0;
+  font-size: calc(var(--font-size-display) * 1.5);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-compact);
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.first-project-welcome-copy {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.first-project-welcome-lockup {
+  display: inline-grid;
+  justify-items: center;
+  gap: 15px;
+}
+
+.first-project-welcome-logo {
+  display: block;
+  width: 0;
+  min-width: 100%;
+  height: auto;
+}
+
+.first-project-welcome-logo-dark,
+:root[data-theme="dark"] .first-project-welcome-logo-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .first-project-welcome-logo-dark {
+  display: block;
+}
+
+.first-project-welcome h3 {
+  margin: 0;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-label);
+  color: var(--color-text-primary);
+}
+
+.first-project-welcome .primary-button {
+  min-height: 38px;
+  padding-inline: 18px;
+}

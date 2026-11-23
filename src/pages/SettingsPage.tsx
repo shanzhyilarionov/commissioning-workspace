@@ -38,8 +38,7 @@ import type {
   WorkspaceBackupInspection,
   WorkspaceBackupSummary,
 } from "../types/workspaceBackup";
-import type { AppTheme } from "../theme";
-import "./SettingsPage.css";
+import type { AppTheme } from "../styles/theme";
 
 interface SettingsPageProps {
   projects: Project[];

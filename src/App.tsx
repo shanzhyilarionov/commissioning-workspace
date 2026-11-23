@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import AttentionFocusManager, {
-  type AttentionDestinationPage,
   type AttentionNavigationRequest,
 } from "./components/AttentionFocusManager";
 import CreateProjectModal from "./components/CreateProjectModal";
@@ -21,6 +20,7 @@ import type {
 import ProjectsPage from "./pages/ProjectsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import SystemManagementPage from "./pages/SystemManagementPage";
 import {
   archiveProject,
   createProject,
@@ -38,14 +38,20 @@ import type {
   Project,
   UpdateProjectInput,
 } from "./types/project";
-import type { ProjectNavigationItem } from "./types/navigation";
+import {
+  getAuditDestinationPage,
+  isAuditNavigationItem,
+  type AssetStructureNavigation,
+  type AttentionDestinationPage,
+  type ProjectNavigationItem,
+} from "./types/navigation";
 import type { ReportingIdentity } from "./types/reportingIdentity";
 import {
   getStoredTheme,
   saveTheme,
   type AppTheme,
   watchSystemTheme,
-} from "./theme";
+} from "./styles/theme";
 import {
   clearContinueWorkingLocation,
   continueWorkingPages,
@@ -61,8 +67,6 @@ import {
 import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
 import firstProjectLogo from "./assets/logo-black.png";
 import firstProjectDarkLogo from "./assets/logo-white.png";
-import "./theme.css";
-import "./App.css";
 
 const globalPages = ["Home", "Projects"] as const;
 const projectPages = continueWorkingPages;
@@ -83,7 +87,6 @@ function isProjectPage(page: Page): page is ProjectPage {
 function App() {
   const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [activePage, setActivePage] = useState<Page>("Home");
-  const [documentsRequiredOnly, setDocumentsRequiredOnly] = useState(false);
   const [deliverableKind, setDeliverableKind] =
     useState<WorkspaceDeliverableKind>("required_documents");
   const [deliverablesProject, setDeliverablesProject] =
@@ -96,6 +99,9 @@ function App() {
     loadContinueWorkingLocation,
   );
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
+  const [assetStructureNavigation, setAssetStructureNavigation] =
+    useState<AssetStructureNavigation | null>(null);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [changingProjectStatusId, setChangingProjectStatusId] = useState<
@@ -259,14 +265,33 @@ function App() {
     ) {
       setCurrentProjectId(null);
       setAttentionNavigation(null);
+      setSelectedSystemId(null);
+      setAssetStructureNavigation(null);
       setActivePage("Home");
     }
   }, [activePage, hasProjects, isLoadingProjects, projectLoadError]);
 
   function handleNavigation(page: Page) {
-    setDocumentsRequiredOnly(false);
     setAttentionNavigation(null);
+    setSelectedSystemId(null);
+    setAssetStructureNavigation(null);
     setActivePage(page);
+  }
+
+  function handleOpenSystem(systemId: string | null) {
+    handleNavigation("Systems");
+    setSelectedSystemId(systemId);
+  }
+
+  function handleViewStructureAssets(
+    systemId: string | null,
+    returnSystemId?: string,
+  ) {
+    handleNavigation("Assets");
+    setAssetStructureNavigation({
+      systemId,
+      returnSystemId: returnSystemId ?? null,
+    });
   }
 
   function handleOpenDeliverables(
@@ -275,17 +300,21 @@ function App() {
   ) {
     setDeliverableKind(kind);
     setDeliverablesProject(project);
-    setAttentionNavigation(null);
-    setActivePage("Deliverables");
+    handleNavigation("Deliverables");
   }
 
   function handleOpenDeliverable(item: WorkspaceDeliverable) {
-    const destination = {
-      required_documents: { page: "Documents", entityType: "document" },
-      test_records: { page: "Checklists & Tests", entityType: "test_record" },
-      subsystem_handover: { page: "Assets", entityType: "subsystem" },
+    const entityTypes = {
+      required_documents: "document",
+      test_records: "test_record",
+      subsystem_handover: "subsystem",
     } as const;
-    const { page, entityType } = destination[item.kind];
+    const entityType = entityTypes[item.kind];
+    const page = getAuditDestinationPage(entityType);
+
+    if (!page) {
+      return;
+    }
 
     setCurrentProjectId(item.projectId);
     handleOverviewNavigation(page, {
@@ -301,19 +330,34 @@ function App() {
     page: AttentionDestinationPage,
     item?: ProjectNavigationItem,
   ) {
-    setDocumentsRequiredOnly(false);
+    setAssetStructureNavigation(null);
+    setSelectedSystemId(
+      item && isAuditNavigationItem(item) && item.entityType === "subsystem"
+        ? item.parentId
+        : null,
+    );
+
+    let destination = page;
+    if (item) {
+      if (isAuditNavigationItem(item)) {
+        destination = getAuditDestinationPage(item.entityType) ?? page;
+      } else if (item.type === "system_readiness") {
+        destination = "Systems";
+      }
+    }
+
     if (item) {
       attentionRequestSequence.current += 1;
       setAttentionNavigation({
         requestId: attentionRequestSequence.current,
-        page,
+        page: destination,
         item,
       });
     } else {
       setAttentionNavigation(null);
     }
 
-    setActivePage(page);
+    setActivePage(destination);
   }
 
   const handleAttentionFocusComplete = useCallback((requestId: number) => {
@@ -326,10 +370,8 @@ function App() {
     const project = await createProject(input);
 
     setProjects((current) => [project, ...current]);
-    setCurrentProjectId(project.id);
     setIsCreateProjectOpen(false);
-    setAttentionNavigation(null);
-    setActivePage("Overview");
+    handleOpenProject(project.id);
   }
 
   async function handleUpdateProject(input: UpdateProjectInput): Promise<void> {
@@ -348,9 +390,8 @@ function App() {
   }
 
   function handleOpenProject(projectId: string) {
-    setAttentionNavigation(null);
     setCurrentProjectId(projectId);
-    setActivePage("Overview");
+    handleNavigation("Overview");
   }
 
   function handleContinueWorking() {
@@ -368,9 +409,8 @@ function App() {
       return;
     }
 
-    setAttentionNavigation(null);
     setCurrentProjectId(continueWorkingItem.projectId);
-    setActivePage(continueWorkingItem.page);
+    handleNavigation(continueWorkingItem.page);
   }
 
   async function handleProjectStatusAction(
@@ -454,12 +494,10 @@ function App() {
 
       if (remainingProjects.length === 0) {
         setCurrentProjectId(null);
-        setAttentionNavigation(null);
-        setActivePage("Home");
+        handleNavigation("Home");
       } else if (currentProjectId === project.id) {
         setCurrentProjectId(null);
-        setAttentionNavigation(null);
-        setActivePage("Projects");
+        handleNavigation("Projects");
       }
 
       setProjectToDelete(null);
@@ -485,6 +523,8 @@ function App() {
     clearContinueWorkingLocation();
     setContinueWorkingLocation(null);
     setCurrentProjectId(null);
+    setSelectedSystemId(null);
+    setAssetStructureNavigation(null);
     setIsCreateProjectOpen(false);
     setEditingProject(null);
     setChangingProjectStatusId(null);
@@ -664,11 +704,25 @@ function App() {
             onOpenDeliverables={(kind) =>
               handleOpenDeliverables(kind, currentProject)
             }
-            onOpenRequiredDocuments={() => {
-              handleOverviewNavigation("Documents");
-              setDocumentsRequiredOnly(true);
-            }}
             onEditProject={() => setEditingProject(currentProject)}
+          />
+        );
+
+      case "Systems":
+        if (!currentProject) {
+          return renderNoProjectSelected(
+            "Open or create a project before managing systems.",
+          );
+        }
+
+        return (
+          <SystemManagementPage
+            key={currentProject.id}
+            currentProject={currentProject}
+            selectedSystemId={selectedSystemId}
+            onSelectSystem={setSelectedSystemId}
+            onViewAssets={handleViewStructureAssets}
+            onNavigate={handleOverviewNavigation}
           />
         );
 
@@ -681,13 +735,15 @@ function App() {
 
         return (
           <AssetsPage
+            key={currentProject.id}
             currentProject={currentProject}
             attentionItem={
               attentionNavigation?.page === "Assets"
                 ? attentionNavigation.item
                 : null
             }
-            onNavigate={handleOverviewNavigation}
+            structureNavigation={assetStructureNavigation}
+            onOpenSystem={handleOpenSystem}
           />
         );
 
@@ -718,9 +774,8 @@ function App() {
 
         return (
           <DocumentsPage
-            key={documentsRequiredOnly ? "required" : "all"}
+            key={currentProject.id}
             currentProject={currentProject}
-            initialRequiredOnly={documentsRequiredOnly}
           />
         );
       case "Record reports":

@@ -4,7 +4,7 @@ import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ReadinessReviewModal from "../components/ReadinessReviewModal";
 import StructureEditorModal from "../components/StructureEditorModal";
-import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
+import { listAssetsByProject } from "../repositories/assetRepository";
 import {
   getStructureReadinessReview,
   listStructureReadinessSummaries,
@@ -15,13 +15,18 @@ import {
   createSystemDetails,
   deleteSubsystem,
   deleteSystem,
+  listSubsystemsByProject,
+  listSystemsByProject,
   updateSubsystem,
   updateSystem,
 } from "../repositories/systemRepository";
 import { getProjectStructureProgress } from "../repositories/systemProgressRepository";
 import type { Asset } from "../types/asset";
 import type { Project } from "../types/project";
-import type { ProjectNavigationItem } from "../types/navigation";
+import type {
+  AttentionDestinationPage,
+  ProjectNavigationItem,
+} from "../types/navigation";
 import type {
   ReadinessBlocker,
   StageTransitionInput,
@@ -40,25 +45,19 @@ import type {
   ProjectStructureProgress,
   StructureProgress,
 } from "../types/systemProgress";
-import "./SystemManagementPage.css";
 
 interface SystemManagementPageProps {
   currentProject: Project;
-  assets: Asset[];
-  systems: CommissioningSystem[];
-  subsystems: Subsystem[];
-  initialSystemId?: string | null;
-  onBack: () => void;
+  selectedSystemId: string | null;
+  onSelectSystem: (systemId: string | null) => void;
   onViewAssets: (
     systemId: string | null,
-    subsystemId?: string,
     returnSystemId?: string,
   ) => void;
   onNavigate: (
     page: AttentionDestinationPage,
     item?: ProjectNavigationItem,
   ) => void;
-  onStructureChanged: () => Promise<void>;
 }
 
 type EditorTarget =
@@ -175,18 +174,19 @@ function StructureBlockerButton({
 
 function SystemManagementPage({
   currentProject,
-  assets,
-  systems,
-  subsystems,
-  initialSystemId = null,
-  onBack,
+  selectedSystemId,
+  onSelectSystem,
   onViewAssets,
   onNavigate,
-  onStructureChanged,
 }: SystemManagementPageProps) {
-  const [selectedSystemId, setSelectedSystemId] = useState<string | null>(
-    initialSystemId,
-  );
+  const [{ assets, systems, subsystems }, setStructure] = useState<{
+    assets: Asset[];
+    systems: CommissioningSystem[];
+    subsystems: Subsystem[];
+  }>({ assets: [], systems: [], subsystems: [] });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadSequence, setLoadSequence] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [editorTarget, setEditorTarget] = useState<EditorTarget>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
@@ -207,6 +207,49 @@ function SystemManagementPage({
     useState<StructureReadinessReview | null>(null);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  const loadStructureData = useCallback(async () => {
+    const [assets, systems, subsystems] = await Promise.all([
+      listAssetsByProject(currentProject.id),
+      listSystemsByProject(currentProject.id),
+      listSubsystemsByProject(currentProject.id),
+    ]);
+
+    return { assets, systems, subsystems };
+  }, [currentProject.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadError(null);
+
+    void loadStructureData()
+      .then((structure) => {
+        if (!cancelled) {
+          setStructure(structure);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error ? error.message : "Failed to load systems.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadStructureData, loadSequence]);
+
+  async function refreshStructureData() {
+    setStructure(await loadStructureData());
+  }
 
   const refreshProgress = useCallback(async () => {
     setProgressError(null);
@@ -232,17 +275,22 @@ function SystemManagementPage({
   useEffect(() => {
     setProjectProgress(null);
     void refreshProgress();
-  }, [refreshProgress]);
+  }, [refreshProgress, loadSequence]);
+
+  useEffect(() => {
+    setSearchQuery("");
+    setOpenMenuId(null);
+  }, [selectedSystemId]);
 
   const selectedSystem =
     systems.find((system) => system.id === selectedSystemId) ?? null;
 
   useEffect(() => {
-    if (selectedSystemId && !selectedSystem) {
-      setSelectedSystemId(null);
+    if (!isLoading && !loadError && selectedSystemId && !selectedSystem) {
+      onSelectSystem(null);
       setSearchQuery("");
     }
-  }, [selectedSystem, selectedSystemId]);
+  }, [isLoading, loadError, onSelectSystem, selectedSystem, selectedSystemId]);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -359,13 +407,13 @@ function SystemManagementPage({
   function handleOpenSystem(systemId: string) {
     setOpenMenuId(null);
     setSearchQuery("");
-    setSelectedSystemId(systemId);
+    onSelectSystem(systemId);
   }
 
   function handleBackToSystems() {
     setOpenMenuId(null);
     setSearchQuery("");
-    setSelectedSystemId(null);
+    onSelectSystem(null);
   }
 
   const loadReadinessReview = useCallback(
@@ -426,24 +474,16 @@ function SystemManagementPage({
     );
 
     setReadinessReview(nextReview);
-    await onStructureChanged();
+    await refreshStructureData();
     await refreshProgress();
   }
 
   function handleNavigateToBlocker(blocker: ReadinessBlocker) {
     if (blocker.type === "no_assets" && reviewTarget) {
       if (reviewTarget.kind === "system") {
-        onViewAssets(
-          reviewTarget.structureId,
-          undefined,
-          selectedSystem?.id,
-        );
+        onViewAssets(reviewTarget.structureId, selectedSystem?.id);
       } else if (selectedSystem) {
-        onViewAssets(
-          selectedSystem.id,
-          reviewTarget.structureId,
-          selectedSystem.id,
-        );
+        onViewAssets(selectedSystem.id, selectedSystem.id);
       }
 
       setReviewTarget(null);
@@ -500,7 +540,7 @@ function SystemManagementPage({
       }
     }
 
-    await onStructureChanged();
+    await refreshStructureData();
     await refreshProgress();
     setEditorTarget(null);
   }
@@ -533,14 +573,14 @@ function SystemManagementPage({
         const deletedSystemId = deleteTarget.record.id;
         await deleteSystem(deletedSystemId);
         if (selectedSystemId === deletedSystemId) {
-          setSelectedSystemId(null);
+          onSelectSystem(null);
           setSearchQuery("");
         }
       } else {
         await deleteSubsystem(deleteTarget.record.id);
       }
 
-      await onStructureChanged();
+      await refreshStructureData();
       await refreshProgress();
       setDeleteTarget(null);
     } catch (error) {
@@ -586,6 +626,31 @@ function SystemManagementPage({
     );
   })();
 
+  if (isLoading) {
+    return (
+      <section className="content-card placeholder">
+        <h3>Loading systems</h3>
+        <p>Reading the commissioning structure for {currentProject.name}.</p>
+      </section>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section className="content-card placeholder">
+        <h3>Unable to load systems</h3>
+        <p>{loadError}</p>
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => setLoadSequence((current) => current + 1)}
+        >
+          Try again
+        </button>
+      </section>
+    );
+  }
+
   if (selectedSystem) {
     return (
       <>
@@ -622,11 +687,7 @@ function SystemManagementPage({
                 type="button"
                 aria-label={`View ${countSystemAssets(selectedSystem.id)} assets`}
                 onClick={() =>
-                  onViewAssets(
-                    selectedSystem.id,
-                    undefined,
-                    selectedSystem.id,
-                  )
+                  onViewAssets(selectedSystem.id, selectedSystem.id)
                 }
               >
                 <span>Assets</span>
@@ -817,12 +878,11 @@ function SystemManagementPage({
                               onClick={() =>
                                 onViewAssets(
                                   selectedSystem.id,
-                                  subsystem.id,
                                   selectedSystem.id,
                                 )
                               }
                             >
-                              View assets
+                              View system assets
                             </button>
                             <button
                               className="project-menu-item danger"
@@ -901,14 +961,6 @@ function SystemManagementPage({
       <section className="content-card section-card assets-card system-management-card">
         <div className="projects-header test-record-page-header structure-page-header">
           <div className="test-record-page-heading structure-heading-copy">
-            <button
-              className="back-navigation-button"
-              type="button"
-              onClick={onBack}
-            >
-              <span aria-hidden="true">←</span>
-              Back to Assets
-            </button>
             <h3>Systems</h3>
             <p>
               Manage the commissioning hierarchy for {currentProject.name}.

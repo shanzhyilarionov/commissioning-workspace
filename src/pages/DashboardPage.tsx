@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import ActivityHistoryModal from "../components/ActivityHistoryModal";
 import AuditEventDetailModal from "../components/AuditEventDetailModal";
-import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
+import PieChart, { type PieChartSegment } from "../components/PieChart";
+import { progressWidthStyle } from "../styles/layout/progress";
 import { listAuditEvents } from "../repositories/auditRepository";
 import { getProjectOverview } from "../repositories/projectOverviewRepository";
-import type {
-  AuditEntityType,
-  AuditEvent,
-} from "../types/audit";
-import type { ProjectNavigationItem } from "../types/navigation";
+import type { AuditEvent } from "../types/audit";
+import {
+  getAuditDestinationPage,
+  type AttentionDestinationPage,
+  type ProjectNavigationItem,
+} from "../types/navigation";
 import type { Project } from "../types/project";
 import type { WorkspaceDeliverableKind } from "../types/workspaceDeliverable";
 import type {
@@ -23,21 +25,7 @@ interface ProjectOverviewPageProps {
     item?: ProjectNavigationItem,
   ) => void;
   onOpenDeliverables: (kind: WorkspaceDeliverableKind) => void;
-  onOpenRequiredDocuments: () => void;
   onEditProject: () => void;
-}
-
-type ScopeChartTone =
-  | "positive"
-  | "accent"
-  | "warning"
-  | "info"
-  | "neutral";
-
-interface ScopeChartSegment {
-  label: string;
-  value: number;
-  tone: ScopeChartTone;
 }
 
 interface ReadinessRowData {
@@ -73,28 +61,6 @@ function formatAuditAction(action: string): string {
     .join(" ");
 }
 
-function getAuditTarget(
-  type: AuditEntityType,
-): AttentionDestinationPage | null {
-  switch (type) {
-    case "system":
-    case "subsystem":
-    case "asset":
-      return "Assets";
-    case "test_record":
-    case "test_item":
-      return "Checklists & Tests";
-    case "issue":
-      return "Issues";
-    case "document":
-      return "Documents";
-    case "turnover_package":
-      return "Turnover packages";
-    case "project":
-      return null;
-  }
-}
-
 function calculatePercent(completed: number, total: number): number {
   return total === 0 ? 0 : Math.round((completed / total) * 100);
 }
@@ -106,7 +72,7 @@ function ScopePieChart({
   label: string;
   stages: ProjectOverviewScopeStages;
 }) {
-  const segments: ScopeChartSegment[] = [
+  const segments: PieChartSegment[] = [
     {
       label: "Handed over",
       value: stages.handedOver,
@@ -133,70 +99,12 @@ function ScopePieChart({
       tone: "neutral",
     },
   ];
-  const total = segments.reduce(
-    (sum, segment) => sum + segment.value,
-    0,
-  );
-  let offset = 0;
-
   return (
-    <section className="home-panel home-pie-card overview-scope-pie-card">
-      <div className="home-pie-card-heading">
-        <h5>{label}</h5>
-      </div>
-      <div className="home-pie-card-body">
-        <div className="home-pie-legend">
-          {segments.map((segment) => (
-            <div key={segment.label}>
-              <span className={`home-chart-key ${segment.tone}`} />
-              <span>
-                {segment.label} <strong>{segment.value}</strong>
-              </span>
-            </div>
-          ))}
-        </div>
-        <div
-          className="home-pie-visual"
-          role="img"
-          aria-label={`${label}: ${segments
-            .map((segment) => `${segment.value} ${segment.label}`)
-            .join(", ")}.`}
-        >
-          <svg
-            className="home-pie"
-            viewBox="0 0 120 120"
-            aria-hidden="true"
-          >
-            <circle
-              className="home-pie-track"
-              cx="60"
-              cy="60"
-              r="25"
-              pathLength="100"
-            />
-            {segments.map((segment) => {
-              const percentage =
-                total === 0 ? 0 : (segment.value / total) * 100;
-              const segmentOffset = offset;
-              offset += percentage;
-
-              return percentage > 0 ? (
-                <circle
-                  key={segment.label}
-                  className={`home-pie-segment ${segment.tone}`}
-                  cx="60"
-                  cy="60"
-                  r="25"
-                  pathLength="100"
-                  strokeDasharray={`${percentage} ${100 - percentage}`}
-                  strokeDashoffset={-segmentOffset}
-                />
-              ) : null;
-            })}
-          </svg>
-        </div>
-      </div>
-    </section>
+    <PieChart
+      label={label}
+      segments={segments}
+      className="overview-scope-pie-card"
+    />
   );
 }
 
@@ -204,7 +112,6 @@ function ProjectOverviewPage({
   currentProject,
   onNavigate,
   onOpenDeliverables,
-  onOpenRequiredDocuments,
   onEditProject,
 }: ProjectOverviewPageProps) {
   const [overview, setOverview] = useState<ProjectOverview | null>(null);
@@ -259,7 +166,7 @@ function ProjectOverviewPage({
   }, [currentProject.id, reloadKey]);
 
   function handleOpenAuditRecord(event: AuditEvent) {
-    const target = getAuditTarget(event.entityType);
+    const target = getAuditDestinationPage(event.entityType);
 
     if (!target) {
       return;
@@ -294,7 +201,7 @@ function ProjectOverviewPage({
     ? [
         {
           label: "Required documents",
-          onOpen: onOpenRequiredDocuments,
+          onOpen: () => onOpenDeliverables("required_documents"),
           percent: calculatePercent(
             overview.deliverables.requiredDocumentsApproved,
             overview.deliverables.requiredDocumentsTotal,
@@ -515,7 +422,7 @@ function ProjectOverviewPage({
                               aria-valuemax={100}
                               aria-valuenow={row.percent}
                             >
-                              <span style={{ width: `${row.percent}%` }} />
+                              <span style={progressWidthStyle(row.percent)} />
                             </span>
                             <small>{row.percent}%</small>
                           </span>

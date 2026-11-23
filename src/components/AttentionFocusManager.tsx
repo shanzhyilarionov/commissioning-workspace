@@ -1,15 +1,9 @@
 import { useEffect } from "react";
 import {
   isAuditNavigationItem,
+  type AttentionDestinationPage,
   type ProjectNavigationItem,
 } from "../types/navigation";
-
-export type AttentionDestinationPage =
-  | "Assets"
-  | "Checklists & Tests"
-  | "Issues"
-  | "Documents"
-  | "Turnover packages";
 
 export interface AttentionNavigationRequest {
   requestId: number;

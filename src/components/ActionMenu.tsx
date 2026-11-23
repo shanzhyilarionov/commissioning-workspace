@@ -1,28 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-
-interface ActionMenuPosition {
-  left: number;
-  top: number;
-}
-
-interface ActionMenuAnchorBounds {
-  bottom: number;
-  right: number;
-  top: number;
-}
-
-interface ActionMenuPanelSize {
-  height: number;
-  width: number;
-}
+import { useActionMenuPosition } from "../styles/layout/useActionMenuPosition";
 
 interface ActionMenuProps {
   ariaLabel: string;
@@ -30,42 +8,6 @@ interface ActionMenuProps {
   disabled?: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-}
-
-export function calculateActionMenuPosition(
-  anchor: ActionMenuAnchorBounds,
-  panel: ActionMenuPanelSize,
-  viewportWidth: number,
-  viewportHeight: number,
-): ActionMenuPosition {
-  const viewportPadding = 8;
-  const menuGap = 6;
-  const availableBelow = viewportHeight - anchor.bottom;
-  const openAbove =
-    availableBelow < panel.height + menuGap + viewportPadding &&
-    anchor.top > availableBelow;
-  const unclampedTop = openAbove
-    ? anchor.top - panel.height - menuGap
-    : anchor.bottom + menuGap;
-  const maxLeft = Math.max(
-    viewportPadding,
-    viewportWidth - panel.width - viewportPadding,
-  );
-  const maxTop = Math.max(
-    viewportPadding,
-    viewportHeight - panel.height - viewportPadding,
-  );
-
-  return {
-    left: Math.min(
-      Math.max(viewportPadding, anchor.right - panel.width),
-      maxLeft,
-    ),
-    top: Math.min(
-      Math.max(viewportPadding, unclampedTop),
-      maxTop,
-    ),
-  };
 }
 
 function ActionMenu({
@@ -77,52 +19,11 @@ function ActionMenu({
 }: ActionMenuProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = useState<ActionMenuPosition | null>(null);
-
-  const updatePosition = useCallback(() => {
-    const button = buttonRef.current;
-    const panel = panelRef.current;
-
-    if (!button || !panel) {
-      return;
-    }
-
-    const buttonRect = button.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-
-    setPosition(
-      calculateActionMenuPosition(
-        buttonRect,
-        panelRect,
-        window.innerWidth,
-        window.innerHeight,
-      ),
-    );
-  }, []);
-
-  useLayoutEffect(() => {
-    if (isOpen) {
-      setPosition(null);
-      updatePosition();
-    }
-  }, [isOpen, updatePosition]);
+  const positionStyle = useActionMenuPosition(buttonRef, panelRef, isOpen);
 
   useEffect(() => {
     if (!isOpen) {
       return;
-    }
-
-    let updateFrame: number | null = null;
-
-    function handleViewportChange() {
-      if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame);
-      }
-
-      updateFrame = window.requestAnimationFrame(() => {
-        updateFrame = null;
-        updatePosition();
-      });
     }
 
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -146,20 +47,12 @@ function ActionMenu({
 
     document.addEventListener("mousedown", handleDocumentMouseDown);
     document.addEventListener("keydown", handleDocumentKeyDown);
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", handleViewportChange, true);
 
     return () => {
-      if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame);
-      }
-
       document.removeEventListener("mousedown", handleDocumentMouseDown);
       document.removeEventListener("keydown", handleDocumentKeyDown);
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("scroll", handleViewportChange, true);
     };
-  }, [isOpen, onOpenChange, updatePosition]);
+  }, [isOpen, onOpenChange]);
 
   return (
     <div className="project-action-menu" data-project-action-menu>
@@ -183,15 +76,7 @@ function ActionMenu({
             className="project-action-menu-panel"
             data-project-action-menu
             role="menu"
-            style={
-              position
-                ? position
-                : {
-                    left: 0,
-                    top: 0,
-                    visibility: "hidden",
-                  }
-            }
+            style={positionStyle}
             onClick={(event) => {
               const target = event.target;
 

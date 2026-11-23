@@ -40,7 +40,6 @@ import type {
   TurnoverPackageStatus,
   TurnoverPackageSummary,
 } from "../types/turnover";
-import "./ReportsPage.css";
 
 interface ReportsPageProps {
   currentProject: Project;

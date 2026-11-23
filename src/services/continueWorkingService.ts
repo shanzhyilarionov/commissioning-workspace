@@ -1,5 +1,6 @@
 export const continueWorkingPages = [
   "Overview",
+  "Systems",
   "Assets",
   "Checklists & Tests",
   "Issues",

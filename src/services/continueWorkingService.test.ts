@@ -33,17 +33,20 @@ describe("continueWorkingService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("saves and restores a valid project location", () => {
-    const location = {
-      projectId: "project-1",
-      page: "Checklists & Tests" as const,
-      visitedAt: "2026-08-27T12:00:00.000Z",
-    };
+  it.each(["Checklists & Tests", "Systems"] as const)(
+    "saves and restores the %s project location",
+    (page) => {
+      const location = {
+        projectId: "project-1",
+        page,
+        visitedAt: "2026-08-27T12:00:00.000Z",
+      };
 
-    saveContinueWorkingLocation(location);
+      saveContinueWorkingLocation(location);
 
-    expect(loadContinueWorkingLocation()).toEqual(location);
-  });
+      expect(loadContinueWorkingLocation()).toEqual(location);
+    },
+  );
 
   it("clears the saved project location", () => {
     saveContinueWorkingLocation({

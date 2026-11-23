@@ -16,7 +16,8 @@
 }
 
 .projects-card .list-toolbar,
-.assets-card .list-toolbar {
+.assets-card .list-toolbar,
+.documents-card .list-toolbar {
   padding-top: calc(var(--section-spacing) / 2);
 }
 
@@ -100,11 +101,10 @@
   }
 
   .list-toolbar[data-filter-count="2"][data-has-action="false"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      "search search"
-      "first second"
-      "count count";
+      "search first second"
+      "count count count";
   }
 
   .list-toolbar > :is(.project-result-count, .asset-result-count) {

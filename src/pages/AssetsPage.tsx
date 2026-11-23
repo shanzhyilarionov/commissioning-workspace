@@ -3,6 +3,7 @@ import ActionMenu from "../components/ActionMenu";
 import AssetModal from "../components/AssetModal";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 import {
   createAsset,
   deleteAsset,
@@ -19,32 +20,24 @@ import type {
   AssetStatus,
 } from "../types/asset";
 import type { Project } from "../types/project";
-import type { AttentionDestinationPage } from "../components/AttentionFocusManager";
 import {
   isAuditNavigationItem,
+  type AssetStructureNavigation,
   type ProjectNavigationItem,
 } from "../types/navigation";
 import type {
   CommissioningSystem,
   Subsystem,
 } from "../types/system";
-import SystemManagementPage from "./SystemManagementPage";
-import "./DocumentsPage.css";
 
 interface AssetsPageProps {
   currentProject: Project;
   attentionItem?: ProjectNavigationItem | null;
-  onNavigate: (
-    page: AttentionDestinationPage,
-    item?: ProjectNavigationItem,
-  ) => void;
+  structureNavigation: AssetStructureNavigation | null;
+  onOpenSystem: (systemId: string | null) => void;
 }
 
 type AssetStatusFilter = "all" | AssetStatus;
-
-interface StructureAssetsReturnTarget {
-  systemId: string | null;
-}
 
 function formatAssetStatus(status: AssetStatus) {
   switch (status) {
@@ -99,7 +92,8 @@ function sortAssets(assets: Asset[]) {
 function AssetsPage({
   currentProject,
   attentionItem = null,
-  onNavigate,
+  structureNavigation,
+  onOpenSystem,
 }: AssetsPageProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [systems, setSystems] = useState<CommissioningSystem[]>([]);
@@ -108,7 +102,6 @@ function AssetsPage({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [systemFilter, setSystemFilter] = useState("all");
-  const [subsystemFilter, setSubsystemFilter] = useState("all");
   const [statusFilter, setStatusFilter] =
     useState<AssetStatusFilter>("all");
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
@@ -119,57 +112,29 @@ function AssetsPage({
     useState<string | null>(null);
   const [openMenuAssetId, setOpenMenuAssetId] =
     useState<string | null>(null);
-  const [isManagingSystems, setIsManagingSystems] = useState(false);
-  const [structureAssetsReturnTarget, setStructureAssetsReturnTarget] =
-    useState<StructureAssetsReturnTarget | null>(null);
 
   useEffect(() => {
-    if (!attentionItem) {
-      return;
-    }
+    setSearchQuery("");
+    setSystemFilter(
+      structureNavigation
+        ? structureNavigation.systemId ?? "unassigned"
+        : "all",
+    );
+    setStatusFilter("all");
+    setOpenMenuAssetId(null);
+  }, [structureNavigation]);
 
-    if (isAuditNavigationItem(attentionItem)) {
-      if (
-        attentionItem.entityType === "system" ||
-        attentionItem.entityType === "subsystem"
-      ) {
-        setStructureAssetsReturnTarget(
-          attentionItem.entityType === "subsystem"
-            ? { systemId: attentionItem.parentId }
-            : null,
-        );
-        setIsManagingSystems(true);
-        return;
-      }
-
-      if (attentionItem.entityType === "asset") {
-        setSearchQuery("");
-        setSystemFilter("all");
-        setSubsystemFilter("all");
-        setStatusFilter("all");
-        setStructureAssetsReturnTarget(null);
-        setIsManagingSystems(false);
-      }
-
-      return;
-    }
-
-    if (attentionItem.type === "system_readiness") {
-      setStructureAssetsReturnTarget(null);
-      setIsManagingSystems(true);
-      return;
-    }
-
+  useEffect(() => {
     if (
-      attentionItem.type === "blocked_asset" ||
-      attentionItem.type === "incomplete_asset"
+      attentionItem &&
+      (isAuditNavigationItem(attentionItem)
+        ? attentionItem.entityType === "asset"
+        : attentionItem.type === "blocked_asset" ||
+          attentionItem.type === "incomplete_asset")
     ) {
       setSearchQuery("");
       setSystemFilter("all");
-      setSubsystemFilter("all");
       setStatusFilter("all");
-      setStructureAssetsReturnTarget(null);
-      setIsManagingSystems(false);
     }
   }, [attentionItem]);
 
@@ -236,69 +201,17 @@ function AssetsPage({
     }
 
     setSearchQuery("");
-    setSystemFilter("all");
-    setSubsystemFilter("all");
-    setStatusFilter("all");
     setEditingAsset(null);
     setIsAssetModalOpen(false);
     setAssetToDelete(null);
     setAssetDeleteError(null);
     setOpenMenuAssetId(null);
-    const auditStructureTarget =
-      attentionItem &&
-      isAuditNavigationItem(attentionItem) &&
-      (attentionItem.entityType === "system" ||
-        attentionItem.entityType === "subsystem")
-        ? attentionItem
-        : null;
-
-    setStructureAssetsReturnTarget(
-      auditStructureTarget?.entityType === "subsystem"
-        ? { systemId: auditStructureTarget.parentId }
-        : null,
-    );
-    setIsManagingSystems(
-      auditStructureTarget !== null ||
-        (attentionItem !== null &&
-          !isAuditNavigationItem(attentionItem) &&
-          attentionItem.type === "system_readiness"),
-    );
     void loadProjectAssets();
 
     return () => {
       cancelled = true;
     };
   }, [currentProject.id]);
-
-  const availableSubsystemFilters = useMemo(() => {
-    if (systemFilter === "unassigned") {
-      return [];
-    }
-
-    if (systemFilter === "all") {
-      return subsystems;
-    }
-
-    return subsystems.filter(
-      (subsystem) => subsystem.systemId === systemFilter,
-    );
-  }, [subsystems, systemFilter]);
-
-  const subsystemFilterDisabled =
-    systemFilter === "unassigned" ||
-    availableSubsystemFilters.length === 0;
-
-  useEffect(() => {
-    if (
-      subsystemFilter !== "all" &&
-      subsystemFilter !== "unassigned" &&
-      !availableSubsystemFilters.some(
-        (subsystem) => subsystem.id === subsystemFilter,
-      )
-    ) {
-      setSubsystemFilter("all");
-    }
-  }, [availableSubsystemFilters, subsystemFilter]);
 
   const filteredAssets = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -309,12 +222,6 @@ function AssetsPage({
         (systemFilter === "unassigned"
           ? asset.systemId === null
           : asset.systemId === systemFilter);
-
-      const matchesSubsystem =
-        subsystemFilter === "all" ||
-        (subsystemFilter === "unassigned"
-          ? asset.subsystemId === null
-          : asset.subsystemId === subsystemFilter);
 
       const matchesStatus =
         statusFilter === "all" || asset.status === statusFilter;
@@ -331,7 +238,6 @@ function AssetsPage({
 
       return (
         matchesSystem &&
-        matchesSubsystem &&
         matchesStatus &&
         (normalizedQuery.length === 0 ||
           searchableText.includes(normalizedQuery))
@@ -341,7 +247,6 @@ function AssetsPage({
     assets,
     searchQuery,
     statusFilter,
-    subsystemFilter,
     systemFilter,
   ]);
 
@@ -370,44 +275,6 @@ function AssetsPage({
 
     setSystems(storedSystems);
     setSubsystems(storedSubsystems);
-  }
-
-  async function refreshProjectStructureData() {
-    const [storedAssets, storedSystems, storedSubsystems] =
-      await Promise.all([
-        listAssetsByProject(currentProject.id),
-        listSystemsByProject(currentProject.id),
-        listSubsystemsByProject(currentProject.id),
-      ]);
-
-    setAssets(sortAssets(storedAssets));
-    setSystems(storedSystems);
-    setSubsystems(storedSubsystems);
-  }
-
-  function handleViewStructureAssets(
-    systemId: string | null,
-    subsystemId?: string,
-    returnSystemId?: string,
-  ) {
-    setSearchQuery("");
-    setSystemFilter(systemId ?? "unassigned");
-    setSubsystemFilter(subsystemId ?? "all");
-    setStatusFilter("all");
-    setStructureAssetsReturnTarget({
-      systemId: returnSystemId ?? null,
-    });
-    setIsManagingSystems(false);
-  }
-
-  function handleBackToStructure() {
-    setOpenMenuAssetId(null);
-    setIsManagingSystems(true);
-  }
-
-  function handleLeaveStructureManagement() {
-    setStructureAssetsReturnTarget(null);
-    setIsManagingSystems(false);
   }
 
   async function handleSaveAsset(input: AssetInput): Promise<void> {
@@ -491,41 +358,19 @@ function AssetsPage({
     );
   }
 
-  if (isManagingSystems) {
-    return (
-      <SystemManagementPage
-        currentProject={currentProject}
-        assets={assets}
-        systems={systems}
-        subsystems={subsystems}
-        initialSystemId={
-          attentionItem &&
-          isAuditNavigationItem(attentionItem) &&
-          attentionItem.entityType === "subsystem"
-            ? attentionItem.parentId
-            : structureAssetsReturnTarget?.systemId ?? null
-        }
-        onBack={handleLeaveStructureManagement}
-        onViewAssets={handleViewStructureAssets}
-        onNavigate={onNavigate}
-        onStructureChanged={refreshProjectStructureData}
-      />
-    );
-  }
-
   return (
     <>
       <section className="content-card section-card assets-card">
         <div className="projects-header">
           <div>
-            {structureAssetsReturnTarget && (
+            {structureNavigation && (
               <button
                 className="back-navigation-button"
                 type="button"
-                onClick={handleBackToStructure}
+                onClick={() => onOpenSystem(structureNavigation.returnSystemId)}
               >
                 <span aria-hidden="true">←</span>
-                {structureAssetsReturnTarget.systemId
+                {structureNavigation.returnSystemId
                   ? "Back to Subsystems"
                   : "Back to Systems"}
               </button>
@@ -538,9 +383,9 @@ function AssetsPage({
           </div>
         </div>
 
-        <div className="documents-toolbar assets-toolbar">
+        <ListToolbar filterCount={2}>
           <input
-            className="document-search-input"
+            className="asset-search-input"
             type="search"
             value={searchQuery}
             placeholder="Search tag, name, system, subsystem, or type"
@@ -548,13 +393,10 @@ function AssetsPage({
             onChange={(event) => setSearchQuery(event.target.value)}
           />
           <select
-            className="document-filter document-category-filter"
+            className="asset-status-filter"
             value={systemFilter}
             aria-label="Filter assets by system"
-            onChange={(event) => {
-              setSystemFilter(event.target.value);
-              setSubsystemFilter("all");
-            }}
+            onChange={(event) => setSystemFilter(event.target.value)}
           >
             <option value="all">All systems</option>
             <option value="unassigned">No system</option>
@@ -565,38 +407,7 @@ function AssetsPage({
             ))}
           </select>
           <select
-            className="document-filter document-status-filter"
-            value={subsystemFilter}
-            aria-label="Filter assets by subsystem"
-            disabled={subsystemFilterDisabled}
-            onChange={(event) => setSubsystemFilter(event.target.value)}
-          >
-            <option value="all">
-              {systemFilter === "unassigned"
-                ? "Not available"
-                : availableSubsystemFilters.length === 0
-                  ? "No subsystems"
-                  : "All subsystems"}
-            </option>
-            {!subsystemFilterDisabled && (
-              <option value="unassigned">No subsystem</option>
-            )}
-            {availableSubsystemFilters.map((subsystem) => {
-              const parentSystem = systems.find(
-                (system) => system.id === subsystem.systemId,
-              );
-
-              return (
-                <option key={subsystem.id} value={subsystem.id}>
-                  {systemFilter === "all" && parentSystem
-                    ? `${parentSystem.name} / ${subsystem.name}`
-                    : subsystem.name}
-                </option>
-              );
-            })}
-          </select>
-          <select
-            className="document-filter document-asset-filter"
+            className="asset-status-filter"
             value={statusFilter}
             aria-label="Filter assets by status"
             onChange={(event) =>
@@ -609,31 +420,18 @@ function AssetsPage({
             <option value="completed">Completed</option>
             <option value="blocked">Blocked</option>
           </select>
-          <div className="asset-toolbar-actions">
-            <button
-              className="secondary-button toolbar-primary-button"
-              type="button"
-              onClick={() => {
-                setOpenMenuAssetId(null);
-                setStructureAssetsReturnTarget(null);
-                setIsManagingSystems(true);
-              }}
-            >
-              Manage systems
-            </button>
-            <button
-              className="primary-button toolbar-primary-button"
-              type="button"
-              onClick={handleCreateAsset}
-            >
-              New asset
-            </button>
-          </div>
+          <button
+            className="primary-button toolbar-primary-button"
+            type="button"
+            onClick={handleCreateAsset}
+          >
+            New asset
+          </button>
 
-          <span className="document-result-count">
+          <span className="asset-result-count">
             {filteredAssets.length} of {assets.length}
           </span>
-        </div>
+        </ListToolbar>
 
         {assets.length === 0 ? (
           <div className="empty-state">
@@ -670,7 +468,18 @@ function AssetsPage({
                       <strong className="asset-tag">{asset.tag}</strong>
                     </td>
                     <td>{asset.name}</td>
-                    <td>{formatAssetStructure(asset)}</td>
+                    <td>
+                      {asset.systemId ? (
+                        <button
+                          className="asset-structure-link"
+                          type="button"
+                          aria-label={`Open system ${asset.systemName}`}
+                          onClick={() => onOpenSystem(asset.systemId)}
+                        >
+                          {formatAssetStructure(asset)}
+                        </button>
+                      ) : formatAssetStructure(asset)}
+                    </td>
                     <td>{asset.assetType || "-"}</td>
                     <td className="status-cell">
                       <span className={`status-badge ${asset.status}`}>

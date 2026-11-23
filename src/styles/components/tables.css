@@ -1,0 +1,355 @@
+.projects-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  border-radius: 0 0 8px 8px;
+}
+
+.fixed-header-table {
+  --table-fixed-padding-x: var(--table-fixed-padding-x-max);
+
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fixed-header-table-body {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fixed-header-table-body.has-vertical-overflow {
+  overflow-y: scroll;
+}
+
+.fixed-header-table-table {
+  display: block;
+  width: 100%;
+  min-width: var(--table-min-width);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.fixed-header-table-table colgroup {
+  display: none;
+}
+
+.fixed-header-table-table thead,
+.fixed-header-table-table tbody {
+  display: block;
+  width: 100%;
+}
+
+.fixed-header-table-table thead {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  background: var(--color-surface-subtle);
+}
+
+.fixed-header-table-table tr {
+  display: grid;
+  width: 100%;
+  align-items: stretch;
+  grid-template-columns: var(--table-grid-columns);
+}
+
+.fixed-header-table-table thead th {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.fixed-header-table-body .projects-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.projects-list-table {
+  --table-min-width: var(--projects-table-min-width);
+  --table-min-width-value: 650;
+  --table-fixed-side-count: 6;
+  --table-grid-columns:
+    minmax(
+      calc(
+        var(--projects-name-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.45fr
+    )
+    minmax(
+      calc(
+        var(--projects-client-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1fr
+    )
+    minmax(
+      calc(
+        var(--projects-location-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1fr
+    )
+    calc(
+      var(--fixed-status-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-date-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-three-actions-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    );
+}
+
+.assets-table {
+  --table-min-width: var(--assets-table-min-width);
+  --table-min-width-value: 709;
+  --table-fixed-side-count: 6;
+  --table-grid-columns:
+    minmax(
+      calc(
+        var(--assets-tag-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      0.75fr
+    )
+    minmax(
+      calc(
+        var(--assets-name-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.15fr
+    )
+    minmax(
+      calc(
+        var(--assets-system-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1fr
+    )
+    minmax(
+      calc(
+        var(--assets-type-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.15fr
+    )
+    calc(
+      var(--fixed-status-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-date-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-two-actions-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    );
+}
+
+.issues-table:not(.checklists-tests-table):not(.test-record-items-table) {
+  --table-min-width: var(--issues-table-min-width);
+  --table-min-width-value: 769;
+  --table-fixed-side-count: 10;
+  --table-grid-columns:
+    minmax(
+      calc(
+        var(--issues-title-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.5fr
+    )
+    minmax(
+      calc(
+        var(--issues-asset-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.15fr
+    )
+    calc(
+      var(--fixed-priority-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-status-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    minmax(
+      calc(
+        var(--issues-owner-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1fr
+    )
+    calc(
+      var(--fixed-date-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-date-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-two-actions-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    );
+}
+
+.checklists-tests-table {
+  --table-min-width: var(--test-records-table-min-width);
+  --table-min-width-value: 701;
+  --table-fixed-side-count: 10;
+  --table-grid-columns:
+    minmax(
+      calc(
+        var(--test-records-title-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.4fr
+    )
+    calc(
+      var(--fixed-type-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    minmax(
+      calc(
+        var(--test-records-asset-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.2fr
+    )
+    calc(
+      var(--fixed-progress-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-status-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-date-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    calc(
+      var(--fixed-two-actions-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    );
+}
+
+.test-record-items-table {
+  --table-min-width: var(--test-items-table-min-width);
+  --table-min-width-value: 676;
+  --table-fixed-side-count: 4;
+  --table-grid-columns:
+    minmax(
+      calc(
+        var(--test-items-item-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.1fr
+    )
+    minmax(
+      calc(
+        var(--test-items-criteria-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1.35fr
+    )
+    calc(
+      var(--fixed-result-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    )
+    minmax(
+      calc(
+        var(--test-items-notes-min-content-width) +
+        var(--table-user-padding-x) +
+        var(--table-user-padding-x)
+      ),
+      1fr
+    )
+    calc(
+      var(--test-items-actions-content-width) +
+      var(--table-fixed-padding-x) +
+      var(--table-fixed-padding-x)
+    );
+}
+
+.projects-list-table tr > :nth-child(n + 4),
+.assets-table tr > :nth-child(n + 5),
+.issues-table:not(.checklists-tests-table):not(.test-record-items-table)
+  tr
+  > :is(:nth-child(3), :nth-child(4), :nth-child(6), :nth-child(7), :nth-child(8)),
+.checklists-tests-table
+  tr
+  > :is(:nth-child(2), :nth-child(4), :nth-child(5), :nth-child(6), :nth-child(7)),
+.test-record-items-table tr > :is(:nth-child(3), :nth-child(5)) {
+  flex-wrap: nowrap;
+  padding-inline: var(--table-fixed-padding-x);
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.projects-list-table tr > :last-child,
+.assets-table tr > :last-child,
+.issues-table tr > :last-child,
+.checklists-tests-table tr > :last-child {
+  justify-content: center;
+}
+
+.test-record-items-table tr > :last-child {
+  justify-content: flex-end;
+}
+
+.assets-table tr > :nth-child(1) {
+  white-space: nowrap;
+}
+
+.issues-table th,
+.issues-table td {
+  align-items: center;
+}

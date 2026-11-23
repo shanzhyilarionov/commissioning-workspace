@@ -1,0 +1,24 @@
+/* Keep this order: later shared rules intentionally override page defaults. */
+
+@import "./pages/system-management.css";
+@import "./components/list-toolbar.css";
+@import "./pages/documents.css";
+@import "./pages/workspace-deliverables.css";
+@import "./pages/reports.css";
+@import "./pages/settings.css";
+@import "./theme.css";
+@import "./tokens.css";
+@import "./base.css";
+@import "./shell.css";
+@import "./components/common.css";
+@import "./pages/home.css";
+@import "./components/modals.css";
+@import "./components/forms-and-lists.css";
+@import "./components/tables.css";
+@import "./pages/test-records.css";
+@import "./components/content-layout.css";
+@import "./pages/overview.css";
+@import "./components/attention.css";
+@import "./pages/test-record-signoff.css";
+@import "./pages/assets-toolbar.css";
+@import "./pages/structure-toolbar.css";

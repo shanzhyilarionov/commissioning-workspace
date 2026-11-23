@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateActionMenuPosition } from "./ActionMenu";
+import { calculateActionMenuPosition } from "./useActionMenuPosition";
 
 describe("calculateActionMenuPosition", () => {
   it("aligns the panel to the trigger without crossing the right edge", () => {

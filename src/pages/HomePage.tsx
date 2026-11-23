@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import PieChart, { type PieChartSegment } from "../components/PieChart";
+import { progressWidthStyle } from "../styles/layout/progress";
+import { useWeeklyActivityChartLayout } from "../styles/layout/useWeeklyActivityChartLayout";
 import { getWorkspaceAnalytics } from "../repositories/workspaceAnalyticsRepository";
 import type { ContinueWorkingItem } from "../services/continueWorkingService";
 import type { WorkspaceDeliverableKind } from "../types/workspaceDeliverable";
@@ -18,12 +21,6 @@ interface HomePageProps {
 }
 
 type DashboardTone = "positive" | "accent" | "negative" | "neutral";
-
-interface StatusSegment {
-  label: string;
-  value: number;
-  tone: DashboardTone;
-}
 
 function formatRelativeTime(value: string, currentTime: Date): string {
   const timestamp = new Date(value);
@@ -285,141 +282,45 @@ function getGreetingContent(date: Date, operatorName: string) {
   };
 }
 
-function PieChart({
-  label,
-  segments,
-}: {
-  label: string;
-  segments: StatusSegment[];
-}) {
-  const total = segments.reduce(
-    (sum, segment) => sum + segment.value,
-    0,
-  );
-  let offset = 0;
-
-  return (
-    <section className="home-panel home-pie-card">
-      <div className="home-pie-card-heading">
-        <h5>{label}</h5>
-      </div>
-      <div className="home-pie-card-body">
-        <div className="home-pie-legend">
-          {segments.map((segment) => (
-            <div key={segment.label}>
-              <span className={`home-chart-key ${segment.tone}`} />
-              <span>
-                {segment.label} <strong>{segment.value}</strong>
-              </span>
-            </div>
-          ))}
-        </div>
-        <div
-          className="home-pie-visual"
-          role="img"
-          aria-label={`${label}: ${segments
-            .map((segment) => `${segment.value} ${segment.label}`)
-            .join(", ")}.`}
-        >
-          <svg
-            className="home-pie"
-            viewBox="0 0 120 120"
-            aria-hidden="true"
-          >
-            <circle
-              className="home-pie-track"
-              cx="60"
-              cy="60"
-              r="25"
-              pathLength="100"
-            />
-            {segments.map((segment) => {
-              const percentage =
-                total === 0 ? 0 : (segment.value / total) * 100;
-              const segmentOffset = offset;
-              offset += percentage;
-
-              return percentage > 0 ? (
-                <circle
-                  key={segment.label}
-                  className={`home-pie-segment ${segment.tone}`}
-                  cx="60"
-                  cy="60"
-                  r="25"
-                  pathLength="100"
-                  strokeDasharray={`${percentage} ${100 - percentage}`}
-                  strokeDashoffset={-segmentOffset}
-                />
-              ) : null;
-            })}
-          </svg>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function WeeklyActivityChart({
   activity,
 }: {
   activity: WorkspaceDailyActivity[];
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerWidth, setContainerWidth] = useState(660);
-  const tickCount =
-    containerWidth >= 1200
-      ? 9
-      : containerWidth >= 850
-        ? 7
-        : containerWidth >= 560
-          ? 5
-          : 3;
-  const displayedActivity = activity;
-  const showDataPoints = containerWidth >= 560;
-  const labelCount = Math.min(
-    displayedActivity.length,
-    Math.max(2, Math.floor((containerWidth - 96) / 82)),
-  );
-  const labelIndexes = new Set(
-    Array.from({ length: labelCount }, (_, index) =>
-      labelCount <= 1
-        ? 0
-        : Math.round(
-            (index * (displayedActivity.length - 1)) /
-              (labelCount - 1),
-          ),
-    ),
-  );
-  const plotPixelHeight = Math.round(
-    Math.min(165, Math.max(115, containerWidth * 0.27)),
-  );
-  const width = 660;
-  const height = 170;
-  const chartLeft = 4;
-  const chartRight = 38;
-  const chartTop = 6;
-  const chartBottom = 4;
-  const chartWidth = width - chartLeft - chartRight;
-  const chartHeight = height - chartTop - chartBottom;
+  const {
+    containerRef,
+    tickCount,
+    showDataPoints,
+    labelIndexes,
+    width,
+    height,
+    chartLeft,
+    chartTop,
+    chartWidth,
+    chartHeight,
+    pointRadius,
+    plotStyle,
+    labelsStyle,
+  } = useWeeklyActivityChartLayout(activity.length);
   const maximumValue = Math.max(
     1,
-    ...displayedActivity.flatMap((point) => [
+    ...activity.flatMap((point) => [
       point.created,
       point.closedOut,
     ]),
   );
   const xForIndex = (index: number) =>
     chartLeft +
-    (displayedActivity.length <= 1
+    (activity.length <= 1
       ? chartWidth / 2
-      : (index / (displayedActivity.length - 1)) * chartWidth);
+      : (index / (activity.length - 1)) * chartWidth);
   const yForValue = (value: number) =>
     chartTop + chartHeight - (value / maximumValue) * chartHeight;
-  const createdPoints = displayedActivity.map(
+  const createdPoints = activity.map(
     (point, index) =>
       `${xForIndex(index)},${yForValue(point.created)}`,
   );
-  const closedOutPoints = displayedActivity.map(
+  const closedOutPoints = activity.map(
     (point, index) =>
       `${xForIndex(index)},${yForValue(point.closedOut)}`,
   );
@@ -438,23 +339,6 @@ function WeeklyActivityChart({
       maximumValue * (1 - index / Math.max(1, tickCount - 1)),
     ),
   );
-
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const observer = new ResizeObserver(([entry]) => {
-      setContainerWidth(entry.contentRect.width);
-    });
-
-    observer.observe(container);
-    setContainerWidth(container.getBoundingClientRect().width);
-
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <div className="home-weekly-chart" ref={containerRef}>
@@ -477,9 +361,9 @@ function WeeklyActivityChart({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           preserveAspectRatio="none"
-          style={{ height: `${plotPixelHeight}px` }}
+          style={plotStyle}
           role="img"
-          aria-label={`Daily workspace activity chart. ${displayedActivity
+          aria-label={`Daily workspace activity chart. ${activity
             .map(
               (week) =>
                 `${week.label}: ${week.created} created and ${week.closedOut} closed out`,
@@ -521,7 +405,7 @@ function WeeklyActivityChart({
           />
 
           {showDataPoints
-            ? displayedActivity.map((point, index) =>
+            ? activity.map((point, index) =>
                 point.created > 0 || point.closedOut > 0 ? (
                   <g key={point.startDate}>
                     {point.created > 0 ? (
@@ -530,13 +414,13 @@ function WeeklyActivityChart({
                           className="home-chart-point-halo"
                           cx={xForIndex(index)}
                           cy={yForValue(point.created)}
-                          r="0.01"
+                          r={pointRadius}
                         />
                         <circle
                           className="home-chart-point created"
                           cx={xForIndex(index)}
                           cy={yForValue(point.created)}
-                          r="0.01"
+                          r={pointRadius}
                         />
                       </>
                     ) : null}
@@ -546,13 +430,13 @@ function WeeklyActivityChart({
                           className="home-chart-point-halo"
                           cx={xForIndex(index)}
                           cy={yForValue(point.closedOut)}
-                          r="0.01"
+                          r={pointRadius}
                         />
                         <circle
                           className="home-chart-point closed-out"
                           cx={xForIndex(index)}
                           cy={yForValue(point.closedOut)}
-                          r="0.01"
+                          r={pointRadius}
                         />
                       </>
                     ) : null}
@@ -564,12 +448,10 @@ function WeeklyActivityChart({
       </div>
       <div
         className="home-chart-x-labels"
-        style={{
-          gridTemplateColumns: `repeat(${displayedActivity.length}, minmax(0, 1fr))`,
-        }}
+        style={labelsStyle}
         aria-hidden="true"
       >
-        {displayedActivity.map((point, index) => (
+        {activity.map((point, index) => (
           <span key={point.startDate}>
             {labelIndexes.has(index) ? point.label : ""}
           </span>
@@ -662,7 +544,7 @@ function AnalyticsContent({
       complete: analytics.deliverables.handoverSubsystemsComplete,
     },
   ];
-  const assetSegments: StatusSegment[] = [
+  const assetSegments: PieChartSegment[] = [
     {
       label: "Completed",
       value: analytics.assets.completed,
@@ -684,7 +566,7 @@ function AnalyticsContent({
       tone: "neutral",
     },
   ];
-  const testSegments: StatusSegment[] = [
+  const testSegments: PieChartSegment[] = [
     {
       label: "Passed",
       value: analytics.tests.passed,
@@ -706,7 +588,7 @@ function AnalyticsContent({
       tone: "neutral",
     },
   ];
-  const issueSegments: StatusSegment[] = [
+  const issueSegments: PieChartSegment[] = [
     {
       label: "Open",
       value: analytics.issues.open,
@@ -868,7 +750,7 @@ function AnalyticsContent({
                     aria-valuemax={100}
                     aria-valuenow={row.percent}
                   >
-                    <span style={{ width: `${row.percent}%` }} />
+                    <span style={progressWidthStyle(row.percent)} />
                   </span>
                   <small>{row.percent}%</small>
                 </span>

@@ -7,6 +7,7 @@ import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import DocumentModal from "../components/DocumentModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
 import { listAssetsByProject } from "../repositories/assetRepository";
 import {
   createProjectDocument,
@@ -22,16 +23,13 @@ import type {
   ProjectDocumentInput,
 } from "../types/document";
 import type { Project } from "../types/project";
-import "./DocumentsPage.css";
 
 interface DocumentsPageProps {
   currentProject: Project;
-  initialRequiredOnly?: boolean;
 }
 
 type CategoryFilter = "all" | DocumentCategory;
 type StatusFilter = "all" | DocumentStatus;
-type RequirementFilter = "all" | "required" | "optional";
 
 function fileNameFromPath(path: string) {
   const parts = path.split(/[\\/]/);
@@ -102,10 +100,7 @@ function sortDocuments(documents: ProjectDocument[]) {
   });
 }
 
-function DocumentsPage({
-  currentProject,
-  initialRequiredOnly = false,
-}: DocumentsPageProps) {
+function DocumentsPage({ currentProject }: DocumentsPageProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,10 +111,6 @@ function DocumentsPage({
     useState<CategoryFilter>("all");
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("all");
-  const [assetFilter, setAssetFilter] = useState("all");
-  const [requirementFilter, setRequirementFilter] = useState<RequirementFilter>(
-    initialRequiredOnly ? "required" : "all",
-  );
   const [isDocumentModalOpen, setIsDocumentModalOpen] =
     useState(false);
   const [editingDocument, setEditingDocument] =
@@ -204,8 +195,6 @@ function DocumentsPage({
     setSearchQuery("");
     setCategoryFilter("all");
     setStatusFilter("all");
-    setAssetFilter("all");
-    setRequirementFilter(initialRequiredOnly ? "required" : "all");
     setActionError(null);
     setEditingDocument(null);
     setSourcePath(null);
@@ -239,14 +228,6 @@ function DocumentsPage({
       const matchesStatus =
         statusFilter === "all" ||
         document.status === statusFilter;
-      const matchesRequirement =
-        requirementFilter === "all" ||
-        document.requiredForReadiness === (requirementFilter === "required");
-      const matchesAsset =
-        assetFilter === "all" ||
-        (assetFilter === "unlinked"
-          ? document.assetId === null
-          : document.assetId === assetFilter);
       const searchableText = [
         document.title,
         document.originalFileName,
@@ -263,20 +244,16 @@ function DocumentsPage({
       return (
         matchesCategory &&
         matchesStatus &&
-        matchesRequirement &&
-        matchesAsset &&
         (normalizedQuery.length === 0 ||
           searchableText.includes(normalizedQuery))
       );
     });
   }, [
     assetById,
-    assetFilter,
     categoryFilter,
     documents,
     searchQuery,
     statusFilter,
-    requirementFilter,
   ]);
 
   async function handleImportDocument() {
@@ -498,9 +475,9 @@ function DocumentsPage({
           </div>
         </div>
 
-        <div className="documents-toolbar">
+        <ListToolbar filterCount={2}>
           <input
-            className="document-search-input"
+            className="project-search-input"
             type="search"
             value={searchQuery}
             placeholder="Search title, file, revision, asset, or notes"
@@ -511,7 +488,7 @@ function DocumentsPage({
           />
 
           <select
-            className="document-filter document-category-filter"
+            className="project-status-filter"
             value={categoryFilter}
             aria-label="Filter documents by category"
             onChange={(event) =>
@@ -533,7 +510,7 @@ function DocumentsPage({
           </select>
 
           <select
-            className="document-filter document-status-filter"
+            className="project-status-filter"
             value={statusFilter}
             aria-label="Filter documents by status"
             onChange={(event) =>
@@ -547,36 +524,6 @@ function DocumentsPage({
             <option value="superseded">Superseded</option>
           </select>
 
-          <select
-            className="document-filter document-asset-filter"
-            value={assetFilter}
-            aria-label="Filter documents by asset"
-            onChange={(event) =>
-              setAssetFilter(event.target.value)
-            }
-          >
-            <option value="all">All assets</option>
-            <option value="unlinked">No linked asset</option>
-            {assets.map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.tag} - {asset.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="document-filter document-requirement-filter"
-            value={requirementFilter}
-            aria-label="Filter documents by requirement"
-            onChange={(event) =>
-              setRequirementFilter(event.target.value as RequirementFilter)
-            }
-          >
-            <option value="all">All requirements</option>
-            <option value="required">Required only</option>
-            <option value="optional">Optional only</option>
-          </select>
-
           <button
             className="primary-button toolbar-primary-button"
             type="button"
@@ -587,10 +534,10 @@ function DocumentsPage({
             Import document
           </button>
 
-          <span className="document-result-count">
+          <span className="project-result-count">
             {filteredDocuments.length} of {documents.length}
           </span>
-        </div>
+        </ListToolbar>
 
         {actionError && (
           <p className="projects-action-error" role="alert">

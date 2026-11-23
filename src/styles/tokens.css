@@ -1,0 +1,51 @@
+:root {
+  --sidebar-width: 230px;
+  --workspace-top-spacing: 30px;
+  --workspace-side-spacing: 30px;
+  --sidebar-top-spacing: 45px;
+  --section-spacing: 20px;
+
+  --table-cell-padding-y: 10px;
+  --table-user-padding-x: 12px;
+  --table-fixed-padding-x-min: 4px;
+  --table-fixed-padding-x-max: 22px;
+  --table-action-gap: 6px;
+  --scrollbar-size: 8px;
+
+  --fixed-priority-content-width: 56px;
+  --fixed-status-content-width: 74px;
+  --fixed-date-content-width: 76px;
+  --fixed-type-content-width: 92px;
+  --fixed-progress-content-width: 66px;
+  --fixed-result-content-width: 52px;
+  --fixed-two-actions-content-width: 95px;
+  --fixed-three-actions-content-width: 150px;
+  --test-items-actions-content-width: 196px;
+
+  --projects-name-min-content-width: 110px;
+  --projects-client-min-content-width: 72px;
+  --projects-location-min-content-width: 72px;
+  --projects-table-min-width: 650px;
+
+  --assets-tag-min-content-width: 68px;
+  --assets-name-min-content-width: 90px;
+  --assets-system-min-content-width: 90px;
+  --assets-type-min-content-width: 96px;
+  --assets-table-min-width: 709px;
+
+  --issues-title-min-content-width: 110px;
+  --issues-asset-min-content-width: 90px;
+  --issues-owner-min-content-width: 80px;
+  --issues-table-min-width: 769px;
+
+  --test-records-title-min-content-width: 110px;
+  --test-records-asset-min-content-width: 100px;
+  --test-records-table-min-width: 701px;
+
+  --test-items-item-min-content-width: 120px;
+  --test-items-criteria-min-content-width: 130px;
+  --test-items-notes-min-content-width: 90px;
+  --test-items-table-min-width: 676px;
+  --test-item-number-width: 20px;
+  --test-item-number-gap: 10px;
+}

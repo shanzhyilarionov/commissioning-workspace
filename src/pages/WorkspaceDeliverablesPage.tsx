@@ -10,7 +10,6 @@ import {
   type WorkspaceDeliverable,
   type WorkspaceDeliverableKind,
 } from "../types/workspaceDeliverable";
-import "./WorkspaceDeliverablesPage.css";
 
 interface WorkspaceDeliverablesPageProps {
   kind: WorkspaceDeliverableKind;
