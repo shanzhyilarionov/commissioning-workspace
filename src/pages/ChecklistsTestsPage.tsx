@@ -8,6 +8,7 @@ import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import TestRecordModal from "../components/TestRecordModal";
 import { listAssetsByProject } from "../repositories/assetRepository";
 import {
@@ -547,7 +548,7 @@ function ChecklistsTestsPage({
 
   return (
     <>
-      <section className="content-card section-card assets-card issues-card">
+      <TablePage className="checklists-tests-page">
         <div className="projects-header">
           <div>
             <h3>
@@ -687,7 +688,7 @@ function ChecklistsTestsPage({
                                 <th>Title</th>
                                 <th>Type</th>
                                 <th>Asset</th>
-                                <th>Progress</th>
+                                <th className="numeric-column">Progress</th>
                                 <th>Status</th>
                                 <th>Updated</th>
                                 <th aria-label="Record actions" />
@@ -748,7 +749,7 @@ function ChecklistsTestsPage({
                                         )}
                                       </td>
 
-                                      <td className="issue-date-cell">
+                                      <td className="numeric-column issue-date-cell">
                                         {
                                           testRecord.completedItemCount
                                         }{" "}
@@ -853,7 +854,7 @@ function ChecklistsTestsPage({
             }
           />
         )}
-      </section>
+      </TablePage>
 
       <TestRecordModal
         isOpen={

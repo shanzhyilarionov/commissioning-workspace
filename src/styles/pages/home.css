@@ -210,7 +210,6 @@
 }
 
 .home-continue-working-button {
-  width: 100%;
   flex: 0 0 auto;
 }
 
@@ -251,12 +250,12 @@
 
 .home-project-performance-table {
   --table-min-width: 480px;
-  --table-min-width-value: 480;
+  --table-start-padding-base: var(--table-fixed-padding-x-min);
   --table-fixed-side-count: 5;
   --table-grid-columns:
     minmax(
       calc(
-        160px + var(--table-fixed-padding-x) +
+        160px + var(--table-edge-padding-x) +
           var(--table-fixed-padding-x)
       ),
       1fr
@@ -275,7 +274,7 @@
     )
     calc(
       110px + var(--table-fixed-padding-x) +
-        var(--table-fixed-padding-x)
+        var(--table-end-padding-x)
     );
 }
 
@@ -295,12 +294,6 @@
 .projects-table.home-project-performance-table th {
   min-height: 0;
   padding-block: 7px;
-}
-
-.projects-table.home-project-performance-table th:nth-child(n + 2),
-.projects-table.home-project-performance-table td:nth-child(n + 2) {
-  justify-content: center;
-  text-align: center;
 }
 
 .home-project-performance-table .home-performance-project-cell {
@@ -1060,11 +1053,6 @@
 
   .home-continue-working-copy {
     flex: 1 1 auto;
-  }
-
-  .home-continue-working-button {
-    width: auto;
-    min-width: 92px;
   }
 
   .home-project-performance-panel {

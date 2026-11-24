@@ -9,6 +9,10 @@
 
 .fixed-header-table {
   --table-fixed-padding-x: var(--table-fixed-padding-x-max);
+  --table-metadata-padding-x: min(var(--table-fixed-padding-x), 10px);
+  --table-start-padding-base: var(--table-user-padding-x);
+  --table-end-padding-base: var(--table-fixed-padding-x-min);
+  --table-end-padding-x: var(--table-edge-padding-x);
 
   display: flex;
   min-width: 0;
@@ -37,13 +41,14 @@
 .fixed-header-table-table {
   display: block;
   width: 100%;
-  min-width: var(--table-min-width);
+  /* Minimum widths use compact padding; replace only the two outer insets. */
+  min-width: calc(
+    var(--table-min-width) +
+    var(--table-edge-padding-x) - var(--table-start-padding-base) +
+    var(--table-end-padding-x) - var(--table-end-padding-base)
+  );
   border-collapse: separate;
   border-spacing: 0;
-}
-
-.fixed-header-table-table colgroup {
-  display: none;
 }
 
 .fixed-header-table-table thead,
@@ -70,19 +75,67 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.fixed-header-table-body .projects-table tbody tr:last-child td {
+.fixed-header-table-table th,
+.fixed-header-table-table td {
+  display: flex;
+  min-width: 0;
+  min-height: var(--table-header-min-height);
+  align-items: center;
+  align-content: center;
+  flex-wrap: wrap;
+  padding-block: var(--table-cell-padding-y);
+  padding-inline: var(--table-user-padding-x);
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.fixed-header-table-table td {
+  min-height: var(--table-row-min-height);
+}
+
+.fixed-header-table-table th {
+  flex-wrap: nowrap;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-subtle);
+}
+
+.fixed-header-table-table td {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+}
+
+.fixed-header-table-table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.fixed-header-table-table tbody tr:hover {
+  background: var(--color-surface-hover);
+}
+
+.fixed-header-table-table th.status-column,
+.fixed-header-table-table td.status-cell {
+  text-align: left;
+}
+
+.fixed-header-table-table th:last-child,
+.fixed-header-table-table td:last-child {
+  white-space: nowrap;
 }
 
 .projects-list-table {
   --table-min-width: var(--projects-table-min-width);
-  --table-min-width-value: 650;
   --table-fixed-side-count: 6;
   --table-grid-columns:
     minmax(
       calc(
         var(--projects-name-min-content-width) +
-        var(--table-user-padding-x) +
+        var(--table-edge-padding-x) +
         var(--table-user-padding-x)
       ),
       1.45fr
@@ -116,22 +169,22 @@
     calc(
       var(--fixed-three-actions-content-width) +
       var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-end-padding-x)
     );
 }
 
 .assets-table {
+  --assets-metadata-padding-x: min(var(--table-fixed-padding-x), 10px);
   --table-min-width: var(--assets-table-min-width);
-  --table-min-width-value: 709;
   --table-fixed-side-count: 6;
   --table-grid-columns:
     minmax(
       calc(
         var(--assets-tag-min-content-width) +
-        var(--table-user-padding-x) +
+        var(--table-edge-padding-x) +
         var(--table-user-padding-x)
       ),
-      0.75fr
+      0.55fr
     )
     minmax(
       calc(
@@ -147,7 +200,7 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1fr
+      1.35fr
     )
     minmax(
       calc(
@@ -159,30 +212,29 @@
     )
     calc(
       var(--fixed-status-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--assets-metadata-padding-x) +
+      var(--assets-metadata-padding-x)
     )
     calc(
       var(--fixed-date-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--assets-metadata-padding-x) +
+      var(--assets-metadata-padding-x)
     )
     calc(
       var(--fixed-two-actions-content-width) +
       var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-end-padding-x)
     );
 }
 
 .issues-table:not(.checklists-tests-table):not(.test-record-items-table) {
   --table-min-width: var(--issues-table-min-width);
-  --table-min-width-value: 769;
   --table-fixed-side-count: 10;
   --table-grid-columns:
     minmax(
       calc(
         var(--issues-title-min-content-width) +
-        var(--table-user-padding-x) +
+        var(--table-edge-padding-x) +
         var(--table-user-padding-x)
       ),
       1.5fr
@@ -193,17 +245,17 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.15fr
+      1.55fr
     )
     calc(
       var(--fixed-priority-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     calc(
       var(--fixed-status-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     minmax(
       calc(
@@ -215,38 +267,37 @@
     )
     calc(
       var(--fixed-date-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     calc(
       var(--fixed-date-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     calc(
       var(--fixed-two-actions-content-width) +
       var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-end-padding-x)
     );
 }
 
 .checklists-tests-table {
   --table-min-width: var(--test-records-table-min-width);
-  --table-min-width-value: 701;
   --table-fixed-side-count: 10;
   --table-grid-columns:
     minmax(
       calc(
         var(--test-records-title-min-content-width) +
-        var(--table-user-padding-x) +
+        var(--table-edge-padding-x) +
         var(--table-user-padding-x)
       ),
       1.4fr
     )
     calc(
       var(--fixed-type-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     minmax(
       calc(
@@ -254,39 +305,38 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.2fr
+      1.65fr
     )
     calc(
-      var(--fixed-progress-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      52px +
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     calc(
       var(--fixed-status-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     calc(
       var(--fixed-date-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-metadata-padding-x) +
+      var(--table-metadata-padding-x)
     )
     calc(
       var(--fixed-two-actions-content-width) +
       var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-end-padding-x)
     );
 }
 
 .test-record-items-table {
   --table-min-width: var(--test-items-table-min-width);
-  --table-min-width-value: 676;
   --table-fixed-side-count: 4;
   --table-grid-columns:
     minmax(
       calc(
         var(--test-items-item-min-content-width) +
-        var(--table-user-padding-x) +
+        var(--table-edge-padding-x) +
         var(--table-user-padding-x)
       ),
       1.1fr
@@ -315,7 +365,7 @@
     calc(
       var(--test-items-actions-content-width) +
       var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-end-padding-x)
     );
 }
 
@@ -334,22 +384,75 @@
   overflow-wrap: normal;
 }
 
-.projects-list-table tr > :last-child,
-.assets-table tr > :last-child,
-.issues-table tr > :last-child,
-.checklists-tests-table tr > :last-child {
-  justify-content: center;
-}
-
-.test-record-items-table tr > :last-child {
-  justify-content: flex-end;
-}
-
 .assets-table tr > :nth-child(1) {
   white-space: nowrap;
+}
+
+.assets-table tr > :is(:nth-child(5), :nth-child(6)) {
+  padding-inline: var(--assets-metadata-padding-x);
+}
+
+.issues-table .issue-asset-cell,
+.reports-table .reports-asset-cell {
+  column-gap: 0.25em;
+}
+
+.issues-table:not(.checklists-tests-table):not(.test-record-items-table)
+  tr
+  > :is(:nth-child(3), :nth-child(4), :nth-child(6), :nth-child(7)),
+.checklists-tests-table
+  tr
+  > :is(:nth-child(2), :nth-child(4), :nth-child(5), :nth-child(6)) {
+  padding-inline: var(--table-metadata-padding-x);
 }
 
 .issues-table th,
 .issues-table td {
   align-items: center;
+}
+
+.fixed-header-table .fixed-header-table-body .fixed-header-table-table
+  > :is(thead, tbody) > tr > :first-child {
+  padding-inline-start: var(--table-edge-padding-x);
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.fixed-header-table .fixed-header-table-body .fixed-header-table-table
+  > :is(thead, tbody) > tr > :last-child {
+  display: grid;
+  grid-template-columns: var(--table-last-content-width, max-content);
+  padding-inline-end: var(--table-end-padding-x);
+  justify-content: end;
+  justify-items: start;
+  text-align: start;
+}
+
+/* Numeric columns share the same center for their heading and values. */
+.fixed-header-table .fixed-header-table-body .fixed-header-table-table
+  > :is(thead, tbody) > tr > .numeric-column {
+  justify-content: center;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixed-header-table-table th.numeric-column {
+  white-space: nowrap;
+}
+
+/* At either edge, anchor the heading 20px from the scrollable content frame.
+   Center values beneath that heading instead of moving the heading inward. */
+.fixed-header-table .fixed-header-table-body .fixed-header-table-table
+  > :is(thead, tbody) > tr > .numeric-column:first-child {
+  display: grid;
+  grid-template-columns: var(--table-first-number-heading-width, max-content);
+  justify-content: start;
+}
+
+.fixed-header-table .fixed-header-table-body .fixed-header-table-table
+  > :is(thead, tbody) > tr > .numeric-column:last-child {
+  display: grid;
+  grid-template-columns: var(--table-last-number-heading-width, max-content);
+  justify-content: end;
+  justify-items: stretch;
 }

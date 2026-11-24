@@ -11,6 +11,7 @@
 @import "./base.css";
 @import "./shell.css";
 @import "./components/common.css";
+@import "./components/table-page.css";
 @import "./pages/home.css";
 @import "./components/modals.css";
 @import "./components/forms-and-lists.css";
@@ -21,4 +22,3 @@
 @import "./components/attention.css";
 @import "./pages/test-record-signoff.css";
 @import "./pages/assets-toolbar.css";
-@import "./pages/structure-toolbar.css";

@@ -1,0 +1,18 @@
+.table-page {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.table-page > :is(.projects-header, .card-header) {
+  flex: 0 0 auto;
+  padding-bottom: calc(var(--section-spacing) / 2);
+  border-bottom: 0;
+}
+
+.table-page > .list-toolbar-container .list-toolbar {
+  padding-top: calc(var(--section-spacing) / 2);
+}

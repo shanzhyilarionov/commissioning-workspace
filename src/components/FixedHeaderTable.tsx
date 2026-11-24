@@ -5,7 +5,6 @@ interface FixedHeaderTableProps {
   className: string;
   wrapperClassName?: string;
   ariaLabel: string;
-  colGroup?: ReactNode;
   header: ReactNode;
   body: ReactNode;
 }
@@ -14,7 +13,6 @@ function FixedHeaderTable({
   className,
   wrapperClassName = "",
   ariaLabel,
-  colGroup,
   header,
   body,
 }: FixedHeaderTableProps) {
@@ -46,7 +44,6 @@ function FixedHeaderTable({
           className={tableClasses}
           aria-label={ariaLabel}
         >
-          {colGroup}
           <thead>{header}</thead>
           <tbody>{body}</tbody>
         </table>

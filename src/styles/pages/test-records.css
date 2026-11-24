@@ -205,10 +205,6 @@
   gap: var(--table-action-gap);
 }
 
-.test-item-issue-action {
-  min-width: 82px;
-}
-
 .test-item-description {
   display: flex;
   align-items: center;

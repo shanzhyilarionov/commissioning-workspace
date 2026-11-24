@@ -1,25 +1,32 @@
-.deliverables-page {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-}
-
 .deliverables-table {
   --deliverables-detail-width: 124px;
+  --table-end-padding-base: var(--table-user-padding-x);
   --table-min-width: 608px;
-  --table-min-width-value: 608;
   --table-grid-columns:
-    minmax(160px, 2fr)
-    minmax(130px, 1.4fr)
-    minmax(70px, 1fr)
+    minmax(
+      calc(160px - var(--table-user-padding-x) + var(--table-edge-padding-x)),
+      2fr
+    )
+    minmax(130px, var(--deliverables-project-column, 1.4fr))
+    minmax(
+      var(--deliverables-context-min-width, 70px),
+      var(--deliverables-context-column, 1fr)
+    )
     calc(
       100px +
       var(--table-user-padding-x) +
       var(--table-user-padding-x)
     )
-    var(--deliverables-detail-width);
+    calc(
+      var(--deliverables-detail-width) -
+      var(--table-user-padding-x) + var(--table-end-padding-x)
+    );
+}
+
+.deliverables-table:is(.required_documents, .test_records) {
+  --deliverables-project-column: 1.8fr;
+  --deliverables-context-column: 0.6fr;
+  --deliverables-context-min-width: 100px;
 }
 
 .deliverables-table.required_documents {
@@ -32,17 +39,18 @@
 
 .deliverables-table.project-subsystem-handover {
   --table-min-width: 720px;
-  --table-min-width-value: 720;
   --table-grid-columns:
-    minmax(200px, 2fr)
+    minmax(
+      calc(200px - var(--table-user-padding-x) + var(--table-edge-padding-x)),
+      2fr
+    )
     minmax(160px, 1.4fr)
     calc(100px + var(--table-user-padding-x) + var(--table-user-padding-x))
     88px
-    var(--deliverables-detail-width);
-}
-
-.deliverables-table .deliverables-blocker-cell {
-  text-align: center;
+    calc(
+      var(--deliverables-detail-width) -
+      var(--table-user-padding-x) + var(--table-end-padding-x)
+    );
 }
 
 .deliverables-blocker-count.blocked {

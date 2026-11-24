@@ -4,9 +4,13 @@
   --workspace-side-spacing: 30px;
   --sidebar-top-spacing: 45px;
   --section-spacing: 20px;
+  --search-input-width: 360px;
 
   --table-cell-padding-y: 10px;
+  --table-header-min-height: 44px;
+  --table-row-min-height: 56px;
   --table-user-padding-x: 12px;
+  --table-edge-padding-x: 20px;
   --table-fixed-padding-x-min: 4px;
   --table-fixed-padding-x-max: 22px;
   --table-action-gap: 6px;
@@ -19,13 +23,13 @@
   --fixed-progress-content-width: 66px;
   --fixed-result-content-width: 52px;
   --fixed-two-actions-content-width: 95px;
-  --fixed-three-actions-content-width: 150px;
+  --fixed-three-actions-content-width: 160px;
   --test-items-actions-content-width: 196px;
 
   --projects-name-min-content-width: 110px;
   --projects-client-min-content-width: 72px;
   --projects-location-min-content-width: 72px;
-  --projects-table-min-width: 650px;
+  --projects-table-min-width: 660px;
 
   --assets-tag-min-content-width: 68px;
   --assets-name-min-content-width: 90px;

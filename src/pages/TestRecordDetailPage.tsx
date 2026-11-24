@@ -8,6 +8,7 @@ import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import ReopenTestRecordModal from "../components/ReopenTestRecordModal";
 import TestItemModal from "../components/TestItemModal";
 import TestRecordCompletionModal from "../components/TestRecordCompletionModal";
@@ -560,7 +561,7 @@ function TestRecordDetailPage({
 
   return (
     <>
-      <section className="content-card section-card assets-card issues-card test-record-detail-page">
+      <TablePage className="test-record-detail-page">
         <div className="projects-header test-record-page-header">
           <div className="test-record-page-heading">
             <button
@@ -939,7 +940,7 @@ function TestRecordDetailPage({
             }
           />
         )}
-      </section>
+      </TablePage>
 
       <TestItemModal
         isOpen={isTestItemModalOpen}

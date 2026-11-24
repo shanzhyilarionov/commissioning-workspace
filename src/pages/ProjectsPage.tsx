@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import ActionMenu from "../components/ActionMenu";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 
 import type {
   Project,
@@ -91,7 +92,7 @@ function ProjectsPage({
   }, [searchQuery, statusFilter]);
 
   return (
-    <section className="content-card section-card projects-card">
+    <TablePage className="projects-card">
       <div className="projects-header">
         <div>
           <h3>Projects</h3>
@@ -175,16 +176,6 @@ function ProjectsPage({
           className="projects-table projects-list-table"
           wrapperClassName="projects-list-table-wrapper"
           ariaLabel="Projects"
-          colGroup={
-            <colgroup>
-                          <col />
-                          <col />
-                          <col />
-                          <col className="project-status-column-width" />
-                          <col className="table-date-column-width" />
-                          <col className="project-actions-column-width" />
-                        </colgroup>
-          }
           header={
             <tr>
                             <th>Name</th>
@@ -336,7 +327,7 @@ function ProjectsPage({
           }
         />
       )}
-    </section>
+    </TablePage>
   );
 }
 

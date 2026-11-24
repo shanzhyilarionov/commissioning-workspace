@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
+import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import ReadinessReviewModal from "../components/ReadinessReviewModal";
 import StructureEditorModal from "../components/StructureEditorModal";
 import { listAssetsByProject } from "../repositories/assetRepository";
@@ -654,9 +656,9 @@ function SystemManagementPage({
   if (selectedSystem) {
     return (
       <>
-        <section className="content-card section-card assets-card system-management-card">
-          <div className="projects-header test-record-page-header structure-page-header">
-            <div className="test-record-page-heading structure-heading-copy">
+        <TablePage className="system-management-card">
+          <div className="projects-header test-record-page-header">
+            <div className="test-record-page-heading">
               <button
                 className="back-navigation-button"
                 type="button"
@@ -719,9 +721,9 @@ function SystemManagementPage({
             </div>
           </div>
 
-          <div className="assets-toolbar structure-toolbar">
+          <ListToolbar filterCount={0}>
             <input
-              className="asset-search-input structure-search-input"
+              className="asset-search-input"
               type="search"
               value={searchQuery}
               placeholder="Search code, subsystem, or description"
@@ -731,7 +733,7 @@ function SystemManagementPage({
             <span className="asset-result-count">
               {filteredSubsystems.length} of {selectedSubsystems.length}
             </span>
-            <div className="structure-toolbar-actions">
+            <div className="list-toolbar-actions">
               <button
                 className="secondary-button toolbar-primary-button"
                 type="button"
@@ -754,7 +756,7 @@ function SystemManagementPage({
                 New subsystem
               </button>
             </div>
-          </div>
+          </ListToolbar>
 
           {progressError && (
             <div className="structure-progress-error" role="alert">
@@ -784,8 +786,8 @@ function SystemManagementPage({
                   <th>Description</th>
                   <th>Stage</th>
                   <th>Readiness</th>
-                  <th>Blockers</th>
-                  <th>Assets</th>
+                  <th className="numeric-column">Blockers</th>
+                  <th className="numeric-column">Assets</th>
                   <th aria-label="Subsystem actions" />
                 </tr>
               }
@@ -821,7 +823,7 @@ function SystemManagementPage({
                           }
                         />
                       </td>
-                      <td className="structure-count-cell">
+                      <td className="numeric-column">
                         <StructureBlockerButton
                           count={
                             subsystemReadinessById.get(subsystem.id)
@@ -835,7 +837,7 @@ function SystemManagementPage({
                           }
                         />
                       </td>
-                      <td className="structure-count-cell">
+                      <td className="numeric-column">
                         {countSubsystemAssets(subsystem.id)}
                       </td>
                       <td className="table-action-cell">
@@ -906,7 +908,7 @@ function SystemManagementPage({
               }
             />
           )}
-        </section>
+        </TablePage>
 
         <StructureEditorModal
           isOpen={editorTarget !== null}
@@ -958,9 +960,9 @@ function SystemManagementPage({
 
   return (
     <>
-      <section className="content-card section-card assets-card system-management-card">
-        <div className="projects-header test-record-page-header structure-page-header">
-          <div className="test-record-page-heading structure-heading-copy">
+      <TablePage className="system-management-card">
+        <div className="projects-header test-record-page-header">
+          <div className="test-record-page-heading">
             <h3>Systems</h3>
             <p>
               Manage the commissioning hierarchy for {currentProject.name}.
@@ -968,9 +970,9 @@ function SystemManagementPage({
           </div>
         </div>
 
-        <div className="assets-toolbar structure-toolbar">
+        <ListToolbar filterCount={0}>
           <input
-            className="asset-search-input structure-search-input"
+            className="asset-search-input"
             type="search"
             value={searchQuery}
             placeholder="Search code, system, or description"
@@ -980,7 +982,7 @@ function SystemManagementPage({
           <span className="asset-result-count">
             {filteredSystems.length} of {systems.length}
           </span>
-          <div className="structure-toolbar-actions">
+          <div className="list-toolbar-actions">
             <button
               className="primary-button toolbar-primary-button"
               type="button"
@@ -991,7 +993,7 @@ function SystemManagementPage({
               New system
             </button>
           </div>
-        </div>
+        </ListToolbar>
 
         {progressError && (
           <div className="structure-progress-error" role="alert">
@@ -1040,19 +1042,43 @@ function SystemManagementPage({
                 <th>System</th>
                 <th>Description</th>
                 <th>Stage</th>
-                <th>Blockers</th>
+                <th className="numeric-column">Blockers</th>
                 <th aria-label="System actions" />
               </tr>
             }
             body={
               <>
                 {filteredSystems.map((system) => (
-                  <tr key={system.id} data-navigation-id={system.id}>
+                  <tr
+                    key={system.id}
+                    className="structure-system-row"
+                    data-navigation-id={system.id}
+                    onClick={(event) => {
+                      if (
+                        event.defaultPrevented ||
+                        !(event.target instanceof Element) ||
+                        event.target.closest(
+                          "button, a, [data-project-action-menu]",
+                        )
+                      ) {
+                        return;
+                      }
+
+                      handleOpenSystem(system.id);
+                    }}
+                  >
                     <td className="structure-code-cell">
                       {system.code || "-"}
                     </td>
                     <td>
-                      <strong className="structure-name">{system.name}</strong>
+                      <button
+                        className="structure-name structure-open-button"
+                        type="button"
+                        aria-label={`Open ${system.name}`}
+                        onClick={() => handleOpenSystem(system.id)}
+                      >
+                        {system.name}
+                      </button>
                     </td>
                     <td className="structure-description-cell">
                       {system.description || "-"}
@@ -1060,7 +1086,7 @@ function SystemManagementPage({
                     <td className="status-cell">
                       <StructureStageCell stage={system.stage} />
                     </td>
-                    <td className="structure-count-cell">
+                    <td className="numeric-column">
                       <StructureBlockerButton
                         count={
                           systemReadinessById.get(system.id)?.blockerCount
@@ -1072,13 +1098,6 @@ function SystemManagementPage({
                     </td>
                     <td className="table-action-cell">
                       <div className="project-row-actions">
-                        <button
-                          className="row-action-button"
-                          type="button"
-                          onClick={() => handleOpenSystem(system.id)}
-                        >
-                          Open
-                        </button>
                         <button
                           className="row-action-button"
                           type="button"
@@ -1134,7 +1153,7 @@ function SystemManagementPage({
             }
           />
         )}
-      </section>
+      </TablePage>
 
       <StructureEditorModal
         isOpen={editorTarget !== null}

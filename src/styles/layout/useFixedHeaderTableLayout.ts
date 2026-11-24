@@ -50,6 +50,56 @@ export function useFixedHeaderTableLayout(
         hasVerticalOverflow,
       );
 
+      // Edge numeric columns use the heading as their spacing reference.
+      // The scrollport already excludes native scrollbar space.
+      const headerRow = tableElement.tHead?.rows[0];
+
+      for (const [edge, heading] of [
+        ["first", headerRow?.cells[0]],
+        ["last", headerRow?.cells[headerRow.cells.length - 1]],
+      ] as const) {
+        const property = `--table-${edge}-number-heading-width`;
+
+        if (heading?.classList.contains("numeric-column")) {
+          const range = document.createRange();
+          range.selectNodeContents(heading);
+          const width = `${range.getBoundingClientRect().width}px`;
+
+          if (tableElement.style.getPropertyValue(property) !== width) {
+            tableElement.style.setProperty(property, width);
+          }
+        } else {
+          tableElement.style.removeProperty(property);
+        }
+      }
+
+      // Keep textual cells left aligned inside one shared trailing content width.
+      // Its widest heading/value retains the fixed inset from the content frame.
+      const lastHeading = headerRow?.cells[headerRow.cells.length - 1];
+      if (lastHeading && !lastHeading.classList.contains("numeric-column")) {
+        const range = document.createRange();
+        let contentWidth = 0;
+
+        for (const row of tableElement.rows) {
+          const cell = row.cells[row.cells.length - 1];
+          if (!cell) continue;
+          range.selectNodeContents(cell);
+          // Measure an action group itself, excluding any open popup overflow.
+          const bounds = cell.firstElementChild?.getBoundingClientRect() ??
+            range.getBoundingClientRect();
+          contentWidth = Math.max(contentWidth, bounds.width);
+        }
+
+        const width = `${contentWidth}px`;
+        if (
+          tableElement.style.getPropertyValue("--table-last-content-width") !== width
+        ) {
+          tableElement.style.setProperty("--table-last-content-width", width);
+        }
+      } else {
+        tableElement.style.removeProperty("--table-last-content-width");
+      }
+
       const tableStyles = window.getComputedStyle(tableElement);
       const rootStyles = window.getComputedStyle(
         document.documentElement,
@@ -57,7 +107,7 @@ export function useFixedHeaderTableLayout(
 
       const minimumTableWidth = readPixelValue(
         tableStyles,
-        "--table-min-width-value",
+        "min-width",
         0,
       );
 

@@ -8,6 +8,7 @@ import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import DocumentModal from "../components/DocumentModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import { listAssetsByProject } from "../repositories/assetRepository";
 import {
   createProjectDocument,
@@ -464,7 +465,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
 
   return (
     <>
-      <section className="content-card section-card documents-card">
+      <TablePage className="documents-card">
         <div className="projects-header">
           <div>
             <h3>Documents</h3>
@@ -699,7 +700,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
             }
           />
         )}
-      </section>
+      </TablePage>
 
       <DocumentModal
         isOpen={isDocumentModalOpen}

@@ -4,6 +4,7 @@ import AssetModal from "../components/AssetModal";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import {
   createAsset,
   deleteAsset,
@@ -360,7 +361,7 @@ function AssetsPage({
 
   return (
     <>
-      <section className="content-card section-card assets-card">
+      <TablePage className="assets-card">
         <div className="projects-header">
           <div>
             {structureNavigation && (
@@ -522,7 +523,7 @@ function AssetsPage({
             }
           />
         )}
-      </section>
+      </TablePage>
 
       <AssetModal
         isOpen={isAssetModalOpen}

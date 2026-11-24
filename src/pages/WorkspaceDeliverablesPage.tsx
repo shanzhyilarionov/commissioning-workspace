@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import { listWorkspaceDeliverables } from "../repositories/workspaceDeliverableRepository";
 import { listStructureReadinessSummaries } from "../repositories/readinessRepository";
 import { getWorkspaceDeliverableFilterOptions } from "../services/workspaceDeliverableFilters";
@@ -113,7 +114,7 @@ export default function WorkspaceDeliverablesPage({
   );
 
   return (
-    <section className="content-card section-card deliverables-page">
+    <TablePage className="deliverables-page">
       <div className="card-header test-record-page-header">
         <div className="test-record-page-heading">
           <button
@@ -208,8 +209,8 @@ export default function WorkspaceDeliverablesPage({
               {!showBlockers && <th>Project</th>}
               <th>{kind === "subsystem_handover" ? "System" : "Asset"}</th>
               <th>Status</th>
-              {showBlockers && <th className="deliverables-blocker-cell">Blockers</th>}
-              <th>{detailLabels[kind]}</th>
+              {showBlockers && <th className="numeric-column">Blockers</th>}
+              <th className={kind === "required_documents" ? undefined : "numeric-column"}>{detailLabels[kind]}</th>
             </tr>
           }
           body={visibleItems.map((item) => (
@@ -231,7 +232,7 @@ export default function WorkspaceDeliverablesPage({
                 </span>
               </td>
               {showBlockers && (
-                <td className="deliverables-blocker-cell">
+                <td className="numeric-column">
                   <span
                     className={`deliverables-blocker-count ${
                       blockerCounts.get(item.id) === undefined
@@ -244,7 +245,7 @@ export default function WorkspaceDeliverablesPage({
                   </span>
                 </td>
               )}
-              <td>
+              <td className={item.kind === "required_documents" ? undefined : "numeric-column"}>
                 {item.kind === "required_documents" ? (
                   item.revision || "-"
                 ) : (
@@ -261,6 +262,6 @@ export default function WorkspaceDeliverablesPage({
           ))}
         />
       )}
-    </section>
+    </TablePage>
   );
 }

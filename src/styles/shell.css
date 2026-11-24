@@ -294,8 +294,3 @@
   line-height: var(--line-height-label);
   color: var(--color-text-primary);
 }
-
-.first-project-welcome .primary-button {
-  min-height: 38px;
-  padding-inline: 18px;
-}

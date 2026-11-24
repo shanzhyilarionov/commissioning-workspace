@@ -4,6 +4,7 @@ import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import IssueModal from "../components/IssueModal";
 import { listAssetsByProject } from "../repositories/assetRepository";
 import {
@@ -344,7 +345,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
 
   return (
     <>
-      <section className="content-card section-card assets-card issues-card">
+      <TablePage className="issues-card">
         <div className="projects-header">
           <div>
             <h3>Issues</h3>
@@ -430,18 +431,6 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
             className="projects-table issues-table"
             wrapperClassName="issues-table-wrapper"
             ariaLabel="Issues"
-            colGroup={
-              <colgroup>
-                              <col />
-                              <col />
-                              <col className="issue-priority-column-width" />
-                              <col className="issue-status-column-width" />
-                              <col />
-                              <col className="table-date-column-width" />
-                              <col className="table-date-column-width" />
-                              <col className="compact-actions-column-width" />
-                            </colgroup>
-            }
             header={
               <tr>
                                 <th>Title</th>
@@ -572,7 +561,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
             }
           />
         )}
-      </section>
+      </TablePage>
 
       <IssueModal
         isOpen={isIssueModalOpen}

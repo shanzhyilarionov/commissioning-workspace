@@ -7,7 +7,7 @@
 .list-toolbar {
   display: grid;
   grid-template-columns:
-    minmax(0, 360px) minmax(100px, 140px) max-content minmax(max-content, 1fr);
+    minmax(0, var(--search-input-width)) minmax(100px, 140px) max-content minmax(max-content, 1fr);
   grid-template-areas: "search first action count";
   align-items: center;
   gap: 10px;
@@ -15,29 +15,40 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.projects-card .list-toolbar,
-.assets-card .list-toolbar,
-.documents-card .list-toolbar {
-  padding-top: calc(var(--section-spacing) / 2);
+.list-toolbar[data-filter-count="0"] {
+  grid-template-columns: minmax(0, var(--search-input-width)) max-content minmax(max-content, 1fr);
+  grid-template-areas: "search action count";
 }
 
 .list-toolbar[data-filter-count="2"] {
   grid-template-columns:
-    minmax(180px, 360px) repeat(2, clamp(120px, 18cqi, 160px))
+    minmax(180px, var(--search-input-width)) repeat(2, clamp(120px, 18cqi, 160px))
     max-content minmax(max-content, 1fr);
   grid-template-areas: "search first second action count";
 }
 
 .list-toolbar[data-has-action="false"] {
-  grid-template-columns: minmax(0, 360px) minmax(100px, 160px) minmax(max-content, 1fr);
+  grid-template-columns: minmax(0, var(--search-input-width)) minmax(100px, 160px) minmax(max-content, 1fr);
   grid-template-areas: "search first count";
 }
 
 .list-toolbar[data-filter-count="2"][data-has-action="false"] {
   grid-template-columns:
-    minmax(180px, 360px) clamp(120px, 26cqi, 260px) clamp(120px, 18cqi, 160px)
+    minmax(180px, var(--search-input-width)) clamp(120px, 26cqi, 260px) clamp(120px, 18cqi, 160px)
     minmax(max-content, 1fr);
   grid-template-areas: "search first second count";
+}
+
+.list-toolbar[data-filter-count="0"][data-has-action="false"] {
+  grid-template-columns: minmax(0, var(--search-input-width)) minmax(max-content, 1fr);
+  grid-template-areas: "search count";
+}
+
+.list-toolbar-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
 }
 
 .list-toolbar > input,
@@ -51,6 +62,11 @@
   grid-area: search;
 }
 
+.list-toolbar > input[type="search"] {
+  width: min(var(--search-input-width), 100%);
+  max-width: var(--search-input-width);
+}
+
 .list-toolbar > select:nth-of-type(1) {
   grid-area: first;
 }
@@ -60,6 +76,7 @@
 }
 
 .list-toolbar > .toolbar-primary-button,
+.list-toolbar > .list-toolbar-actions,
 .list-toolbar > .test-record-toolbar-actions {
   width: auto;
   min-width: 0;
@@ -73,22 +90,27 @@
   margin-left: 0;
 }
 
-.list-toolbar > .toolbar-primary-button {
-  min-width: 120px;
-}
-
 @container (max-width: 720px) {
   .list-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(100px, 140px) max-content;
+    grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-areas:
-      "search first action"
-      "count count count";
+      "search search"
+      "first action"
+      "count count";
+  }
+
+  .list-toolbar[data-filter-count="0"] {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+      "search action"
+      "count count";
   }
 
   .list-toolbar[data-has-action="false"] {
     grid-template-columns: minmax(0, 1fr) minmax(100px, 160px);
     grid-template-areas:
-      "search first"
+      "search search"
+      "first first"
       "count count";
   }
 
@@ -101,13 +123,56 @@
   }
 
   .list-toolbar[data-filter-count="2"][data-has-action="false"] {
-    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      "search first second"
-      "count count count";
+      "search search"
+      "first second"
+      "count count";
+  }
+
+  .list-toolbar[data-filter-count="0"][data-has-action="false"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "search" "count";
   }
 
   .list-toolbar > :is(.project-result-count, .asset-result-count) {
     justify-self: start;
+  }
+}
+
+@container (max-width: 480px) {
+  .list-toolbar,
+  .list-toolbar[data-filter-count],
+  .list-toolbar[data-has-action],
+  .list-toolbar[data-filter-count][data-has-action] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .list-toolbar {
+    grid-template-areas: "search" "first" "action" "count";
+  }
+
+  .list-toolbar[data-filter-count="0"] {
+    grid-template-areas: "search" "action" "count";
+  }
+
+  .list-toolbar[data-filter-count="2"] {
+    grid-template-areas: "search" "first" "second" "action" "count";
+  }
+
+  .list-toolbar[data-has-action="false"] {
+    grid-template-areas: "search" "first" "count";
+  }
+
+  .list-toolbar[data-filter-count="0"][data-has-action="false"] {
+    grid-template-areas: "search" "count";
+  }
+
+  .list-toolbar[data-filter-count="2"][data-has-action="false"] {
+    grid-template-areas: "search" "first" "second" "count";
+  }
+
+  .list-toolbar-actions {
+    flex-wrap: wrap;
   }
 }

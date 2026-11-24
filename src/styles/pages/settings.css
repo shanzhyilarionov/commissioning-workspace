@@ -73,9 +73,10 @@
 
 .settings-theme-selector {
   display: grid;
-  min-width: 252px;
+  width: max-content;
+  min-width: 0;
   flex: 0 0 auto;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 66px);
   gap: 3px;
   padding: 3px;
   background: var(--color-surface-strong);
@@ -85,7 +86,7 @@
 
 .settings-theme-option {
   height: 28px;
-  padding: 0 13px;
+  padding: 0 10px;
   cursor: pointer;
   color: var(--color-text-secondary);
   background: transparent;
@@ -387,8 +388,8 @@
 
 .settings-binary-selector {
   display: grid;
-  width: 128px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: max-content;
+  grid-template-columns: repeat(2, 42px);
   gap: 3px;
   padding: 3px;
   background: var(--color-surface-strong);
@@ -813,7 +814,6 @@
     gap: 10px;
   }
 
-  .settings-binary-selector,
   .settings-backup-field select {
     width: 100%;
   }
@@ -887,10 +887,6 @@
     flex-direction: column;
   }
 
-  .settings-theme-selector {
-    width: 100%;
-  }
-
   .settings-result {
     align-items: stretch;
     flex-direction: column;
@@ -921,9 +917,5 @@
     width: 100%;
     align-self: stretch;
     flex-direction: column;
-  }
-
-  .settings-backup-location-actions .secondary-button {
-    width: 100%;
   }
 }

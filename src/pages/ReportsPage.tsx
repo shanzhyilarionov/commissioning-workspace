@@ -4,6 +4,7 @@ import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
+import TablePage from "../components/TablePage";
 import TurnoverPackageModal from "../components/TurnoverPackageModal";
 import VoidTurnoverPackageModal from "../components/VoidTurnoverPackageModal";
 import {
@@ -632,8 +633,8 @@ function ReportsPage({
 
   return (
     <>
-      <section className="content-card section-card assets-card issues-card reports-card">
-        <div className="projects-header reports-header">
+      <TablePage className="reports-card">
+        <div className="projects-header">
           <div>
             <h3>
               {view === "records" ? "Record reports" : "Turnover packages"}
@@ -647,7 +648,11 @@ function ReportsPage({
         </div>
 
         {view === "records" ? (
-          <div className="assets-toolbar reports-toolbar reports-record-toolbar">
+          <ListToolbar
+            filterCount={1}
+            hasAction={false}
+            className="reports-record-toolbar"
+          >
             <input
               className="asset-search-input reports-search-input"
               type="search"
@@ -695,7 +700,7 @@ function ReportsPage({
             <span className="asset-result-count reports-result-count">
               {filteredRecords.length} of {records.length}
             </span>
-          </div>
+          </ListToolbar>
         ) : (
           <ListToolbar filterCount={1}>
             <input
@@ -798,17 +803,6 @@ function ReportsPage({
               className="projects-table reports-table"
               wrapperClassName="issues-table-wrapper reports-table-wrapper"
               ariaLabel="Completed records available for reporting"
-              colGroup={
-                <colgroup>
-                  <col />
-                  <col className="reports-type-column-width" />
-                  <col />
-                  <col className="reports-date-column-width" />
-                  <col />
-                  <col className="reports-result-column-width" />
-                  <col className="reports-action-column-width" />
-                </colgroup>
-              }
               header={
                 <tr>
                   <th>Title</th>
@@ -816,7 +810,6 @@ function ReportsPage({
                   <th>Asset</th>
                   <th>Executed</th>
                   <th>Signed off by</th>
-                  <th>Result</th>
                   <th aria-label="Report actions" />
                 </tr>
               }
@@ -824,14 +817,22 @@ function ReportsPage({
                 <>
                   {filteredRecords.map((record) => {
                     const isExporting = exportingRecordId === record.id;
-                    const completedWithIssues = record.failedItemCount > 0;
 
                     return (
                       <tr key={record.id}>
-                        <td className="issue-title-cell" title={record.title}>
+                        <td
+                          className="issue-title-cell reports-title-cell"
+                          title={record.title}
+                        >
                           <strong className="issue-title-text">
                             {record.title}
                           </strong>
+                          {record.failedItemCount > 0 && (
+                            <span className="reports-issue-badge">
+                              {record.failedItemCount} linked issue
+                              {record.failedItemCount === 1 ? "" : "s"}
+                            </span>
+                          )}
                         </td>
                         <td>{formatRecordType(record.recordType)}</td>
                         <td
@@ -857,21 +858,6 @@ function ReportsPage({
                           title={record.signedOffBy}
                         >
                           {record.signedOffBy}
-                        </td>
-                        <td className="reports-result-cell">
-                          <span
-                            className={
-                              completedWithIssues
-                                ? "reports-result reports-result-with-issues"
-                                : "reports-result reports-result-complete"
-                            }
-                          >
-                            {completedWithIssues
-                              ? `${record.failedItemCount} linked issue${
-                                  record.failedItemCount === 1 ? "" : "s"
-                                }`
-                              : "Complete"}
-                          </span>
                         </td>
                         <td className="table-action-cell reports-action-cell">
                           <button
@@ -1056,7 +1042,7 @@ function ReportsPage({
             }
           />
         )}
-      </section>
+      </TablePage>
 
       <TurnoverPackageModal
         isOpen={isTurnoverModalOpen}

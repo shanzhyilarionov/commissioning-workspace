@@ -166,13 +166,6 @@ button.overview-activity-item:hover {
   color: var(--color-text-secondary);
 }
 
-.overview-activity-view-all {
-  min-height: 30px;
-  flex: 0 0 auto;
-  padding: 5px 11px;
-  white-space: nowrap;
-}
-
 @media (max-width: 420px) {
   .overview-activity-item {
     grid-template-columns: minmax(0, 1fr);
@@ -259,13 +252,6 @@ button.overview-activity-item:hover {
   .overview-project-grid > div:last-child {
     border-bottom: 0;
   }
-}
-
-.overview-project-edit-button {
-  min-height: 30px;
-  flex: 0 0 auto;
-  padding: 5px 11px;
-  white-space: nowrap;
 }
 
 .overview-body {

@@ -298,6 +298,12 @@ function App() {
     kind: WorkspaceDeliverableKind,
     project: Project | null = null,
   ) {
+    if (project && kind === "required_documents") {
+      setCurrentProjectId(project.id);
+      handleNavigation("Documents");
+      return;
+    }
+
     setDeliverableKind(kind);
     setDeliverablesProject(project);
     handleNavigation("Deliverables");

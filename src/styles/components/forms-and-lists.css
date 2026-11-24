@@ -100,80 +100,6 @@
   gap: 14px;
 }
 
-.projects-card,
-.assets-card,
-.issues-card,
-.test-record-detail-page {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.projects-card .projects-header,
-.assets-card .projects-header {
-  padding-bottom: calc(var(--section-spacing) / 2);
-  border-bottom: 0;
-}
-
-.assets-card .assets-toolbar {
-  padding-top: calc(var(--section-spacing) / 2);
-}
-
-.projects-table th,
-.projects-table td {
-  display: flex;
-  min-width: 0;
-  min-height: 44px;
-  align-items: center;
-  align-content: center;
-  flex-wrap: wrap;
-  padding-block: var(--table-cell-padding-y);
-  padding-inline: var(--table-user-padding-x);
-  text-align: left;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: normal;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.projects-table td {
-  min-height: 56px;
-}
-
-.projects-table th {
-  flex-wrap: nowrap;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  background: var(--color-surface-subtle);
-}
-
-.projects-table td {
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
-}
-
-.projects-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.projects-table tbody tr:hover {
-  background: var(--color-surface-hover);
-}
-
-.projects-table th.status-column,
-.projects-table td.status-cell {
-  text-align: left;
-}
-
-.projects-table th:last-child,
-.projects-table td:last-child {
-  white-space: nowrap;
-}
-
 .current-project-row {
   background: var(--color-surface-hover);
 }
@@ -191,9 +117,7 @@
 
 .table-action-cell {
   position: relative;
-  justify-content: center;
   overflow: visible;
-  text-align: center !important;
 }
 
 .project-row-actions {
@@ -206,14 +130,7 @@
   white-space: nowrap;
 }
 
-.row-action-button,
-.more-actions-button {
-  height: 30px;
-  box-sizing: border-box;
-}
-
 .row-action-button {
-  padding: 5px 9px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
@@ -242,11 +159,6 @@
 }
 
 .more-actions-button {
-  display: inline-flex;
-  width: 42px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
   color: var(--color-text-secondary);
   background: transparent;
   border: 1px solid var(--color-border-strong);
@@ -281,9 +193,7 @@
 }
 
 .project-menu-item {
-  display: block;
-  width: 100%;
-  padding: 9px 10px;
+  display: flex;
   color: var(--color-text-primary);
   background: transparent;
   border: 0;
@@ -308,20 +218,6 @@
   background: var(--color-feedback-danger-background);
 }
 
-.projects-table,
-.projects-table tbody,
-.projects-table tr {
-  overflow: visible;
-}
-
-.assets-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: var(--section-spacing);
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
 .asset-search-input,
 .project-search-input,
 .asset-status-filter,
@@ -341,7 +237,7 @@
 
 .asset-search-input,
 .project-search-input {
-  width: min(360px, 100%);
+  width: min(var(--search-input-width), 100%);
   padding: 0 11px;
 }
 
@@ -419,38 +315,6 @@
 }
 
 @media (max-width: 900px) {
-  .assets-toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .assets-toolbar > .asset-search-input {
-    grid-column: 1 / -1;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .assets-toolbar > .asset-status-filter {
-    grid-column: 1;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .assets-toolbar > .toolbar-primary-button {
-    grid-column: 2;
-    width: auto;
-    min-width: 120px;
-    height: 34px;
-    padding: 0 16px;
-  }
-
-  .assets-toolbar > .asset-result-count {
-    grid-column: 1 / -1;
-    margin-left: 0;
-  }
-
   .asset-form-row {
     grid-template-columns: 1fr;
   }

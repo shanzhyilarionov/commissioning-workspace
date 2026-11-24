@@ -159,10 +159,10 @@ function ProjectPerformancePanel({
           header={
             <tr>
               <th>Project</th>
-              <th>Assets</th>
-              <th>Tests</th>
-              <th>Active issues</th>
-              <th>Subsystem handover</th>
+              <th className="numeric-column">Assets</th>
+              <th className="numeric-column">Tests</th>
+              <th className="numeric-column">Active issues</th>
+              <th className="numeric-column">Subsystem handover</th>
             </tr>
           }
           body={
@@ -185,7 +185,7 @@ function ProjectPerformancePanel({
                       {project.projectName}
                     </button>
                   </td>
-                  <td>
+                  <td className="numeric-column">
                     <ProjectPerformanceValue
                       complete={project.assetCompleted}
                       total={project.assetTotal}
@@ -198,7 +198,7 @@ function ProjectPerformancePanel({
                       }
                     />
                   </td>
-                  <td>
+                  <td className="numeric-column">
                     <ProjectPerformanceValue
                       complete={project.passedTestItems}
                       total={project.assessedTestItems}
@@ -219,8 +219,8 @@ function ProjectPerformancePanel({
                   <td
                     className={
                       project.activeIssues > 0
-                        ? "home-performance-issues attention"
-                        : "home-performance-issues clear"
+                        ? "numeric-column home-performance-issues attention"
+                        : "numeric-column home-performance-issues clear"
                     }
                     title={
                       project.activeIssues > 0
@@ -230,7 +230,7 @@ function ProjectPerformancePanel({
                   >
                     {project.activeIssues}
                   </td>
-                  <td>
+                  <td className="numeric-column">
                     <ProjectPerformanceValue
                       complete={project.subsystemsHandedOver}
                       total={project.subsystemTotal}

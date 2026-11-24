@@ -60,6 +60,27 @@
 .primary-button,
 .secondary-button,
 .complete-button,
+.danger-button,
+.row-action-button,
+.more-actions-button,
+.project-menu-item {
+  display: inline-flex;
+  width: max-content;
+  min-width: 0;
+  height: 34px;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  box-sizing: border-box;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.primary-button,
+.secondary-button,
+.complete-button,
 .danger-button {
   border-radius: 7px;
   font-size: var(--font-size-body);
@@ -68,7 +89,6 @@
 }
 
 .primary-button {
-  padding: 8px 13px;
   font-weight: var(--font-weight-bold);
   color: var(--color-accent-foreground);
   white-space: nowrap;
@@ -88,7 +108,6 @@
 }
 
 .complete-button {
-  padding: 8px 13px;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-on-strong);
   white-space: nowrap;
@@ -107,17 +126,7 @@
   box-shadow: var(--shadow-focus-success);
 }
 
-.toolbar-primary-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 34px;
-  padding: 0 16px;
-  flex: 0 0 auto;
-}
-
 .secondary-button {
-  padding: 8px 13px;
   color: var(--color-text-primary);
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
@@ -128,8 +137,6 @@
 }
 
 .danger-button {
-  min-height: 34px;
-  padding: 0 15px;
   color: var(--color-text-on-strong);
   background: var(--color-action-danger);
   border: 1px solid var(--color-action-danger);

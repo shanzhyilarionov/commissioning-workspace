@@ -1,53 +1,35 @@
-.documents-card {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.documents-card .projects-header {
-  padding-bottom: calc(var(--section-spacing) / 2);
-  border-bottom: 0;
-}
-
-.documents-table-wrapper {
-  flex: 1;
-}
-
 .documents-table {
+  --document-metadata-padding-x: min(var(--table-fixed-padding-x), 8px);
   --table-min-width: 886px;
-  --table-min-width-value: 886;
   --table-fixed-side-count: 14;
   --table-grid-columns:
     minmax(
       calc(
         90px +
-        var(--table-user-padding-x) +
+        var(--table-edge-padding-x) +
         var(--table-user-padding-x)
       ),
-      210px
+      1.5fr
     )
     calc(
       76px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--document-metadata-padding-x) +
+      var(--document-metadata-padding-x)
     )
     calc(
-      52px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      48px +
+      var(--document-metadata-padding-x) +
+      var(--document-metadata-padding-x)
     )
     calc(
       74px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--document-metadata-padding-x) +
+      var(--document-metadata-padding-x)
     )
     calc(
       52px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--document-metadata-padding-x) +
+      var(--document-metadata-padding-x)
     )
     minmax(
       calc(
@@ -55,22 +37,22 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      230px
+      1.1fr
     )
     calc(
       60px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--document-metadata-padding-x) +
+      var(--document-metadata-padding-x)
     )
     calc(
       var(--fixed-date-content-width) +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--document-metadata-padding-x) +
+      var(--document-metadata-padding-x)
     )
     calc(
-      151px +
+      var(--fixed-three-actions-content-width) +
       var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--table-end-padding-x)
     );
 }
 
@@ -96,6 +78,17 @@
   overflow-wrap: anywhere;
   word-break: break-word;
   line-height: var(--line-height-label);
+}
+
+.documents-table tr > :is(
+  :nth-child(2),
+  :nth-child(3),
+  :nth-child(4),
+  :nth-child(5),
+  :nth-child(7),
+  :nth-child(8)
+) {
+  padding-inline: var(--document-metadata-padding-x);
 }
 
 .document-title-cell {
@@ -137,9 +130,7 @@
 }
 
 .document-required-cell {
-  justify-content: center;
   font-weight: var(--font-weight-medium);
-  text-align: center;
 }
 
 .document-required-cell.required {
