@@ -114,7 +114,11 @@
   border-bottom: 0;
 }
 
-.fixed-header-table-table tbody tr:hover {
+.fixed-header-table-table tbody .clickable-table-row {
+  cursor: pointer;
+}
+
+.fixed-header-table-table tbody .clickable-table-row:hover {
   background: var(--color-surface-hover);
 }
 

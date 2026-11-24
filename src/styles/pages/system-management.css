@@ -1,6 +1,7 @@
 .fixed-header-table.structure-table-wrapper {
   --table-start-padding-base: var(--table-fixed-padding-x-min);
   --table-end-padding-base: 20px;
+  --structure-metadata-padding-x: min(var(--table-fixed-padding-x), 6px);
 }
 
 .structure-page-summary-action {
@@ -31,13 +32,13 @@
 }
 
 .structure-systems-table {
-  --table-min-width: 764px;
+  --table-min-width: 742px;
   --table-fixed-side-count: 8;
   --table-grid-columns:
     calc(
-      80px +
+      48px +
       var(--table-edge-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--structure-metadata-padding-x)
     )
     minmax(
       calc(
@@ -45,7 +46,7 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.05fr
+      0.9fr
     )
     minmax(
       calc(
@@ -53,17 +54,17 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.7fr
+      1.85fr
     )
     calc(
-      82px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      88px +
+      var(--structure-metadata-padding-x) +
+      var(--structure-metadata-padding-x)
     )
     calc(
-      44px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      48px +
+      var(--structure-metadata-padding-x) +
+      var(--structure-metadata-padding-x)
     )
     calc(
       var(--fixed-three-actions-content-width) +
@@ -73,13 +74,13 @@
 }
 
 .structure-subsystems-table {
-  --table-min-width: 870px;
+  --table-min-width: 844px;
   --table-fixed-side-count: 12;
   --table-grid-columns:
     calc(
-      100px +
+      64px +
       var(--table-edge-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--structure-metadata-padding-x)
     )
     minmax(
       calc(
@@ -87,7 +88,7 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.05fr
+      0.95fr
     )
     minmax(
       calc(
@@ -95,27 +96,27 @@
         var(--table-user-padding-x) +
         var(--table-user-padding-x)
       ),
-      1.25fr
+      1.35fr
     )
     calc(
-      82px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      88px +
+      var(--structure-metadata-padding-x) +
+      var(--structure-metadata-padding-x)
     )
     calc(
       74px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      var(--structure-metadata-padding-x) +
+      var(--structure-metadata-padding-x)
     )
     calc(
-      36px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      48px +
+      var(--structure-metadata-padding-x) +
+      var(--structure-metadata-padding-x)
     )
     calc(
-      46px +
-      var(--table-fixed-padding-x) +
-      var(--table-fixed-padding-x)
+      38px +
+      var(--structure-metadata-padding-x) +
+      var(--structure-metadata-padding-x)
     )
     calc(
       var(--fixed-three-actions-content-width) +
@@ -129,8 +130,7 @@
   > :is(
     :nth-child(1),
     :nth-child(4),
-    :nth-child(5),
-    :nth-child(6)
+    :nth-child(5)
   ),
 .structure-subsystems-table
   tr
@@ -139,11 +139,15 @@
     :nth-child(4),
     :nth-child(5),
     :nth-child(6),
-    :nth-child(7),
-    :nth-child(8)
+    :nth-child(7)
   ) {
-  padding-inline: var(--table-fixed-padding-x);
+  padding-inline: var(--structure-metadata-padding-x);
   white-space: nowrap;
+}
+
+.structure-systems-table tr > :last-child,
+.structure-subsystems-table tr > :last-child {
+  padding-inline: var(--table-fixed-padding-x);
 }
 
 .structure-code-cell {
@@ -165,10 +169,6 @@
   text-overflow: ellipsis;
 }
 
-.structure-system-row {
-  cursor: pointer;
-}
-
 .structure-open-button {
   padding: 0;
   background: transparent;
@@ -179,10 +179,6 @@
   line-height: inherit;
   text-align: left;
   cursor: pointer;
-}
-
-.structure-system-row:hover .structure-open-button {
-  text-decoration: underline;
 }
 
 .structure-open-button:focus-visible {
@@ -219,7 +215,7 @@
 }
 
 .structure-blocker-button:hover {
-  text-decoration: underline;
+  background: var(--color-surface-strong);
 }
 
 .structure-blocker-button:focus-visible {

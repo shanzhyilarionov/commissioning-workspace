@@ -121,6 +121,7 @@ body:has(.modal-backdrop) .window-drag-region {
 }
 
 .activity-history-modal {
+  container-type: inline-size;
   display: grid;
   width: min(760px, calc(100vw - 48px));
   height: min(680px, calc(100vh - 48px));
@@ -135,15 +136,8 @@ body:has(.modal-backdrop) .window-drag-region {
 }
 
 .activity-history-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 18px 21px 9px;
-}
-
-.activity-history-heading > div {
   min-width: 0;
+  padding: 18px 21px 9px;
 }
 
 .activity-history-heading p {
@@ -156,37 +150,12 @@ body:has(.modal-backdrop) .window-drag-region {
   white-space: nowrap;
 }
 
-.activity-history-count {
-  flex: 0 0 auto;
-  padding-top: 4px;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  white-space: nowrap;
-}
-
 .activity-history-toolbar {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 10px;
   padding: 9px 21px 18px;
-  background: var(--color-surface);
+  border-bottom: 0;
 }
 
-.project-search-input.activity-history-search-input {
-  width: min(var(--search-input-width), 100%);
-  min-width: 0;
-  max-width: var(--search-input-width);
-  flex: 0 1 var(--search-input-width);
-}
-
-.activity-history-filter {
-  width: 160px;
-  min-width: 140px;
-  flex: 0 1 160px;
-}
-
-.activity-history-search-input:disabled,
-.activity-history-filter:disabled {
+.activity-history-toolbar > :is(input, select):disabled {
   color: var(--color-text-disabled);
   background-color: var(--color-surface);
   cursor: not-allowed;
@@ -204,6 +173,11 @@ body:has(.modal-backdrop) .window-drag-region {
   display: flex;
   min-width: 0;
   flex-direction: column;
+}
+
+/* 100cqi - 100% is the space the scrollbar takes, zero when the list fits. */
+.activity-history-list .overview-activity-item {
+  padding-inline: 21px calc(21px - (100cqi - 100%));
 }
 
 .activity-history-state {
@@ -450,30 +424,6 @@ body:has(.modal-backdrop) .window-drag-region {
     height: min(720px, calc(100vh - 32px));
   }
 
-  .activity-history-heading {
-    align-items: flex-start;
-    padding-right: 16px;
-    padding-left: 16px;
-  }
-
-  .activity-history-toolbar {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-right: 16px;
-    padding-left: 16px;
-  }
-
-  .project-search-input.activity-history-search-input {
-    grid-column: 1 / -1;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .activity-history-filter {
-    width: 100%;
-    min-width: 0;
-  }
-
   .audit-event-heading,
   .audit-event-metadata {
     grid-template-columns: 1fr;
@@ -493,14 +443,4 @@ body:has(.modal-backdrop) .window-drag-region {
     height: 1px;
   }
 
-}
-
-@media (max-width: 420px) {
-  .activity-history-toolbar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .activity-history-filter {
-    grid-column: 1;
-  }
 }

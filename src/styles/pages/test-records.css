@@ -73,10 +73,6 @@
   cursor: pointer;
 }
 
-.test-record-title-button:hover {
-  text-decoration: underline;
-}
-
 .test-record-title-button:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;

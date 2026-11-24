@@ -2,10 +2,8 @@
   display: grid;
   grid-template-columns:
     minmax(0, var(--search-input-width))
-    minmax(130px, 160px)
-    minmax(145px, auto)
-    minmax(145px, auto)
-    auto;
+    repeat(3, max-content)
+    minmax(max-content, 1fr);
   grid-template-areas: "search first from to count";
 }
 
@@ -19,8 +17,10 @@
 
 .reports-date-filter {
   display: flex;
-  width: 100%;
+  width: max-content;
   min-width: 0;
+  max-width: 100%;
+  justify-self: start;
   height: 34px;
   align-items: center;
   overflow: hidden;
@@ -36,23 +36,32 @@
 
 .reports-date-filter span {
   flex: 0 0 auto;
-  padding: 0 8px;
+  padding: 0 10px;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
 .reports-date-filter input {
-  width: 112px;
+  field-sizing: content;
+  width: auto;
   min-width: 0;
   height: 100%;
-  padding: 0 7px;
-  flex: 1 1 auto;
+  padding: 0 10px;
+  flex: 0 0 auto;
   color: var(--color-text-primary);
   background: transparent;
   border: 0;
   border-left: 1px solid var(--color-border-subtle);
   outline: none;
   font-size: var(--font-size-body);
+}
+
+.reports-date-filter input::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.reports-date-filter input::-webkit-date-and-time-value {
+  text-align: left;
 }
 
 .reports-error {
@@ -205,42 +214,14 @@
 @container (max-width: 850px) {
   .list-toolbar.reports-record-toolbar[data-filter-count] {
     grid-template-columns:
-      minmax(0, 1fr)
-      minmax(145px, auto)
-      minmax(145px, auto);
+      minmax(0, var(--search-input-width)) repeat(3, max-content) minmax(0, 1fr);
     grid-template-areas:
-      "search search search"
-      "first from to"
-      "count count count";
+      "search first from to ."
+      "count count count count count";
   }
 
   .reports-record-toolbar .reports-result-count {
     justify-self: start;
-  }
-}
-
-@container (max-width: 560px) {
-  .list-toolbar.reports-record-toolbar[data-filter-count] {
-    grid-template-columns:
-      minmax(0, 1fr)
-      minmax(0, 1fr);
-    grid-template-areas:
-      "search search"
-      "first first"
-      "from to"
-      "count count";
-  }
-}
-
-@container (max-width: 360px) {
-  .list-toolbar.reports-record-toolbar[data-filter-count] {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "search"
-      "first"
-      "from"
-      "to"
-      "count";
   }
 }
 

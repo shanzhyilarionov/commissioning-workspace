@@ -6,6 +6,7 @@ import {
 
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import ClickableTableRow from "../components/ClickableTableRow";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
 import TablePage from "../components/TablePage";
@@ -698,9 +699,12 @@ function ChecklistsTestsPage({
               <>
                 {filteredTestRecords.map(
                                   (testRecord) => (
-                                    <tr
+                                    <ClickableTableRow
                                       key={testRecord.id}
                                       data-navigation-id={testRecord.id}
+                                      onOpen={() =>
+                                        handleOpenTestRecord(testRecord)
+                                      }
                                     >
                                       <td
                                         className="issue-title-cell"
@@ -812,17 +816,6 @@ function ChecklistsTestsPage({
                                             }
                                           >
                                             <button
-                                              className="project-menu-item"
-                                              type="button"
-                                              role="menuitem"
-                                              onClick={() =>
-                                                handleOpenTestRecord(testRecord)
-                                              }
-                                            >
-                                              Open record
-                                            </button>
-
-                                            <button
                                               className="project-menu-item danger"
                                               type="button"
                                               role="menuitem"
@@ -847,7 +840,7 @@ function ChecklistsTestsPage({
                                           </ActionMenu>
                                         </div>
                                       </td>
-                                    </tr>
+                                    </ClickableTableRow>
                                   ),
                                 )}
               </>

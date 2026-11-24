@@ -9,7 +9,7 @@
 }
 
 .asset-structure-link:hover {
-  text-decoration: underline;
+  color: var(--color-text-primary);
 }
 
 .asset-structure-link:focus-visible {

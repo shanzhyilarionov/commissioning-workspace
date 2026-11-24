@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ClickableTableRow from "../components/ClickableTableRow";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
 import TablePage from "../components/TablePage";
@@ -208,13 +209,13 @@ export default function WorkspaceDeliverablesPage({
               <th>Item</th>
               {!showBlockers && <th>Project</th>}
               <th>{kind === "subsystem_handover" ? "System" : "Asset"}</th>
-              <th>Status</th>
+              <th className="status-column">Status</th>
               {showBlockers && <th className="numeric-column">Blockers</th>}
               <th className={kind === "required_documents" ? undefined : "numeric-column"}>{detailLabels[kind]}</th>
             </tr>
           }
           body={visibleItems.map((item) => (
-            <tr key={item.id}>
+            <ClickableTableRow key={item.id} onOpen={() => onOpenItem(item)}>
               <td>
                 <button
                   className="test-record-title-button deliverables-item-button"
@@ -258,7 +259,7 @@ export default function WorkspaceDeliverablesPage({
                   </span>
                 )}
               </td>
-            </tr>
+            </ClickableTableRow>
           ))}
         />
       )}

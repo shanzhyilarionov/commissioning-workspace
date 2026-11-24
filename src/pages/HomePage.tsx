@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ClickableTableRow from "../components/ClickableTableRow";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import PieChart, { type PieChartSegment } from "../components/PieChart";
 import { progressWidthStyle } from "../styles/layout/progress";
@@ -168,19 +169,16 @@ function ProjectPerformancePanel({
           body={
             <>
               {projects.map((project) => (
-                <tr
+                <ClickableTableRow
                   key={project.projectId}
-                  onClick={() => onOpenProject(project.projectId)}
+                  onOpen={() => onOpenProject(project.projectId)}
                 >
                   <td className="home-performance-project-cell">
                     <button
                       className="home-performance-project-button"
                       type="button"
                       aria-label={`Open overview for ${project.projectName}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onOpenProject(project.projectId);
-                      }}
+                      onClick={() => onOpenProject(project.projectId)}
                     >
                       {project.projectName}
                     </button>
@@ -244,7 +242,7 @@ function ProjectPerformancePanel({
                       }
                     />
                   </td>
-                </tr>
+                </ClickableTableRow>
               ))}
             </>
           }

@@ -3,6 +3,7 @@ import { listAllAuditEvents } from "../repositories/auditRepository";
 import { saveAuditHistoryCsv } from "../services/auditExportService";
 import type { AuditEntityType, AuditEvent } from "../types/audit";
 import AuditEventDetailModal from "./AuditEventDetailModal";
+import ListToolbar from "./ListToolbar";
 
 interface ActivityHistoryModalProps {
   isOpen: boolean;
@@ -234,22 +235,19 @@ function ActivityHistoryModal({
       >
         <div className="activity-history-header">
           <div className="activity-history-heading">
-            <div>
-              <h2 id="activity-history-title" className="modal-form-title">
-                Activity history
-              </h2>
-              <p>{projectName}</p>
-            </div>
-            {!isLoading && !loadError && (
-              <span className="activity-history-count">
-                {filteredEvents.length} of {events.length}
-              </span>
-            )}
+            <h2 id="activity-history-title" className="modal-form-title">
+              Activity history
+            </h2>
+            <p>{projectName}</p>
           </div>
 
-          <div className="activity-history-toolbar">
+          <ListToolbar
+            className="activity-history-toolbar"
+            filterCount={2}
+            hasAction={false}
+          >
             <input
-              className="project-search-input activity-history-search-input"
+              className="project-search-input"
               type="search"
               value={searchQuery}
               placeholder="Search record, operator, or reason"
@@ -263,7 +261,7 @@ function ActivityHistoryModal({
             />
 
             <select
-              className="asset-status-filter activity-history-filter"
+              className="asset-status-filter"
               value={entityTypeFilter}
               aria-label="Filter activity by record type"
               disabled={isLoading || events.length === 0}
@@ -284,7 +282,7 @@ function ActivityHistoryModal({
             </select>
 
             <select
-              className="asset-status-filter activity-history-filter"
+              className="asset-status-filter"
               value={actionFilter}
               aria-label="Filter activity by action"
               disabled={isLoading || events.length === 0}
@@ -301,7 +299,13 @@ function ActivityHistoryModal({
                 </option>
               ))}
             </select>
-          </div>
+
+            {!isLoading && !loadError && (
+              <span className="project-result-count" role="status">
+                {filteredEvents.length} of {events.length}
+              </span>
+            )}
+          </ListToolbar>
         </div>
 
         <div className="activity-history-content">

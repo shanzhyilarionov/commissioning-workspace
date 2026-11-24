@@ -288,7 +288,6 @@
 .projects-table.home-project-performance-table td {
   min-height: 42px;
   padding-block: 7px;
-  background: var(--color-surface);
 }
 
 .projects-table.home-project-performance-table th {
@@ -363,15 +362,6 @@
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   font-variant-numeric: tabular-nums;
-}
-
-.home-project-performance-table tbody tr {
-  cursor: pointer;
-}
-
-.projects-table.home-project-performance-table tbody tr:hover td,
-.projects-table.home-project-performance-table tbody tr:focus-within td {
-  background: var(--color-surface-hover);
 }
 
 .home-attention-panel {

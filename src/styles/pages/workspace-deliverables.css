@@ -1,21 +1,26 @@
 .deliverables-table {
+  --deliverables-item-column: 1.5fr;
+  --deliverables-project-column: 1.4fr;
+  --deliverables-context-column: 1fr;
+  --deliverables-status-width: 88px;
+  --deliverables-metadata-padding-x: 6px;
   --deliverables-detail-width: 124px;
   --table-end-padding-base: var(--table-user-padding-x);
   --table-min-width: 608px;
   --table-grid-columns:
     minmax(
       calc(160px - var(--table-user-padding-x) + var(--table-edge-padding-x)),
-      2fr
+      var(--deliverables-item-column)
     )
-    minmax(130px, var(--deliverables-project-column, 1.4fr))
+    minmax(130px, var(--deliverables-project-column))
     minmax(
       var(--deliverables-context-min-width, 70px),
-      var(--deliverables-context-column, 1fr)
+      var(--deliverables-context-column)
     )
     calc(
-      100px +
-      var(--table-user-padding-x) +
-      var(--table-user-padding-x)
+      var(--deliverables-status-width) +
+      var(--deliverables-metadata-padding-x) +
+      var(--deliverables-metadata-padding-x)
     )
     calc(
       var(--deliverables-detail-width) -
@@ -24,17 +29,27 @@
 }
 
 .deliverables-table:is(.required_documents, .test_records) {
-  --deliverables-project-column: 1.8fr;
-  --deliverables-context-column: 0.6fr;
-  --deliverables-context-min-width: 100px;
+  --deliverables-context-min-width: 84px;
+  --deliverables-context-column: 84px;
 }
 
 .deliverables-table.required_documents {
-  --deliverables-detail-width: 80px;
+  --deliverables-item-column: 1.6fr;
+  --deliverables-project-column: 2fr;
+  --deliverables-status-width: 72px;
+  --deliverables-detail-width: 64px;
 }
 
 .deliverables-table.test_records {
+  --deliverables-item-column: 1.3fr;
+  --deliverables-project-column: 1.85fr;
+  --deliverables-status-width: 64px;
   --deliverables-detail-width: 104px;
+}
+
+.deliverables-table:is(.required_documents, .test_records) tr > :nth-child(3),
+.deliverables-table :is(.status-cell, .status-column) {
+  padding-inline: var(--deliverables-metadata-padding-x);
 }
 
 .deliverables-table.project-subsystem-handover {
@@ -45,8 +60,12 @@
       2fr
     )
     minmax(160px, 1.4fr)
-    calc(100px + var(--table-user-padding-x) + var(--table-user-padding-x))
-    88px
+    calc(
+      var(--deliverables-status-width) +
+      var(--deliverables-metadata-padding-x) +
+      var(--deliverables-metadata-padding-x)
+    )
+    calc(48px + var(--table-user-padding-x) + var(--table-user-padding-x))
     calc(
       var(--deliverables-detail-width) -
       var(--table-user-padding-x) + var(--table-end-padding-x)

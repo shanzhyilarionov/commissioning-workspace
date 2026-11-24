@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import ClickableTableRow from "../components/ClickableTableRow";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
 import TablePage from "../components/TablePage";
@@ -1049,23 +1050,10 @@ function SystemManagementPage({
             body={
               <>
                 {filteredSystems.map((system) => (
-                  <tr
+                  <ClickableTableRow
                     key={system.id}
-                    className="structure-system-row"
                     data-navigation-id={system.id}
-                    onClick={(event) => {
-                      if (
-                        event.defaultPrevented ||
-                        !(event.target instanceof Element) ||
-                        event.target.closest(
-                          "button, a, [data-project-action-menu]",
-                        )
-                      ) {
-                        return;
-                      }
-
-                      handleOpenSystem(system.id);
-                    }}
+                    onOpen={() => handleOpenSystem(system.id)}
                   >
                     <td className="structure-code-cell">
                       {system.code || "-"}
@@ -1147,7 +1135,7 @@ function SystemManagementPage({
                         </ActionMenu>
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))}
               </>
             }
