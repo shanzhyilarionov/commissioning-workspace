@@ -209,15 +209,10 @@ function ProjectsPage({
                                       ? "current-project-row"
                                       : undefined
                                   }
+                                  aria-current={isCurrentProject || undefined}
                                 >
                                   <td>
                                     <strong>{project.name}</strong>
-
-                                    {isCurrentProject && (
-                                      <span className="current-label">
-                                        Current
-                                      </span>
-                                    )}
                                   </td>
 
                                   <td>{project.client || "-"}</td>

@@ -423,6 +423,11 @@
   outline: none;
 }
 
+.settings-backup-field select:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
 .settings-backup-field select:focus {
   border-color: var(--color-accent);
   box-shadow: var(--shadow-focus-accent);

@@ -46,14 +46,15 @@
   --color-border-strong: #bfc5ca;
   --color-border-hover: #9ea6ad;
 
-  --color-sidebar-background: #1b1e22;
-  --color-sidebar-surface: #22262b;
-  --color-sidebar-active: #2b3036;
-  --color-sidebar-border: #30353b;
-  --color-sidebar-control-border: #424950;
-  --color-sidebar-control-border-hover: #5b646c;
-  --color-sidebar-text: #f1f2f3;
-  --color-sidebar-text-muted: #929699;
+  --color-sidebar-background: var(--color-surface);
+  --color-sidebar-option-background: var(--color-surface);
+  --color-sidebar-surface: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  --color-sidebar-active: color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+  --color-sidebar-border: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  --color-sidebar-control-border: color-mix(in srgb, var(--color-text-primary) 22%, transparent);
+  --color-sidebar-control-border-hover: color-mix(in srgb, var(--color-text-primary) 36%, transparent);
+  --color-sidebar-text: var(--color-text-primary);
+  --color-sidebar-text-muted: var(--color-text-secondary);
 
   --color-status-positive: #43a160;
   --color-status-info: #4f8ab5;
@@ -87,7 +88,7 @@
 
   --icon-chevron-control: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2334373a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
   --icon-chevron-control-small: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2334373a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
-  --icon-chevron-sidebar: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  --icon-chevron-sidebar: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2334373a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
 
   --color-scrollbar-thumb: #b6bcc1;
   --color-scrollbar-thumb-hover: #98a0a7;
@@ -132,6 +133,11 @@
 
   --icon-chevron-control: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23e0e2e4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
   --icon-chevron-control-small: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23e0e2e4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  --icon-chevron-sidebar: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
   --color-scrollbar-thumb: #505860;
   --color-scrollbar-thumb-hover: #68727b;
+}
+
+:root[data-window-material="translucent"] {
+  --color-sidebar-background: color-mix(in srgb, var(--color-surface) 40%, transparent);
 }

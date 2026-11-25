@@ -52,6 +52,7 @@ import {
   type AppTheme,
   watchSystemTheme,
 } from "./styles/theme";
+import { syncWindowTheme } from "./styles/windowMaterial";
 import {
   clearContinueWorkingLocation,
   continueWorkingPages,
@@ -64,7 +65,8 @@ import {
   checkAutomaticWorkspaceBackup,
   getAutomaticBackupPreferences,
 } from "./services/workspaceBackupService";
-import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo.png";
+import commissioningWorkspaceLogo from "./assets/commissioning-workspace-logo-black.png";
+import commissioningWorkspaceDarkLogo from "./assets/commissioning-workspace-logo-white.png";
 import firstProjectLogo from "./assets/logo-black.png";
 import firstProjectDarkLogo from "./assets/logo-white.png";
 
@@ -114,6 +116,11 @@ function App() {
   const [isDeletingProject, setIsDeletingProject] = useState(false);
 
   useEffect(() => watchSystemTheme(theme), [theme]);
+
+  // Runs after watchSystemTheme so that returning to the system theme is observed.
+  useEffect(() => {
+    void syncWindowTheme(theme);
+  }, [theme]);
   const [projectDeleteError, setProjectDeleteError] = useState<string | null>(
     null,
   );
@@ -853,7 +860,13 @@ function App() {
         <aside className="sidebar">
           <div className="sidebar-logo" data-tauri-drag-region>
             <img
+              className="sidebar-logo-light"
               src={commissioningWorkspaceLogo}
+              alt="Commissioning Workspace"
+            />
+            <img
+              className="sidebar-logo-dark"
+              src={commissioningWorkspaceDarkLogo}
               alt="Commissioning Workspace"
             />
           </div>

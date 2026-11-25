@@ -6,7 +6,6 @@
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: var(--color-app-background);
 }
 
 .sidebar {
@@ -45,6 +44,15 @@
   max-width: 174px;
   height: auto;
   object-fit: contain;
+}
+
+.sidebar-logo .sidebar-logo-dark,
+:root[data-theme="dark"] .sidebar-logo .sidebar-logo-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .sidebar-logo .sidebar-logo-dark {
+  display: block;
 }
 
 .sidebar-body {
@@ -110,12 +118,12 @@
 .project-navigation::-webkit-scrollbar,
 .project-navigation::-webkit-scrollbar-track,
 .project-navigation::-webkit-scrollbar-track-piece {
-  background: var(--color-sidebar-background);
+  background: transparent;
 }
 
 .project-navigation::-webkit-scrollbar-thumb {
   background-color: var(--color-sidebar-control-border);
-  border-color: var(--color-sidebar-background);
+  border-color: transparent;
 }
 
 .navigation-label {
@@ -142,9 +150,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
-  color-scheme: dark;
   appearance: none;
-  background-color: var(--color-sidebar-surface);
+  background-color: transparent;
   background-image: var(--icon-chevron-sidebar);
   background-repeat: no-repeat;
   background-position: right 11px center;
@@ -155,7 +162,7 @@
 }
 
 .project-switcher:hover {
-  background-color: var(--color-sidebar-active);
+  background-color: var(--color-sidebar-surface);
   border-color: var(--color-sidebar-control-border-hover);
 }
 
@@ -166,14 +173,14 @@
 
 .project-switcher option {
   color: var(--color-sidebar-text);
-  background: var(--color-sidebar-background);
+  background: var(--color-sidebar-option-background);
 }
 
 .project-navigation {
   min-height: 0;
   overflow-y: auto;
   margin-top: 2px;
-  scrollbar-color: var(--color-sidebar-control-border) var(--color-sidebar-background);
+  scrollbar-color: var(--color-sidebar-control-border) transparent;
 }
 
 .sidebar-spacer {
@@ -194,6 +201,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
+  background: var(--color-surface);
 }
 
 .page-header {

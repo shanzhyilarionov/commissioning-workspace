@@ -58,6 +58,14 @@
   z-index: 1;
 }
 
+.form-field select:hover:where(:not(:disabled)) {
+  background-color: var(--color-surface-hover);
+}
+
+.form-field select:hover:where(:not(:disabled, .input-error)) {
+  border-color: var(--color-border-hover);
+}
+
 .form-field input:focus,
 .form-field textarea:focus,
 .form-field select:focus {
@@ -102,17 +110,6 @@
 
 .current-project-row {
   background: var(--color-surface-hover);
-}
-
-.current-label {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 3px 6px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  background: var(--color-surface-strong);
-  border-radius: 4px;
 }
 
 .table-action-cell {
@@ -258,6 +255,12 @@
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 12px;
+}
+
+.asset-status-filter:hover:where(:not(:disabled)),
+.project-status-filter:hover:where(:not(:disabled)) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
 }
 
 .asset-search-input:focus,
