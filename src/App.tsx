@@ -6,6 +6,7 @@ import AttentionFocusManager, {
 import CreateProjectModal from "./components/CreateProjectModal";
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import EditProjectModal from "./components/EditProjectModal";
+import SidebarToggle from "./components/SidebarToggle";
 import AssetsPage from "./pages/AssetsPage";
 import ChecklistsTestsPage from "./pages/ChecklistsTestsPage";
 import ProjectOverviewPage from "./pages/DashboardPage";
@@ -104,6 +105,7 @@ function App() {
   const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
   const [assetStructureNavigation, setAssetStructureNavigation] =
     useState<AssetStructureNavigation | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [changingProjectStatusId, setChangingProjectStatusId] = useState<
@@ -850,14 +852,16 @@ function App() {
 
   return (
     <>
-      <div className="app-shell">
+      <div
+        className={isSidebarCollapsed ? "app-shell sidebar-collapsed" : "app-shell"}
+      >
         <div
           className="window-drag-region"
           data-tauri-drag-region
           aria-hidden="true"
           onMouseDown={handleWindowDrag}
         />
-        <aside className="sidebar">
+        <aside id="app-sidebar" className="sidebar" inert={isSidebarCollapsed}>
           <div className="sidebar-logo" data-tauri-drag-region>
             <img
               className="sidebar-logo-light"
@@ -948,6 +952,12 @@ function App() {
             </nav>
           </div>
         </aside>
+
+        <SidebarToggle
+          isCollapsed={isSidebarCollapsed}
+          sidebarId="app-sidebar"
+          onToggle={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
+        />
 
         <main className="main-content">
           <div className="page-content">{renderPage()}</div>

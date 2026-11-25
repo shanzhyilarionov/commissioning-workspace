@@ -4,6 +4,7 @@ import { saveAuditHistoryCsv } from "../services/auditExportService";
 import type { AuditEntityType, AuditEvent } from "../types/audit";
 import AuditEventDetailModal from "./AuditEventDetailModal";
 import ListToolbar from "./ListToolbar";
+import FilterSelect from "./FilterSelect";
 
 interface ActivityHistoryModalProps {
   isOpen: boolean;
@@ -260,7 +261,7 @@ function ActivityHistoryModal({
               }}
             />
 
-            <select
+            <FilterSelect
               className="asset-status-filter"
               value={entityTypeFilter}
               aria-label="Filter activity by record type"
@@ -279,9 +280,9 @@ function ActivityHistoryModal({
                   {formatEntity(entityType)}
                 </option>
               ))}
-            </select>
+            </FilterSelect>
 
-            <select
+            <FilterSelect
               className="asset-status-filter"
               value={actionFilter}
               aria-label="Filter activity by action"
@@ -298,7 +299,7 @@ function ActivityHistoryModal({
                   {formatAction(action)}
                 </option>
               ))}
-            </select>
+            </FilterSelect>
 
             {!isLoading && !loadError && (
               <span className="project-result-count" role="status">

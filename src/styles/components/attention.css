@@ -1,37 +1,9 @@
-.attention-focus-flash > td {
-  animation: attention-focus-double-flash 1.35s ease-out;
+.attention-focus-highlight > td {
+  box-shadow: inset 0 0 0 9999px var(--color-accent-highlight);
 }
 
-.attention-focus-flash > td:first-child {
-  animation-name: attention-focus-double-flash-first;
-}
-
-@keyframes attention-focus-double-flash {
-  0%,
-  24%,
-  48%,
-  100% {
-    box-shadow: none;
-  }
-
-  10%,
-  34% {
-    box-shadow: inset 0 0 0 9999px var(--color-accent-highlight);
-  }
-}
-
-@keyframes attention-focus-double-flash-first {
-  0%,
-  24%,
-  48%,
-  100% {
-    box-shadow: none;
-  }
-
-  10%,
-  34% {
-    box-shadow:
-      inset 0 0 0 9999px var(--color-accent-highlight),
-      inset 4px 0 0 var(--color-accent);
-  }
+.attention-focus-highlight > td:first-child {
+  box-shadow:
+    inset 0 0 0 9999px var(--color-accent-highlight),
+    inset 4px 0 0 var(--color-accent);
 }

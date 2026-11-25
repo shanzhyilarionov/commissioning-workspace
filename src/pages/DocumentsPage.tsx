@@ -24,6 +24,7 @@ import type {
   ProjectDocumentInput,
 } from "../types/document";
 import type { Project } from "../types/project";
+import FilterSelect from "../components/FilterSelect";
 
 interface DocumentsPageProps {
   currentProject: Project;
@@ -488,7 +489,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
             }
           />
 
-          <select
+          <FilterSelect
             className="project-status-filter"
             value={categoryFilter}
             aria-label="Filter documents by category"
@@ -508,9 +509,9 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
             <option value="test_record">Test record</option>
             <option value="report">Report</option>
             <option value="other">Other</option>
-          </select>
+          </FilterSelect>
 
-          <select
+          <FilterSelect
             className="project-status-filter"
             value={statusFilter}
             aria-label="Filter documents by status"
@@ -523,7 +524,7 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
             <option value="for_review">For review</option>
             <option value="approved">Approved</option>
             <option value="superseded">Superseded</option>
-          </select>
+          </FilterSelect>
 
           <button
             className="primary-button toolbar-primary-button"

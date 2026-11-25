@@ -12,6 +12,7 @@ import {
   type WorkspaceDeliverable,
   type WorkspaceDeliverableKind,
 } from "../types/workspaceDeliverable";
+import FilterSelect from "../components/FilterSelect";
 
 interface WorkspaceDeliverablesPageProps {
   kind: WorkspaceDeliverableKind;
@@ -145,7 +146,7 @@ export default function WorkspaceDeliverablesPage({
           onChange={(event) => setSearch(event.target.value)}
         />
         {!project && (
-          <select
+          <FilterSelect
             className="project-status-filter"
             aria-label="Filter by project"
             value={projectFilter}
@@ -155,9 +156,9 @@ export default function WorkspaceDeliverablesPage({
             {projects.map(([id, name]) => (
               <option key={id} value={id}>{name}</option>
             ))}
-          </select>
+          </FilterSelect>
         )}
-        <select
+        <FilterSelect
           className="project-status-filter"
           aria-label="Filter by status"
           value={statusFilter}
@@ -167,7 +168,7 @@ export default function WorkspaceDeliverablesPage({
           {statusOptions[kind].filter((status) => statuses.has(status)).map((status) => (
             <option key={status} value={status}>{formatStatus(status)}</option>
           ))}
-        </select>
+        </FilterSelect>
         {!isLoading && !loadError && (
           <span className="project-result-count" role="status">
             {visibleItems.length} of {items.length}

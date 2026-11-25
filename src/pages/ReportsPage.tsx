@@ -41,6 +41,7 @@ import type {
   TurnoverPackageStatus,
   TurnoverPackageSummary,
 } from "../types/turnover";
+import FilterSelect from "../components/FilterSelect";
 
 interface ReportsPageProps {
   currentProject: Project;
@@ -663,7 +664,7 @@ function ReportsPage({
                 setSearchQuery(event.target.value)
               }
             />
-            <select
+            <FilterSelect
               className="asset-status-filter"
               value={typeFilter}
               aria-label="Filter reports by record type"
@@ -674,7 +675,7 @@ function ReportsPage({
               <option value="all">All types</option>
               <option value="checklist">Checklists</option>
               <option value="functional_test">Functional tests</option>
-            </select>
+            </FilterSelect>
             <label className="reports-date-filter">
               <span>From</span>
               <input
@@ -713,7 +714,7 @@ function ReportsPage({
                 setSearchQuery(event.target.value)
               }
             />
-            <select
+            <FilterSelect
               className="asset-status-filter turnover-status-filter"
               value={turnoverStatusFilter}
               aria-label="Filter turnover packages by status"
@@ -727,7 +728,7 @@ function ReportsPage({
               <option value="draft">Draft</option>
               <option value="final">Final</option>
               <option value="void">Void</option>
-            </select>
+            </FilterSelect>
             <button
               className="primary-button toolbar-primary-button turnover-new-button"
               type="button"

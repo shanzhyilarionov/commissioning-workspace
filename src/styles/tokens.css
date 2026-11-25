@@ -1,10 +1,13 @@
 :root {
   --sidebar-width: 230px;
+  --sidebar-toggle-width: 18px;
+  --sidebar-transition: 200ms ease;
   --workspace-top-spacing: 30px;
   --workspace-side-spacing: 30px;
   --sidebar-top-spacing: 45px;
   --section-spacing: 20px;
   --search-input-width: 360px;
+  --filter-select-width: 150px;
 
   --table-cell-padding-y: 10px;
   --table-header-min-height: 44px;

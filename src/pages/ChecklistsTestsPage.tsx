@@ -27,6 +27,7 @@ import type {
   TestRecordType,
 } from "../types/testRecord";
 import TestRecordDetailPage from "./TestRecordDetailPage";
+import FilterSelect from "../components/FilterSelect";
 
 interface ChecklistsTestsPageProps {
   currentProject: Project;
@@ -579,7 +580,7 @@ function ChecklistsTestsPage({
             }
           />
 
-          <select
+          <FilterSelect
             className="asset-status-filter"
             value={typeFilter}
             aria-label="Filter records by type"
@@ -601,9 +602,9 @@ function ChecklistsTestsPage({
             <option value="functional_test">
               Functional tests
             </option>
-          </select>
+          </FilterSelect>
 
-          <select
+          <FilterSelect
             className="asset-status-filter"
             value={statusFilter}
             aria-label="Filter records by status"
@@ -633,7 +634,7 @@ function ChecklistsTestsPage({
             <option value="blocked">
               Blocked
             </option>
-          </select>
+          </FilterSelect>
 
           <button
             className="primary-button toolbar-primary-button"

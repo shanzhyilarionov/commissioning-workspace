@@ -36,6 +36,7 @@ import type {
   TestRecordStatus,
   TestRecordType,
 } from "../types/testRecord";
+import FilterSelect from "../components/FilterSelect";
 
 interface TestRecordDetailPageProps {
   testRecord: TestRecord;
@@ -729,7 +730,7 @@ function TestRecordDetailPage({
             }
           />
 
-          <select
+          <FilterSelect
             className="asset-status-filter"
             value={resultFilter}
             aria-label="Filter items by result"
@@ -744,7 +745,7 @@ function TestRecordDetailPage({
             <option value="pass">Pass</option>
             <option value="fail">Fail</option>
             <option value="not_applicable">N/A</option>
-          </select>
+          </FilterSelect>
 
           <div className="test-record-toolbar-actions">
             <button

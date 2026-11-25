@@ -1,11 +1,18 @@
 .app-shell {
+  --sidebar-visible-width: var(--sidebar-width);
+
   position: relative;
   display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-visible-width) minmax(0, 1fr);
   width: 100%;
   height: 100vh;
   min-height: 0;
   overflow: hidden;
+  transition: grid-template-columns var(--sidebar-transition);
+}
+
+.app-shell.sidebar-collapsed {
+  --sidebar-visible-width: 0px;
 }
 
 .sidebar {
@@ -20,6 +27,79 @@
   color: var(--color-sidebar-text);
   background: var(--color-sidebar-background);
   border-right: 1px solid var(--color-sidebar-border);
+  transition:
+    transform var(--sidebar-transition),
+    visibility var(--sidebar-transition);
+}
+
+.sidebar-collapsed .sidebar {
+  visibility: hidden;
+  transform: translateX(-100%);
+}
+
+.sidebar-toggle {
+  position: absolute;
+  z-index: 20;
+  top: 50%;
+  left: var(--sidebar-visible-width);
+  display: flex;
+  width: var(--sidebar-toggle-width);
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  outline: none;
+  transform: translate(-50%, -50%);
+  transition:
+    left var(--sidebar-transition),
+    transform var(--sidebar-transition),
+    border-radius var(--sidebar-transition);
+}
+
+/* Sits flush against the window edge instead of straddling the divider. */
+.sidebar-collapsed .sidebar-toggle {
+  border-left-width: 0;
+  border-radius: 0 6px 6px 0;
+  transform: translate(0, -50%);
+}
+
+/* Widens the hit area over the page gutter. */
+.sidebar-toggle::after {
+  position: absolute;
+  inset: -8px -8px -8px 0;
+  content: "";
+}
+
+.sidebar-toggle:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+.sidebar-toggle:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus-accent);
+}
+
+.sidebar-toggle svg {
+  flex: 0 0 auto;
+}
+
+.sidebar-collapsed .sidebar-toggle svg {
+  transform: scaleX(-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .sidebar,
+  .sidebar-toggle {
+    transition: none;
+  }
 }
 
 .sidebar button,

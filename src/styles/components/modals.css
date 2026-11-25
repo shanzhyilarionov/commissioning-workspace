@@ -155,7 +155,8 @@ body:has(.modal-backdrop) .window-drag-region {
   border-bottom: 0;
 }
 
-.activity-history-toolbar > :is(input, select):disabled {
+.activity-history-toolbar > input:disabled,
+.activity-history-toolbar > .filter-select:has(select:disabled) {
   color: var(--color-text-disabled);
   background-color: var(--color-surface);
   cursor: not-allowed;

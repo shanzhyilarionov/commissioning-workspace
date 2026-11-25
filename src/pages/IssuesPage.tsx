@@ -23,6 +23,7 @@ import type {
   IssueStatus,
 } from "../types/issue";
 import type { Project } from "../types/project";
+import FilterSelect from "../components/FilterSelect";
 
 interface IssuesPageProps {
   currentProject: Project;
@@ -366,7 +367,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
             onChange={(event) => setSearchQuery(event.target.value)}
           />
 
-          <select
+          <FilterSelect
             className="asset-status-filter"
             value={statusFilter}
             aria-label="Filter issues by status"
@@ -379,9 +380,9 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
             <option value="in_progress">In progress</option>
             <option value="resolved">Resolved</option>
             <option value="closed">Closed</option>
-          </select>
+          </FilterSelect>
 
-          <select
+          <FilterSelect
             className="asset-status-filter"
             value={priorityFilter}
             aria-label="Filter issues by priority"
@@ -394,7 +395,7 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
-          </select>
+          </FilterSelect>
 
           <button
             className="primary-button toolbar-primary-button"

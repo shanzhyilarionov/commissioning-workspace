@@ -89,6 +89,27 @@ function findRow(
   );
 }
 
+// The highlight outlives this request on purpose: it stays until the user
+// acts, so it is not tied to any timer or animation.
+function highlightUntilNextInteraction(row: HTMLTableRowElement) {
+  for (const highlighted of document.querySelectorAll(
+    ".attention-focus-highlight",
+  )) {
+    highlighted.classList.remove("attention-focus-highlight");
+  }
+
+  row.classList.add("attention-focus-highlight");
+
+  const clear = () => {
+    row.classList.remove("attention-focus-highlight");
+    document.removeEventListener("pointerdown", clear, true);
+    document.removeEventListener("keydown", clear, true);
+  };
+
+  document.addEventListener("pointerdown", clear, true);
+  document.addEventListener("keydown", clear, true);
+}
+
 function AttentionFocusManager({
   activePage,
   target,
@@ -102,25 +123,6 @@ function AttentionFocusManager({
     const request = target;
     let completed = false;
     let openedParentRecord = false;
-    let animationTimer: number | null = null;
-    let scrollFrame: number | null = null;
-
-    function startFlash(row: HTMLTableRowElement) {
-      if (!row.isConnected) {
-        completed = false;
-        tryFocusTarget();
-        return;
-      }
-
-      row.classList.remove("attention-focus-flash");
-      void row.offsetWidth;
-      row.classList.add("attention-focus-flash");
-
-      animationTimer = window.setTimeout(() => {
-        row.classList.remove("attention-focus-flash");
-        onComplete(request.requestId);
-      }, 1500);
-    }
 
     function finish(row: HTMLTableRowElement) {
       if (completed) {
@@ -128,45 +130,9 @@ function AttentionFocusManager({
       }
 
       completed = true;
-      row.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "nearest",
-      });
-
-      const startedAt = performance.now();
-      let previousTop = row.getBoundingClientRect().top;
-      let stableFrameCount = 0;
-
-      function waitForScrollToSettle() {
-        if (!row.isConnected) {
-          scrollFrame = null;
-          completed = false;
-          tryFocusTarget();
-          return;
-        }
-
-        const currentTop = row.getBoundingClientRect().top;
-        stableFrameCount =
-          Math.abs(currentTop - previousTop) < 0.5
-            ? stableFrameCount + 1
-            : 0;
-        previousTop = currentTop;
-
-        const elapsed = performance.now() - startedAt;
-        if (
-          (elapsed >= 100 && stableFrameCount >= 3) ||
-          elapsed >= 1000
-        ) {
-          scrollFrame = null;
-          startFlash(row);
-          return;
-        }
-
-        scrollFrame = window.requestAnimationFrame(waitForScrollToSettle);
-      }
-
-      scrollFrame = window.requestAnimationFrame(waitForScrollToSettle);
+      row.scrollIntoView({ block: "center", inline: "nearest" });
+      highlightUntilNextInteraction(row);
+      onComplete(request.requestId);
     }
 
     function tryFocusTarget() {
@@ -435,14 +401,6 @@ function AttentionFocusManager({
       observer.disconnect();
       window.clearInterval(retryTimer);
       window.clearTimeout(expiryTimer);
-
-      if (animationTimer !== null) {
-        window.clearTimeout(animationTimer);
-      }
-
-      if (scrollFrame !== null) {
-        window.cancelAnimationFrame(scrollFrame);
-      }
     };
   }, [activePage, onComplete, target]);
 

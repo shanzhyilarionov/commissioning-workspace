@@ -95,10 +95,6 @@
   font-family: var(--font-family-sans);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
-  transition:
-    color 120ms ease,
-    background-color 120ms ease,
-    box-shadow 120ms ease;
 }
 
 .settings-theme-option:hover:not(.active) {
@@ -254,9 +250,6 @@
   border-radius: 7px;
   font-size: var(--font-size-body);
   outline: none;
-  transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease;
 }
 
 .settings-identity-input:focus {
@@ -627,9 +620,6 @@
   font-family: var(--font-family-sans);
   font-size: var(--font-size-body);
   outline: none;
-  transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease;
 }
 
 .clear-workspace-confirmation-field input:focus {

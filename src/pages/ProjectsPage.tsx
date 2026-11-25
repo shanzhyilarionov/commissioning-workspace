@@ -8,6 +8,7 @@ import type {
   Project,
   ProjectStatus,
 } from "../types/project";
+import FilterSelect from "../components/FilterSelect";
 
 interface ProjectsPageProps {
   projects: Project[];
@@ -123,7 +124,7 @@ function ProjectsPage({
             }
           />
 
-          <select
+          <FilterSelect
             className="project-status-filter"
             value={statusFilter}
             aria-label="Filter projects by status"
@@ -137,7 +138,7 @@ function ProjectsPage({
             <option value="completed">Completed</option>
             <option value="archived">Archived</option>
             <option value="all">All statuses</option>
-          </select>
+          </FilterSelect>
 
           <button
             className="primary-button toolbar-primary-button"

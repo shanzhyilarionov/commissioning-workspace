@@ -57,10 +57,7 @@
   max-width: none;
 }
 
-.list-toolbar > select {
-  width: auto;
-  min-width: 0;
-  max-width: 100%;
+.list-toolbar > .filter-select {
   justify-self: start;
 }
 
@@ -73,11 +70,11 @@
   max-width: var(--search-input-width);
 }
 
-.list-toolbar > select:nth-of-type(1) {
+.list-toolbar > .filter-select:nth-child(1 of .filter-select) {
   grid-area: first;
 }
 
-.list-toolbar > select:nth-of-type(2) {
+.list-toolbar > .filter-select:nth-child(2 of .filter-select) {
   grid-area: second;
 }
 

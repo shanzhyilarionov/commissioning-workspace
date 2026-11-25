@@ -30,6 +30,7 @@ import type {
   CommissioningSystem,
   Subsystem,
 } from "../types/system";
+import FilterSelect from "../components/FilterSelect";
 
 interface AssetsPageProps {
   currentProject: Project;
@@ -393,7 +394,7 @@ function AssetsPage({
             aria-label="Search assets"
             onChange={(event) => setSearchQuery(event.target.value)}
           />
-          <select
+          <FilterSelect
             className="asset-status-filter"
             value={systemFilter}
             aria-label="Filter assets by system"
@@ -406,8 +407,8 @@ function AssetsPage({
                 {system.name}
               </option>
             ))}
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
             className="asset-status-filter"
             value={statusFilter}
             aria-label="Filter assets by status"
@@ -420,7 +421,7 @@ function AssetsPage({
             <option value="in_progress">In progress</option>
             <option value="completed">Completed</option>
             <option value="blocked">Blocked</option>
-          </select>
+          </FilterSelect>
           <button
             className="primary-button toolbar-primary-button"
             type="button"
