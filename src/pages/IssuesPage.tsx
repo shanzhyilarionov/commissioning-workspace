@@ -330,7 +330,6 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
     return (
       <section className="content-card placeholder">
         <h3>Loading issues</h3>
-        <p>Reading commissioning issues for {currentProject.name}.</p>
       </section>
     );
   }
@@ -420,12 +419,10 @@ function IssuesPage({ currentProject }: IssuesPageProps) {
           <div className="empty-state">
             <div className="empty-icon">+</div>
             <h3>No issues yet</h3>
-            <p>Add the first commissioning issue for this project.</p>
           </div>
         ) : filteredIssues.length === 0 ? (
           <div className="empty-state compact">
             <h3>No matching issues</h3>
-            <p>Change the search text, status, or priority filter.</p>
           </div>
         ) : (
           <FixedHeaderTable

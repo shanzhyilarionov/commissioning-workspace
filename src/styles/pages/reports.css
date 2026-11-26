@@ -21,7 +21,7 @@
   min-width: 0;
   max-width: 100%;
   justify-self: start;
-  height: 34px;
+  height: var(--control-height);
   align-items: center;
   overflow: hidden;
   background: var(--color-surface);
@@ -165,11 +165,6 @@
 
 .reports-action-cell {
   padding-right: var(--table-fixed-padding-x);
-}
-
-.reports-generate-button:disabled {
-  cursor: default;
-  opacity: 0.55;
 }
 
 .reports-save-success {
@@ -420,20 +415,30 @@
 .turnover-preflight-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 1px;
   overflow: hidden;
-  background: var(--color-border-subtle);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
 .turnover-preflight-grid > div {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 5px;
-  padding: 10px;
-  background: var(--color-surface-subtle);
+  padding: 10px 12px;
+}
+
+/* Dividers are inset so they never touch the card border. */
+.turnover-preflight-grid > div:not(:last-child)::after {
+  position: absolute;
+  top: 12px;
+  right: 0;
+  bottom: 12px;
+  width: 1px;
+  content: "";
+  background: var(--color-border-subtle);
 }
 
 .turnover-preflight-grid span {
@@ -535,6 +540,20 @@
   .turnover-preflight-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .turnover-preflight-grid > div:nth-child(3n)::after {
+    content: none;
+  }
+
+  .turnover-preflight-grid > div:nth-child(-n + 3)::before {
+    position: absolute;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    height: 1px;
+    content: "";
+    background: var(--color-border-subtle);
+  }
 }
 
 @media (max-width: 600px) {
@@ -545,5 +564,23 @@
 
   .turnover-preflight-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .turnover-preflight-grid > div:nth-child(3n)::after {
+    content: "";
+  }
+
+  .turnover-preflight-grid > div:nth-child(2n)::after {
+    content: none;
+  }
+
+  .turnover-preflight-grid > div:nth-child(-n + 4)::before {
+    position: absolute;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    height: 1px;
+    content: "";
+    background: var(--color-border-subtle);
   }
 }

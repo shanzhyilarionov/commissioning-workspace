@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ActionMenu from "../components/ActionMenu";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import ClickableTableRow from "../components/ClickableTableRow";
+import FilterSelect from "../components/FilterSelect";
 import FixedHeaderTable from "../components/FixedHeaderTable";
 import ListToolbar from "../components/ListToolbar";
 import TablePage from "../components/TablePage";
@@ -85,6 +86,16 @@ type DeleteTarget =
     }
   | null;
 
+type StageFilter = "all" | CommissioningStage;
+
+const COMMISSIONING_STAGES: CommissioningStage[] = [
+  "not_started",
+  "in_progress",
+  "ready",
+  "commissioned",
+  "handed_over",
+];
+
 function formatReadiness(readiness: CommissioningReadiness): string {
   switch (readiness) {
     case "not_started":
@@ -111,6 +122,32 @@ function formatStage(stage: CommissioningStage): string {
     case "handed_over":
       return "Handed over";
   }
+}
+
+function StageFilterSelect({
+  value,
+  ariaLabel,
+  onChange,
+}: {
+  value: StageFilter;
+  ariaLabel: string;
+  onChange: (value: StageFilter) => void;
+}) {
+  return (
+    <FilterSelect
+      className="asset-status-filter"
+      value={value}
+      aria-label={ariaLabel}
+      onChange={(event) => onChange(event.target.value as StageFilter)}
+    >
+      <option value="all">All stages</option>
+      {COMMISSIONING_STAGES.map((stage) => (
+        <option key={stage} value={stage}>
+          {formatStage(stage)}
+        </option>
+      ))}
+    </FilterSelect>
+  );
 }
 
 function StructureStatusCell({
@@ -191,6 +228,7 @@ function SystemManagementPage({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadSequence, setLoadSequence] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [editorTarget, setEditorTarget] = useState<EditorTarget>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -282,6 +320,7 @@ function SystemManagementPage({
 
   useEffect(() => {
     setSearchQuery("");
+    setStageFilter("all");
     setOpenMenuId(null);
   }, [selectedSystemId]);
 
@@ -325,17 +364,16 @@ function SystemManagementPage({
   const filteredSystems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    if (!query) {
-      return systems;
-    }
-
-    return systems.filter((system) =>
-      [system.code, system.name, system.description]
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
+    return systems.filter(
+      (system) =>
+        (stageFilter === "all" || system.stage === stageFilter) &&
+        (!query ||
+          [system.code, system.name, system.description]
+            .join(" ")
+            .toLowerCase()
+            .includes(query)),
     );
-  }, [searchQuery, systems]);
+  }, [searchQuery, stageFilter, systems]);
 
   const selectedSubsystems = useMemo(() => {
     if (!selectedSystem) {
@@ -350,17 +388,16 @@ function SystemManagementPage({
   const filteredSubsystems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    if (!query) {
-      return selectedSubsystems;
-    }
-
-    return selectedSubsystems.filter((subsystem) =>
-      [subsystem.code, subsystem.name, subsystem.description]
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
+    return selectedSubsystems.filter(
+      (subsystem) =>
+        (stageFilter === "all" || subsystem.stage === stageFilter) &&
+        (!query ||
+          [subsystem.code, subsystem.name, subsystem.description]
+            .join(" ")
+            .toLowerCase()
+            .includes(query)),
     );
-  }, [searchQuery, selectedSubsystems]);
+  }, [searchQuery, selectedSubsystems, stageFilter]);
 
   const subsystemProgressById = useMemo(() => {
     const progressById = new Map<string, StructureProgress>();
@@ -633,7 +670,6 @@ function SystemManagementPage({
     return (
       <section className="content-card placeholder">
         <h3>Loading systems</h3>
-        <p>Reading the commissioning structure for {currentProject.name}.</p>
       </section>
     );
   }
@@ -669,12 +705,13 @@ function SystemManagementPage({
                 Back to Systems
               </button>
               <h3>{selectedSystem.name}</h3>
-              <p>
-                {selectedSystem.code
-                  ? `${selectedSystem.code} · `
-                  : ""}
-                {selectedSystem.description || "Manage subsystems for this system."}
-              </p>
+              {(selectedSystem.code || selectedSystem.description) && (
+                <p>
+                  {[selectedSystem.code, selectedSystem.description]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
             </div>
 
             <div
@@ -722,7 +759,7 @@ function SystemManagementPage({
             </div>
           </div>
 
-          <ListToolbar filterCount={0}>
+          <ListToolbar filterCount={1}>
             <input
               className="asset-search-input"
               type="search"
@@ -730,6 +767,11 @@ function SystemManagementPage({
               placeholder="Search code, subsystem, or description"
               aria-label="Search subsystems"
               onChange={(event) => setSearchQuery(event.target.value)}
+            />
+            <StageFilterSelect
+              value={stageFilter}
+              ariaLabel="Filter subsystems by stage"
+              onChange={setStageFilter}
             />
             <span className="asset-result-count">
               {filteredSubsystems.length} of {selectedSubsystems.length}
@@ -768,12 +810,10 @@ function SystemManagementPage({
           {selectedSubsystems.length === 0 ? (
             <div className="empty-state">
               <h3>No subsystems yet</h3>
-              <p>Add the first subsystem for {selectedSystem.name}.</p>
             </div>
           ) : filteredSubsystems.length === 0 ? (
             <div className="empty-state compact">
               <h3>No matching subsystems</h3>
-              <p>Change the search text.</p>
             </div>
           ) : (
             <FixedHeaderTable
@@ -971,7 +1011,7 @@ function SystemManagementPage({
           </div>
         </div>
 
-        <ListToolbar filterCount={0}>
+        <ListToolbar filterCount={1}>
           <input
             className="asset-search-input"
             type="search"
@@ -979,6 +1019,11 @@ function SystemManagementPage({
             placeholder="Search code, system, or description"
             aria-label="Search systems"
             onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <StageFilterSelect
+            value={stageFilter}
+            ariaLabel="Filter systems by stage"
+            onChange={setStageFilter}
           />
           <span className="asset-result-count">
             {filteredSystems.length} of {systems.length}
@@ -1025,12 +1070,10 @@ function SystemManagementPage({
         {systems.length === 0 ? (
           <div className="empty-state">
             <h3>No systems yet</h3>
-            <p>Add the first commissioning system for this project.</p>
           </div>
         ) : filteredSystems.length === 0 ? (
           <div className="empty-state compact">
             <h3>No matching systems</h3>
-            <p>Change the search text.</p>
           </div>
         ) : (
           <FixedHeaderTable

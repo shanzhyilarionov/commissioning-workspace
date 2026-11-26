@@ -193,13 +193,6 @@ export default function WorkspaceDeliverablesPage({
       ) : visibleItems.length === 0 ? (
         <div className="empty-state">
           <h3>{items.length === 0 ? "No entries yet" : "No matching entries"}</h3>
-          <p>
-            {items.length === 0
-              ? `No ${deliverableLabels[kind].toLowerCase()} in ${project ? "this project" : "your workspace"}.`
-              : project
-                ? "Try a different search or status filter."
-                : "Try a different search, status, or project filter."}
-          </p>
         </div>
       ) : (
         <FixedHeaderTable

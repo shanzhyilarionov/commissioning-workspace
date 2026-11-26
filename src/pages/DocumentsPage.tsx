@@ -450,7 +450,6 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
     return (
       <section className="content-card placeholder">
         <h3>Loading documents</h3>
-        <p>Reading project documents for {currentProject.name}.</p>
       </section>
     );
   }
@@ -550,12 +549,10 @@ function DocumentsPage({ currentProject }: DocumentsPageProps) {
         {documents.length === 0 ? (
           <div className="empty-state">
             <h3>No documents yet</h3>
-            <p>Import the first controlled file for this project.</p>
           </div>
         ) : filteredDocuments.length === 0 ? (
           <div className="empty-state compact">
             <h3>No matching documents</h3>
-            <p>Change the search text or document filters.</p>
           </div>
         ) : (
           <FixedHeaderTable

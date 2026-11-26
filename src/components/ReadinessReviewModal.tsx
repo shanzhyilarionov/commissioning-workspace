@@ -138,7 +138,6 @@ function ReadinessReviewModal({
             <h2 id="readiness-review-title" className="modal-form-title">
               Reviewing readiness
             </h2>
-            <p>Calculating current blockers and stage records.</p>
           </div>
         ) : loadError ? (
           <div className="modal-body readiness-modal-state">
@@ -199,7 +198,6 @@ function ReadinessReviewModal({
                   <div className="readiness-section-heading">
                     <div>
                       <h3>Blockers</h3>
-                      <p>Current records preventing an unqualified stage transition.</p>
                     </div>
                     <span>{review.blockers.length}</span>
                   </div>
@@ -207,7 +205,6 @@ function ReadinessReviewModal({
                   {review.blockers.length === 0 ? (
                     <div className="readiness-clear-state">
                       <strong>Ready to proceed</strong>
-                      <span>No readiness blockers were found.</span>
                     </div>
                   ) : (
                     <div className="readiness-blocker-list">
@@ -239,9 +236,6 @@ function ReadinessReviewModal({
                     <div className="readiness-section-heading">
                       <div>
                         <h3>Advance stage</h3>
-                        <p>
-                          Record responsibility and any qualification for this change.
-                        </p>
                       </div>
                     </div>
 
@@ -311,7 +305,6 @@ function ReadinessReviewModal({
                   <div className="readiness-section-heading">
                     <div>
                       <h3>Stage records</h3>
-                      <p>Permanent commissioning and turnover history.</p>
                     </div>
                     <span>{review.records.length}</span>
                   </div>

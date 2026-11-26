@@ -72,7 +72,6 @@ function ProjectExportModal({
             <h2 id="project-export-title" className="modal-form-title">
               Export projects
             </h2>
-            <p>Select the projects to include in the project package.</p>
           </div>
           <button
             type="button"

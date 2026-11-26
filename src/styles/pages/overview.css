@@ -57,6 +57,10 @@
   color: var(--color-text-primary);
 }
 
+.overview-state h3:last-child {
+  margin-bottom: 0;
+}
+
 .overview-state p {
   max-width: 440px;
   margin: 0;

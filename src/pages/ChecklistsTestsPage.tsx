@@ -515,11 +515,6 @@ function ChecklistsTestsPage({
         <h3>
           Loading checklists and tests
         </h3>
-
-        <p>
-          Reading commissioning records for{" "}
-          {currentProject.name}.
-        </p>
       </section>
     );
   }
@@ -663,22 +658,11 @@ function ChecklistsTestsPage({
             <h3>
               No checklists or tests yet
             </h3>
-
-            <p>
-              Add the first commissioning
-              checklist or functional test
-              for this project.
-            </p>
           </div>
         ) : filteredTestRecords.length ===
           0 ? (
           <div className="empty-state compact">
             <h3>No matching records</h3>
-
-            <p>
-              Change the search text,
-              type, or status filter.
-            </p>
           </div>
         ) : (
           <FixedHeaderTable

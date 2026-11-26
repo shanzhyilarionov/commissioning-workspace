@@ -885,7 +885,6 @@ export default function HomePage({
                 <>
                   <span className="home-analytics-loader" />
                   <strong>Preparing your workspace summary</strong>
-                  <p>Reading the latest commissioning activity.</p>
                 </>
               )}
             </section>

@@ -614,11 +614,6 @@ function ReportsPage({
             ? "Loading record reports"
             : "Loading turnover packages"}
         </h3>
-        <p>
-          {view === "records"
-            ? `Reading completed records for ${currentProject.name}.`
-            : `Reading turnover package history for ${currentProject.name}.`}
-        </p>
       </section>
     );
   }
@@ -795,9 +790,6 @@ function ReportsPage({
           ) : filteredRecords.length === 0 ? (
             <div className="empty-state compact reports-empty-state">
               <h3>No matching reports</h3>
-              <p>
-                Change the search text, record type, or execution date range.
-              </p>
             </div>
           ) : (
             <FixedHeaderTable
@@ -890,15 +882,10 @@ function ReportsPage({
         ) : turnoverPackages.length === 0 ? (
           <div className="empty-state reports-empty-state">
             <h3>No turnover packages</h3>
-            <p>
-              Create a package to preserve a system or subsystem commissioning
-              snapshot.
-            </p>
           </div>
         ) : filteredTurnoverPackages.length === 0 ? (
           <div className="empty-state compact reports-empty-state">
             <h3>No matching turnover packages</h3>
-            <p>Change the search text or package status filter.</p>
           </div>
         ) : (
           <FixedHeaderTable

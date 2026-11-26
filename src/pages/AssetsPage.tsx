@@ -346,7 +346,6 @@ function AssetsPage({
     return (
       <section className="content-card placeholder">
         <h3>Loading assets</h3>
-        <p>Reading equipment records for {currentProject.name}.</p>
       </section>
     );
   }
@@ -439,12 +438,10 @@ function AssetsPage({
           <div className="empty-state">
             <div className="empty-icon">+</div>
             <h3>No assets yet</h3>
-            <p>Add the first equipment record for this project.</p>
           </div>
         ) : filteredAssets.length === 0 ? (
           <div className="empty-state compact">
             <h3>No matching assets</h3>
-            <p>Change the search text or filters.</p>
           </div>
         ) : (
           <FixedHeaderTable

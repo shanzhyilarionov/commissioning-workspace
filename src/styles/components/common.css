@@ -178,6 +178,11 @@
   color: var(--color-text-primary);
 }
 
+.empty-state h3:last-child,
+.placeholder h3:last-child {
+  margin-bottom: 0;
+}
+
 .empty-state p,
 .placeholder p {
   max-width: 480px;

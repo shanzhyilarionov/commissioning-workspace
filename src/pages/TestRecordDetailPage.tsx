@@ -674,7 +674,6 @@ function TestRecordDetailPage({
             <div className="test-record-revision-heading">
               <div>
                 <h4>Revision history</h4>
-                <p>Previously signed versions preserved before reopening.</p>
               </div>
               <span>{revisions.length}</span>
             </div>
@@ -797,7 +796,6 @@ function TestRecordDetailPage({
         {isLoading ? (
           <div className="empty-state test-record-detail-state">
             <h3>Loading items</h3>
-            <p>Reading checklist and test items.</p>
           </div>
         ) : loadError ? (
           <div className="empty-state test-record-detail-state">
@@ -807,15 +805,10 @@ function TestRecordDetailPage({
         ) : testItems.length === 0 ? (
           <div className="empty-state test-record-detail-state">
             <h3>No items yet</h3>
-            <p>
-              Add an inspection or test item from the toolbar
-              above.
-            </p>
           </div>
         ) : filteredTestItems.length === 0 ? (
           <div className="empty-state compact test-record-detail-state">
             <h3>No matching items</h3>
-            <p>Change the search text or result filter.</p>
           </div>
         ) : (
           <FixedHeaderTable

@@ -60,20 +60,13 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.test-record-revision-heading h4,
-.test-record-revision-heading p {
+.test-record-revision-heading h4 {
   margin: 0;
 }
 
 .test-record-revision-heading h4 {
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
-}
-
-.test-record-revision-heading p {
-  margin-top: 2px;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
 }
 
 .test-record-revision-heading > span {

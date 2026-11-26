@@ -609,7 +609,6 @@ function App() {
       return (
         <section className="content-card placeholder">
           <h3>Loading projects</h3>
-          <p>Reading commissioning projects from the local database.</p>
         </section>
       );
     }

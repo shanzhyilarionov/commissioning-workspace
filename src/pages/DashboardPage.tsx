@@ -257,7 +257,6 @@ function ProjectOverviewPage({
               <div className="overview-state">
                 <span className="home-analytics-loader" />
                 <h3>Preparing the project overview</h3>
-                <p>Calculating readiness, closeout, and outstanding work.</p>
               </div>
             ) : loadError ? (
               <div className="overview-state">

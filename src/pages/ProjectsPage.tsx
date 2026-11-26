@@ -80,18 +80,6 @@ function ProjectsPage({
     return `No ${statusFilter} projects`;
   }, [searchQuery, statusFilter]);
 
-  const emptyStateMessage = useMemo(() => {
-    if (searchQuery.trim()) {
-      return "Change the search text or status filter.";
-    }
-
-    if (statusFilter === "archived") {
-      return "Archived projects will appear here.";
-    }
-
-    return "Change the status filter to view other projects.";
-  }, [searchQuery, statusFilter]);
-
   return (
     <TablePage className="projects-card">
       <div className="projects-header">
@@ -163,14 +151,10 @@ function ProjectsPage({
       {projects.length === 0 ? (
         <div className="empty-state">
           <h3>No projects yet</h3>
-          <p>
-            Create your first commissioning project to get started.
-          </p>
         </div>
       ) : filteredProjects.length === 0 ? (
         <div className="empty-state compact">
           <h3>{emptyStateTitle}</h3>
-          <p>{emptyStateMessage}</p>
         </div>
       ) : (
         <FixedHeaderTable

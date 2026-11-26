@@ -30,19 +30,23 @@
 
 .form-field input,
 .form-field select {
-  height: 44px;
-  min-height: 44px;
+  height: var(--control-height);
+  min-height: var(--control-height);
+}
+
+.form-field input {
+  padding: 0 10px;
 }
 
 .form-field select {
-  padding: 0 42px 0 14px;
+  padding: 0 32px 0 10px;
   appearance: none;
   -webkit-appearance: none;
   background-color: var(--color-surface);
-  background-image: var(--icon-chevron-control);
+  background-image: var(--icon-chevron-control-small);
   background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 14px;
+  background-position: right 10px center;
+  background-size: 12px;
 }
 
 .form-field textarea {
@@ -220,7 +224,7 @@
 .project-search-input,
 .asset-status-filter,
 .project-status-filter {
-  height: 34px;
+  height: var(--control-height);
   box-sizing: border-box;
   color: var(--color-text-primary);
   background: var(--color-surface);
@@ -319,6 +323,15 @@
 .form-field select:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Table rows sit on a white surface, so a faded button alone reads as active. */
+td .row-action-button:disabled,
+td .more-actions-button:disabled {
+  color: var(--color-text-disabled);
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border-subtle);
+  opacity: 1;
 }
 
 .window-drag-region {
