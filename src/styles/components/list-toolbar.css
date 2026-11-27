@@ -108,12 +108,12 @@
     grid-template-areas: "search action count";
   }
 
+  /* Search, one filter and the count still fit on one row here; this layout
+     wraps only in the narrower query below. */
   .list-toolbar[data-has-action="false"] {
     grid-template-columns:
-      minmax(0, var(--search-input-width)) max-content minmax(0, 1fr);
-    grid-template-areas:
-      "search first ."
-      "count count count";
+      minmax(0, var(--search-input-width)) max-content minmax(max-content, 1fr);
+    grid-template-areas: "search first count";
   }
 
   .list-toolbar[data-filter-count="2"] {
@@ -138,7 +138,28 @@
     grid-template-areas: "search count";
   }
 
-  .list-toolbar:not([data-filter-count="0"]) > :is(.project-result-count, .asset-result-count) {
+  .list-toolbar:not([data-filter-count="0"]):not(
+      [data-filter-count="1"][data-has-action="false"]
+    ) > :is(.project-result-count, .asset-result-count) {
+    justify-self: start;
+  }
+}
+
+/* The one-row layout keeps the count at its full width and lets the search
+   field give up space instead. 2 x 20px padding + 150px filter + 2 x 10px gap
+   + a count of up to ~70px still leaves the search field 320px or more at
+   600px, so only narrower toolbars move the count to its own row. */
+@container (max-width: 600px) {
+  .list-toolbar[data-filter-count="1"][data-has-action="false"] {
+    grid-template-columns:
+      minmax(0, var(--search-input-width)) max-content minmax(0, 1fr);
+    grid-template-areas:
+      "search first ."
+      "count count count";
+  }
+
+  .list-toolbar[data-filter-count="1"][data-has-action="false"]
+    > :is(.project-result-count, .asset-result-count) {
     justify-self: start;
   }
 }

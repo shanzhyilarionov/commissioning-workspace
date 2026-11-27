@@ -1,0 +1,106 @@
+.workspace-metric-table {
+  --workspace-metric-metadata-padding-x: 6px;
+  --table-end-padding-base: var(--table-user-padding-x);
+}
+
+.workspace-metric-table .status-cell {
+  white-space: nowrap;
+}
+
+.workspace-metric-table:is(.assets, .test_results, .active_issues)
+  tr > :is(.status-cell, .status-column) {
+  padding-inline: var(--workspace-metric-metadata-padding-x);
+}
+
+.workspace-metric-table.assets {
+  --table-min-width: 640px;
+  --table-grid-columns:
+    minmax(
+      calc(90px - var(--table-user-padding-x) + var(--table-edge-padding-x)),
+      0.8fr
+    )
+    minmax(120px, 1.4fr)
+    minmax(130px, 1.4fr)
+    minmax(110px, 1.2fr)
+    calc(
+      var(--fixed-status-content-width) +
+      var(--workspace-metric-metadata-padding-x) +
+      var(--table-end-padding-x)
+    );
+}
+
+.workspace-metric-table.test_results {
+  --table-min-width: 600px;
+  --table-grid-columns:
+    minmax(
+      calc(180px - var(--table-user-padding-x) + var(--table-edge-padding-x)),
+      1.3fr
+    )
+    minmax(200px, 2.2fr)
+    minmax(130px, 1.2fr)
+    calc(
+      var(--fixed-result-content-width) +
+      var(--workspace-metric-metadata-padding-x) +
+      var(--table-end-padding-x)
+    );
+}
+
+.workspace-metric-table.active_issues {
+  --table-min-width: 680px;
+  --table-grid-columns:
+    minmax(
+      calc(180px - var(--table-user-padding-x) + var(--table-edge-padding-x)),
+      2fr
+    )
+    minmax(130px, 1.4fr)
+    calc(
+      var(--fixed-priority-content-width) +
+      var(--workspace-metric-metadata-padding-x) +
+      var(--workspace-metric-metadata-padding-x)
+    )
+    calc(
+      var(--fixed-status-content-width) +
+      var(--workspace-metric-metadata-padding-x) +
+      var(--workspace-metric-metadata-padding-x)
+    )
+    calc(
+      var(--fixed-date-content-width) +
+      var(--table-user-padding-x) +
+      var(--table-end-padding-x)
+    );
+}
+
+.workspace-metric-table.attention_projects {
+  --table-min-width: 680px;
+  --table-grid-columns:
+    minmax(
+      calc(220px - var(--table-user-padding-x) + var(--table-edge-padding-x)),
+      4fr
+    )
+    repeat(4, minmax(112px, 1fr));
+}
+
+.workspace-metric-table .issue-status-open {
+  color: var(--color-status-negative);
+}
+
+.workspace-metric-table .issue-status-in_progress {
+  color: var(--color-status-warning);
+}
+
+.workspace-metric-overdue {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-status-negative);
+}
+
+.workspace-metric-count {
+  font-weight: var(--font-weight-medium);
+}
+
+.workspace-metric-count.attention {
+  color: var(--color-status-negative);
+}
+
+.workspace-metric-count.clear {
+  color: var(--color-status-neutral);
+}

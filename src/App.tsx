@@ -14,10 +14,15 @@ import IssuesPage from "./pages/IssuesPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import HomePage from "./pages/HomePage";
 import WorkspaceDeliverablesPage from "./pages/WorkspaceDeliverablesPage";
+import WorkspaceMetricPage from "./pages/WorkspaceMetricPage";
 import type {
   WorkspaceDeliverable,
   WorkspaceDeliverableKind,
 } from "./types/workspaceDeliverable";
+import type {
+  WorkspaceMetricEntry,
+  WorkspaceMetricKind,
+} from "./types/workspaceMetric";
 import ProjectsPage from "./pages/ProjectsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -80,7 +85,8 @@ type Page =
   | (typeof globalPages)[number]
   | ProjectPage
   | (typeof utilityPages)[number]
-  | "Deliverables";
+  | "Deliverables"
+  | "Workspace metric";
 type ProjectStatusAction = "archive" | "restore";
 
 function isProjectPage(page: Page): page is ProjectPage {
@@ -94,6 +100,8 @@ function App() {
     useState<WorkspaceDeliverableKind>("required_documents");
   const [deliverablesProject, setDeliverablesProject] =
     useState<Project | null>(null);
+  const [workspaceMetricKind, setWorkspaceMetricKind] =
+    useState<WorkspaceMetricKind>("assets");
   const [projects, setProjects] = useState<Project[]>([]);
   const [reportingIdentity, setReportingIdentity] = useState<ReportingIdentity>(
     EMPTY_REPORTING_IDENTITY,
@@ -338,6 +346,44 @@ function App() {
       id: item.id,
       matchText: item.title,
       parentId: item.parentId,
+    });
+  }
+
+  function handleOpenWorkspaceMetric(kind: WorkspaceMetricKind) {
+    setWorkspaceMetricKind(kind);
+    handleNavigation("Workspace metric");
+  }
+
+  function handleOpenWorkspaceMetricEntry(entry: WorkspaceMetricEntry) {
+    if (entry.kind === "attention_projects") {
+      handleOpenProject(entry.projectId);
+      return;
+    }
+
+    const entityTypes = {
+      assets: "asset",
+      test_results: "test_item",
+      active_issues: "issue",
+    } as const;
+    const entityType = entityTypes[entry.kind];
+    const page = getAuditDestinationPage(entityType);
+
+    if (!page) {
+      return;
+    }
+
+    setCurrentProjectId(entry.projectId);
+    handleOverviewNavigation(page, {
+      navigationKind: "audit",
+      entityType,
+      id: entry.id,
+      matchText:
+        entry.kind === "assets"
+          ? entry.tag
+          : entry.kind === "test_results"
+            ? entry.description
+            : entry.title,
+      parentId: entry.kind === "test_results" ? entry.recordId : null,
     });
   }
 
@@ -666,6 +712,16 @@ function App() {
             onContinueWorking={handleContinueWorking}
             onOpenProject={handleOpenProject}
             onOpenDeliverables={handleOpenDeliverables}
+            onOpenMetric={handleOpenWorkspaceMetric}
+          />
+        );
+      case "Workspace metric":
+        return (
+          <WorkspaceMetricPage
+            key={workspaceMetricKind}
+            kind={workspaceMetricKind}
+            onBack={() => handleNavigation("Home")}
+            onOpenEntry={handleOpenWorkspaceMetricEntry}
           />
         );
       case "Deliverables":
@@ -883,7 +939,9 @@ function App() {
                     type="button"
                     className={
                       activePage === page ||
-                      (page === "Home" && activePage === "Deliverables" && !deliverablesProject)
+                      (page === "Home" &&
+                        (activePage === "Workspace metric" ||
+                          (activePage === "Deliverables" && !deliverablesProject)))
                         ? "nav-item active"
                         : "nav-item"
                     }

@@ -7,6 +7,7 @@ import { useWeeklyActivityChartLayout } from "../styles/layout/useWeeklyActivity
 import { getWorkspaceAnalytics } from "../repositories/workspaceAnalyticsRepository";
 import type { ContinueWorkingItem } from "../services/continueWorkingService";
 import type { WorkspaceDeliverableKind } from "../types/workspaceDeliverable";
+import type { WorkspaceMetricKind } from "../types/workspaceMetric";
 import type {
   WorkspaceAnalytics,
   WorkspaceDailyActivity,
@@ -19,6 +20,7 @@ interface HomePageProps {
   onContinueWorking: () => void;
   onOpenProject: (projectId: string) => void;
   onOpenDeliverables: (kind: WorkspaceDeliverableKind) => void;
+  onOpenMetric: (kind: WorkspaceMetricKind) => void;
 }
 
 type DashboardTone = "positive" | "accent" | "negative" | "neutral";
@@ -465,6 +467,7 @@ function AnalyticsContent({
   onContinueWorking,
   onOpenProject,
   onOpenDeliverables,
+  onOpenMetric,
 }: {
   analytics: WorkspaceAnalytics;
   continueWorkingItem: ContinueWorkingItem | null;
@@ -472,6 +475,7 @@ function AnalyticsContent({
   onContinueWorking: () => void;
   onOpenProject: (projectId: string) => void;
   onOpenDeliverables: (kind: WorkspaceDeliverableKind) => void;
+  onOpenMetric: (kind: WorkspaceMetricKind) => void;
 }) {
   const assetCompletionPercent =
     analytics.assets.total === 0
@@ -614,7 +618,9 @@ function AnalyticsContent({
         className="home-project-metrics"
         aria-label="Workspace commissioning summary"
       >
-        <div
+        <button
+          type="button"
+          onClick={() => onOpenMetric("assets")}
           className={`home-project-metric ${
             analytics.assets.total === 0
               ? "neutral"
@@ -634,8 +640,10 @@ function AnalyticsContent({
               ? "No assets recorded"
               : `${analytics.assets.completed} of ${analytics.assets.total} assets`}
           </small>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenMetric("test_results")}
           className={`home-project-metric ${
             analytics.tests.assessed === 0
               ? "neutral"
@@ -657,8 +665,10 @@ function AnalyticsContent({
               ? "No assessed test items"
               : `${analytics.tests.passed} passed · ${analytics.tests.failed} failed`}
           </small>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenMetric("active_issues")}
           className={`home-project-metric ${
             analytics.issues.active > 0 ? "negative" : "positive"
           }`}
@@ -670,8 +680,10 @@ function AnalyticsContent({
               ? "No issues need attention"
               : `${analytics.issues.critical} critical · ${analytics.issues.overdue} overdue`}
           </small>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenMetric("attention_projects")}
           className={`home-project-metric ${
             analytics.projectsRequiringAttention.total > 0
               ? "negative"
@@ -685,7 +697,7 @@ function AnalyticsContent({
               ? "No active projects need attention"
               : `${analytics.projectsRequiringAttention.critical} critical · ${analytics.projectsRequiringAttention.overdue} overdue`}
           </small>
-        </div>
+        </button>
       </div>
 
       <div className="home-closeout-row">
@@ -794,6 +806,7 @@ export default function HomePage({
   onContinueWorking,
   onOpenProject,
   onOpenDeliverables,
+  onOpenMetric,
 }: HomePageProps) {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [analytics, setAnalytics] = useState<WorkspaceAnalytics | null>(
@@ -864,6 +877,7 @@ export default function HomePage({
               onContinueWorking={onContinueWorking}
               onOpenProject={onOpenProject}
               onOpenDeliverables={onOpenDeliverables}
+              onOpenMetric={onOpenMetric}
             />
           ) : (
             <section className="home-panel home-analytics-state">

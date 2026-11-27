@@ -4,6 +4,7 @@
 @import "./components/list-toolbar.css";
 @import "./pages/documents.css";
 @import "./pages/workspace-deliverables.css";
+@import "./pages/workspace-metrics.css";
 @import "./pages/reports.css";
 @import "./pages/settings.css";
 @import "./theme.css";
